@@ -1,7 +1,7 @@
 #miner-pool
   %h2 Miner Status
 
-  %table
+  %table(cellpadding="0" cellspacing="0")
     %thead
       %th Host
       %th GH/s(5s)
@@ -18,7 +18,7 @@
           %td= miner.summary[:ghs_5s]
           %td= miner.summary[:ghs_av]
           %td
-            %table
+            %table(cellpadding="0" cellspacing="0")
               %thead
                 %th Name
                 %th Status
