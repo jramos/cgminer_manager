@@ -2,6 +2,10 @@
 
 A web manager for cgminer instances... on Rails!
 
+## Note
+
+This application is intended to only be used on a secure local network.
+
 ## Requirements
 
 * Ruby (1.9.3+)
