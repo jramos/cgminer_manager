@@ -33,7 +33,18 @@ Copy ``config/miners.yml.example`` to ``config/miners.yml`` and update with the 
 ## Usage
 
     bundle install
-    bundle exec rails server
+    bundle exec rails server --binding=127.0.0.1
+
+Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
+
+## Page Refreshing
+
+The main page of the site will refresh every 30 seconds by default. You can adjust this by editing `app/assets/javascripts/config.js`.
+
+    var config = {
+      // data reload interval in seconds
+      reload_interval : 30
+    }
 
 ## Contributing
 
