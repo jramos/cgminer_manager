@@ -2,6 +2,10 @@
 
 A web manager for cgminer instances... on Rails!
 
+## Screenshot
+
+![Screenshot](public/screenshot.png)
+
 ## Note
 
 This application is intended to only be used on a secure local network.
