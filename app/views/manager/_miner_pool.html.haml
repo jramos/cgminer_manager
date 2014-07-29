@@ -27,8 +27,9 @@
                 %th Error
               %tbody
                 - miner.devs.each do |device|
-                  - @summary[:error_rate] << device[:'device_hardware%']
+                  - @summary[:error_rate]  << device[:'device_hardware%']
                   - @summary[:temperature] << device[:temperature]
+                  - @summary[:uptime]      << device[:device_elapsed]
 
                   %tr
                     %td= device[:name]

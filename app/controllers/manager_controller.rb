@@ -16,7 +16,8 @@ class ManagerController < ApplicationController
       :ghs_avg     => [],
       :ghs_5s      => [],
       :error_rate  => [],
-      :temperature => []
+      :temperature => [],
+      :uptime      => []
     }
   end
 end

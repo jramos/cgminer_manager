@@ -9,12 +9,14 @@
       %tbody
         %tr
           %td 5s
-          %td= @summary[:ghs_5s].sum.round(1)
-          %td= (@summary[:ghs_5s].sum / @count).round(1).to_s + ' / miner'
+          %td
+            = @summary[:ghs_5s].sum.round(1)
+            %span.average-ghs= '(avg ' + (@summary[:ghs_5s].sum / @count).round(1).to_s + ')'
         %tr
           %td Avg
-          %td= @summary[:ghs_avg].sum.round(1)
-          %td= (@summary[:ghs_avg].sum / @count).round(1).to_s + ' / miner'
+          %td
+            = @summary[:ghs_avg].sum.round(1)
+            %span.average-ghs= '(avg ' + (@summary[:ghs_avg].sum / @count).round(1).to_s + ')'
 
   #error-rate
     %h3 Error Rate
@@ -46,5 +48,19 @@
         %tr
           %td Max
           %td= @summary[:temperature].max.round(1).to_s + ' C'
+
+  #general
+    - @uptime_in_seconds = @summary[:uptime].sum
+    - @up_since = Time.now - @uptime_in_seconds
+
+    %h2 General
+    %table(cellpadding="0" cellspacing="0")
+      %tbody
+        %tr
+          %td Total uptime
+          %td= time_ago_in_words(@up_since, include_minutes: true)
+        %tr
+          %td Total GH processed
+          %td= number_to_human(@uptime_in_seconds * @summary[:ghs_avg].sum)
 
 .clear

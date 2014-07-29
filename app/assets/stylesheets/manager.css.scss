@@ -27,9 +27,13 @@ td {
 }
 
 #summary {
-  #total-ghs, #error-rate, #temperature {
+  #total-ghs, #error-rate, #temperature, #general {
     width: 290px;
     float: left;
+  }
+  
+  #total-ghs .average-ghs {
+    font-size: 0.9em;
   }
 }
 
