@@ -1,5 +1,18 @@
 %h1 CgminerManager
 
 - unless @miner_pool.miners.empty?
-  = render partial: 'miner_pool'
-  = render partial: 'summary'
+  #updated= "Updated: " + Time.zone.now.to_s
+
+  #content
+    = render partial: 'miner_pool'
+    = render partial: 'summary'
+
+:javascript
+  var reload = function() {
+    $('#updated').text('Updating...');
+    location.reload();
+  };
+
+  $(document).ready(function() {
+    setInterval(reload, 30000);
+  });
