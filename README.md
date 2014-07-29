@@ -18,9 +18,8 @@ This application is intended to only be used on a secure local network.
 
 ## Installation
 
-Clone this repository and [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) to a common root directory.
+Clone this repository.
 
-    git clone git@github.com:jramos/cgminer_api_client.git
     git clone git@github.com:jramos/cgminer_manager.git
     cd cgminer_manager
 
