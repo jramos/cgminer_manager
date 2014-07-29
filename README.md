@@ -22,6 +22,7 @@ Clone this repository.
 
     git clone git@github.com:jramos/cgminer_manager.git
     cd cgminer_manager
+    bundle install
 
 ## Configuration
 
@@ -48,7 +49,6 @@ The main page of the site will refresh every 30 seconds by default. You can adju
 
 ## Usage
 
-    bundle install
     bundle exec rails server --binding=127.0.0.1
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
