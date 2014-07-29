@@ -30,14 +30,11 @@ Copy ``config/miners.yml.example`` to ``config/miners.yml`` and update with the 
     - host: 192.168.1.1
       port: 1234
 
-## Usage
+### Remote API Access
 
-    bundle install
-    bundle exec rails server --binding=127.0.0.1
+If connecting to a cgminer instance on any host other than 127.0.0.1, remote API access must be enabled. See [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) for more information.
 
-Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
-
-## Page Refreshing
+### Page Refreshing
 
 The main page of the site will refresh every 30 seconds by default. You can adjust this by editing `app/assets/javascripts/config.js`.
 
@@ -45,6 +42,13 @@ The main page of the site will refresh every 30 seconds by default. You can adju
       // data reload interval in seconds
       reload_interval : 30
     }
+
+## Usage
+
+    bundle install
+    bundle exec rails server --binding=127.0.0.1
+
+Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
 
 ## Contributing
 
