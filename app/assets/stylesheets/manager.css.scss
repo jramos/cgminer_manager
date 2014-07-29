@@ -2,9 +2,18 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
+table {
+  width: 100%;
+}
+
 td {
+  margin: 0;
   padding: 10px;
-  border-bottom: 1px solid;
+  border-top: 1px solid;
+}
+
+#updated {
+  float: right;
 }
 
 #updated.updating {
@@ -12,9 +21,14 @@ td {
   color: green;
 }
 
+#content {
+  width: 900px;
+  margin: 0 auto;
+}
+
 #summary {
   #total-ghs, #error-rate, #temperature {
-    width: 300px;
+    width: 290px;
     float: left;
   }
 }

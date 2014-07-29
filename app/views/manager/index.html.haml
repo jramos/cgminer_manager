@@ -1,11 +1,12 @@
+#updated
+  %b Updated:
+  %span= Time.zone.now.to_s
+
 %h1 CgminerManager
 
 - unless @miner_pool.miners.empty?
-  #updated= "Updated: " + Time.zone.now.to_s
-
-  #content
-    = render partial: 'miner_pool'
-    = render partial: 'summary'
+  = render partial: 'miner_pool'
+  = render partial: 'summary'
 
 :javascript
   var reload = function() {
@@ -14,5 +15,5 @@
   };
 
   $(document).ready(function() {
-    setInterval(reload, manager.reload_interval * 1000);
+    setInterval(reload, config.reload_interval * 1000);
   });
