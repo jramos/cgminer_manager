@@ -1,0 +1,38 @@
+#miner-pool
+  %h2 Miner Status
+
+  %table
+    %thead
+      %th Host
+      %th GH/s(5s)
+      %th GH/s(avg)
+      %th Devices
+
+    %tbody
+      - @miner_pool.miners.each do |miner|
+        - @summary[:ghs_5s] << miner.summary[:ghs_5s]
+        - @summary[:ghs_avg] << miner.summary[:ghs_av]
+
+        %tr
+          %td= miner.host + ':' + miner.port.to_s
+          %td= miner.summary[:ghs_5s]
+          %td= miner.summary[:ghs_av]
+          %td
+            %table
+              %thead
+                %th Name
+                %th Status
+                %th Elapsed
+                %th Temp
+                %th Error
+              %tbody
+                - miner.devs.each do |device|
+                  - @summary[:error_rate] << device[:'device_hardware%']
+                  - @summary[:temperature] << device[:temperature]
+
+                  %tr
+                    %td= device[:name]
+                    %td= device[:status]
+                    %td= (device[:device_elapsed] / 60).to_s + ' min'
+                    %td= device[:temperature].to_s + ' C'
+                    %td= device[:'device_hardware%'].to_s + '%'

@@ -1,3 +1,8 @@
+PATH
+  remote: ../cgminer_api_client
+  specs:
+    cgminer_api_client (0.0.1)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -97,6 +102,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  cgminer_api_client!
   haml-rails (~> 0.5.3)
   jquery-rails (~> 3.1.1)
   rails (= 4.1.4)

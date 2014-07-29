@@ -1,1 +1,5 @@
-hello world
+%h1 CgminerManager
+
+- unless @miner_pool.miners.empty?
+  = render partial: 'miner_pool'
+  = render partial: 'summary'
