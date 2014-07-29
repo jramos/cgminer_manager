@@ -3,47 +3,48 @@
 #summary
   %h2 Summary
 
-  %h3 Total GH/s
-  %table
-    %tbody
-      %thead
-        %th Duration
-        %th Total
-        %th Average
-      %tr
-        %td 5s
-        %td= @summary[:ghs_5s].sum.round(1)
-        %td= (@summary[:ghs_5s].sum / @count).round(1).to_s + ' / miner'
-      %tr
-        %td Avg
-        %td= @summary[:ghs_avg].sum.round(1)
-        %td= (@summary[:ghs_avg].sum / @count).round(1).to_s + ' / miner'
+  #total-ghs
+    %h3 Total GH/s
+    %table
+      %tbody
+        %tr
+          %td 5s
+          %td= @summary[:ghs_5s].sum.round(1)
+          %td= (@summary[:ghs_5s].sum / @count).round(1).to_s + ' / miner'
+        %tr
+          %td Avg
+          %td= @summary[:ghs_avg].sum.round(1)
+          %td= (@summary[:ghs_avg].sum / @count).round(1).to_s + ' / miner'
 
-  %h3 Error Rate
-  %table
-    %tbody
-      %tr
-        %td Average
-        - average_error_pct = @summary[:error_rate].sum / @count
-        - average_error_rate = average_error_pct / 100
+  #error-rate
+    %h3 Error Rate
+    %table
+      %tbody
+        %tr
+          %td Average
+          - average_error_pct = @summary[:error_rate].sum / @count
+          - average_error_rate = average_error_pct / 100
 
-        %td= average_error_pct.round(4).to_s + '%'
-      %tr
-        %td 5s
-        %td= (average_error_rate * @summary[:ghs_5s].sum).round(2).to_s + ' GH/s'
-      %tr
-        %td Avg
-        %td= (average_error_rate * @summary[:ghs_avg].sum).round(2).to_s + ' GH/s'
+          %td= average_error_pct.round(4).to_s + '%'
+        %tr
+          %td 5s
+          %td= (average_error_rate * @summary[:ghs_5s].sum).round(2).to_s + ' GH/s'
+        %tr
+          %td Avg
+          %td= (average_error_rate * @summary[:ghs_avg].sum).round(2).to_s + ' GH/s'
 
-  %h3 Temperature
-  %table
-    %tbody
-      %tr
-        %td Min
-        %td= @summary[:temperature].min.round(1).to_s + ' C'
-      %tr
-        %td Avg
-        %td= (@summary[:temperature].sum / @count).round(1).to_s + ' C'
-      %tr
-        %td Max
-        %td= @summary[:temperature].max.round(1).to_s + ' C'
+  #temperature
+    %h3 Temperature
+    %table
+      %tbody
+        %tr
+          %td Min
+          %td= @summary[:temperature].min.round(1).to_s + ' C'
+        %tr
+          %td Avg
+          %td= (@summary[:temperature].sum / @count).round(1).to_s + ' C'
+        %tr
+          %td Max
+          %td= @summary[:temperature].max.round(1).to_s + ' C'
+
+.clear

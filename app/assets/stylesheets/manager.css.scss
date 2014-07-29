@@ -1,3 +1,24 @@
 // Place all the styles related to the Manager controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid;
+}
+
+#updated.updating {
+  font-weight: bold;
+  color: green;
+}
+
+#summary {
+  #total-ghs, #error-rate, #temperature {
+    width: 300px;
+    float: left;
+  }
+}
+
+.clear {
+  clear: both;
+}

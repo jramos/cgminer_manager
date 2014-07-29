@@ -9,10 +9,10 @@
 
 :javascript
   var reload = function() {
-    $('#updated').text('Updating...');
+    $('#updated').addClass('updating').text('Updating...');
     location.reload();
   };
 
   $(document).ready(function() {
-    setInterval(reload, 30000);
+    setInterval(reload, manager.reload_interval * 1000);
   });
