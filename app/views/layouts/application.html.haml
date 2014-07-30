@@ -6,4 +6,12 @@
     = javascript_include_tag "application"
     = csrf_meta_tags
   %body
-    #content= yield
+    #content
+      #header
+        #updated
+          %b Updated:
+          %span= Time.zone.now.to_s
+        %h1 CgminerManager
+        .clear
+
+      = yield

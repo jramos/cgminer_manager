@@ -1,9 +1,3 @@
-#updated
-  %b Updated:
-  %span= Time.zone.now.to_s
-
-%h1 CgminerManager
-
 - unless @miner_pool.miners.empty?
   = render partial: 'miner_pool'
   = render partial: 'summary'
