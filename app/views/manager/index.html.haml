@@ -1,3 +1,7 @@
 - unless @miner_pool.miners.empty?
-  = render partial: 'miner_pool'
+  - content_for(:miner_pool) do
+    = render partial: 'miner_pool'
+
   = render partial: 'summary'
+  = yield :miner_pool
+  = render partial: 'general'

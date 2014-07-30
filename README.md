@@ -34,13 +34,32 @@ Copy ``config/miners.yml.example`` to ``config/miners.yml`` and update with the 
 
 If connecting to a cgminer instance on any host other than 127.0.0.1, remote API access must be enabled. See [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) for more information.
 
-### Page Refreshing
+### UI Options
 
-The main page of the site will refresh every 30 seconds by default. You can adjust this by editing `app/assets/javascripts/config.js`.
+You can adjust these options by editing `app/assets/javascripts/config.js`.
+
+#### Page Refreshing
+
+The data on each page of the site will refresh every 5 minutes (300 seconds) by default. You can adjust this via `reload_interval`. Change to 0 to disable refreshing.
 
     var config = {
       // data reload interval in seconds
-      reload_interval : 30
+      reload_interval : 60,  // 1 minute
+      
+      // misc UI options
+      show_github_ribbon: true
+    }
+
+#### Disable Fork Ribbon
+
+To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to false.
+
+    var config = {
+      // data reload interval in seconds
+      reload_interval : 300,  // 5 minutes
+      
+      // misc UI options
+      show_github_ribbon: false
     }
 
 ## Running
@@ -51,7 +70,7 @@ Automatically:
 
 Manually:
 
-    bundle exec rails server --binding=127.0.0.1
+    env SECRET_KEY_BASE=`rake secret` bundle exec rails server --binding=127.0.0.1 -e production
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
   

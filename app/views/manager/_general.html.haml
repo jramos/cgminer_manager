@@ -1,0 +1,7 @@
+#general
+  - @uptime_in_seconds = @summary[:uptime].sum
+  - @up_since = Time.now - @uptime_in_seconds
+
+  .text-center
+    %p= 'Total processing time: ' + time_ago_in_words(@up_since)
+    %p= 'Total GH processed: ' + number_to_human(@uptime_in_seconds * @summary[:ghs_avg].sum)

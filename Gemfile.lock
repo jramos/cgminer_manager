@@ -31,6 +31,7 @@ GEM
     builder (3.2.2)
     cgminer_api_client (0.0.1)
     erubis (2.7.0)
+    execjs (2.2.1)
     haml (4.0.5)
       tilt
     haml-rails (0.5.3)
@@ -95,6 +96,9 @@ GEM
       polyglot (>= 0.3.1)
     tzinfo (1.2.1)
       thread_safe (~> 0.1)
+    uglifier (2.5.3)
+      execjs (>= 0.3.0)
+      json (>= 1.8.0)
 
 PLATFORMS
   ruby
@@ -105,5 +109,6 @@ DEPENDENCIES
   jquery-rails (~> 3.1.1)
   jquery-ui-rails (~> 5.0.0)
   rails (= 4.1.4)
-  rake (~> 10.3.0)
+  rake (~> 10.3.2)
   sass-rails (~> 4.0.3)
+  uglifier (~> 2.5.3)

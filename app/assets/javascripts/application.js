@@ -8,5 +8,7 @@ var reload = function() {
 };
 
 $(document).ready(function() {
-  setInterval(reload, config.reload_interval * 1000);
+  if (parseInt(config.reload_interval) > 0) {
+    setInterval(reload, config.reload_interval * 1000);
+  }
 });

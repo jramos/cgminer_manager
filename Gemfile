@@ -13,4 +13,5 @@ gem 'jquery-ui-rails',    '~> 5.0.0'
 gem 'cgminer_api_client', '~> 0.0.1'
 
 # misc
-gem 'rake',               '~> 10.3.0'
+gem 'rake',               '~> 10.3.2'
+gem 'uglifier',           '~> 2.5.3'

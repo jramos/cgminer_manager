@@ -27,14 +27,23 @@
                 %th Temp
                 %th Error
               %tbody
-                - miner.devs.each do |device|
+                - miner.devs.each_with_index do |device, index|
                   - @summary[:error_rate]  << device[:'device_hardware%']
                   - @summary[:temperature] << device[:temperature]
                   - @summary[:uptime]      << device[:device_elapsed]
 
                   %tr
-                    %td= device[:name]
+                    %td= device[:name] + index.to_s
                     %td= device[:status]
                     %td= (device[:device_elapsed] / 60).to_s + ' min'
                     %td= device[:temperature].to_s + ' C'
                     %td= device[:'device_hardware%'].to_s + '%'
+
+                  - if chain_stats = get_chain_stats_for(miner, device[:name]+index.to_s)
+                    - 1.upto(4) do |i|
+                      - status = chain_stats.send(:[], :"chain_acs#{i}") rescue nil
+                      - next if status.empty?
+
+                      %tr
+                        %td= "ACS#{(i - 1).to_s}"
+                        %td(colspan="4" class="text-center")= status
