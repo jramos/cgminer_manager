@@ -1,14 +1,10 @@
 # CgminerManager
 
-A web manager for cgminer instances... on Rails!
-
-## Screenshot
-
-![Screenshot](public/screenshot.png)
+A Rails web manager for cgminer instances.
 
 ## Note
 
-This application is intended to only be used on a secure local network.
+This application is intended to only be used on a secure local network. By default, it will only allow access from 127.0.0.1.
 
 ## Requirements
 
@@ -47,11 +43,22 @@ The main page of the site will refresh every 30 seconds by default. You can adju
       reload_interval : 30
     }
 
-## Usage
+## Running
+
+Automatically:
 
     rake server
 
+Manually:
+
+    bundle exec rails server --binding=127.0.0.1
+
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
+  
+  
+## Screenshot
+
+![Screenshot](public/screenshot.png)
 
 ## Contributing
 
