@@ -10,6 +10,9 @@ This application is intended to only be used on a secure local network. By defau
 
 * [Ruby](https://www.ruby-lang.org) (~> 1.9.3, ~> 2.0.0, ~> 2.1.0)
 * [bundler](http://bundler.io/) (~> 1.6.0)
+
+## Dependencies
+
 * [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.0.1)
 
 ## Installation
