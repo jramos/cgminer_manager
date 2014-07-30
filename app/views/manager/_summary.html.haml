@@ -1,5 +1,3 @@
-- @count = @summary[@summary.keys.first].count
-
 #summary
   %h2 Summary
 
@@ -11,12 +9,12 @@
           %td 5s
           %td
             = @summary[:ghs_5s].sum.round(1)
-            %span.average-ghs= '(avg ' + (@summary[:ghs_5s].sum / @count).round(1).to_s + ')'
+            %span.average-ghs= '(avg ' + (@summary[:ghs_5s].sum / @summary[:ghs_5s].count).round(1).to_s + ')'
         %tr
           %td Avg
           %td
             = @summary[:ghs_avg].sum.round(1)
-            %span.average-ghs= '(avg ' + (@summary[:ghs_avg].sum / @count).round(1).to_s + ')'
+            %span.average-ghs= '(avg ' + (@summary[:ghs_avg].sum / @summary[:ghs_avg].count).round(1).to_s + ')'
 
   #error-rate
     %h3 Error Rate
@@ -24,7 +22,7 @@
       %tbody
         %tr
           %td Average
-          - average_error_pct = @summary[:error_rate].sum / @count
+          - average_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count
           - average_error_rate = average_error_pct / 100
 
           %td= average_error_pct.round(4).to_s + '%'
@@ -44,7 +42,7 @@
           %td= @summary[:temperature].min.round(1).to_s + ' C'
         %tr
           %td Avg
-          %td= (@summary[:temperature].sum / @count).round(1).to_s + ' C'
+          %td= (@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + ' C'
         %tr
           %td Max
           %td= @summary[:temperature].max.round(1).to_s + ' C'
