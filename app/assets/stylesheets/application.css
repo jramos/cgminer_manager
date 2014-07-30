@@ -11,5 +11,11 @@
  * file per style scope.
  *
  *= require_tree .
+ *= require jquery-ui
  *= require_self
  */
+
+a {
+  color: blue;
+  text-decoration: none;
+}

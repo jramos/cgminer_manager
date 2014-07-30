@@ -1,0 +1,80 @@
+#miner
+  %h1= @miner.host + ':' + @miner.port.to_s
+
+  #tabs
+    %ul
+      %li= link_to 'Summary', '#summary'
+      %li= link_to 'Stats',   '#stats'
+      %li= link_to 'Pools',   '#pools'
+      %li= link_to 'Devices', '#devices'
+
+    #summary
+      %ul
+        %li= link_to "Overview", '#overview'
+        %li= link_to "Coin", '#coin'
+
+      %table(cellpadding="0" cellspacing="0" id="overview")
+        - @miner.summary.each_pair do |key, value|
+          %tr
+            %td= key
+            %td= value
+
+      %table(cellpadding="0" cellspacing="0" id="coin")
+        - @miner.coin.each_pair do |key, value|
+          %tr
+            %td= key
+            %td= value
+  
+    #stats
+      - stats = @miner.stats
+      %ul
+        - stats.each_with_index do |stat, index|
+          - stat.delete(:stats)
+          - id = stat.delete(:id)
+          %li= link_to id, '#stat-' + index.to_s
+
+      - stats.each_with_index do |stat, index|
+        %table(cellpadding="0" cellspacing="0" id="stat-#{index.to_s}")
+          - stat.each_pair do |key, value|
+            %tr
+              %td= key
+              %td= value
+
+    #pools
+      - pools = @miner.pools
+      %ul
+        - pools.each_with_index do |pool, index|
+          - if id = pool.delete(:pool)
+            %li= link_to 'Pool ' + id.to_s, '#pool-' + index.to_s
+
+      - pools.each_with_index do |pool, index|
+        %table(cellpadding="0" cellspacing="0" id="pool-#{index.to_s}")
+          - pool.each_pair do |key, value|
+            %tr
+              %td= key
+              %td= value
+
+    #devices
+      - devices = @miner.devs
+      %ul
+        - devices.each_with_index do |device, index|
+          - if asc = device.delete(:asc)
+            %li= link_to 'ASC ' + asc.to_s, '#device-' + index.to_s
+          - elsif pga = device.delete(:pga)
+            %li= link_to 'PGA ' + pga.to_s, '#device-' + index.to_s
+
+      - devices.each_with_index do |device, index|
+        %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}")
+          - device.each_pair do |key, value|
+            %tr
+              %td= key
+              %td= value
+
+:javascript
+  $(function() {
+    $('#tabs').tabs();
+    $('#summary').tabs();
+    $('#stats').tabs();
+    $('#pools').tabs();
+    $('#devices').tabs();
+  });

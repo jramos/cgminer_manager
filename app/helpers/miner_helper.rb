@@ -1,0 +1,2 @@
+module MinerHelper
+end

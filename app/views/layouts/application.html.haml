@@ -11,7 +11,8 @@
         #updated
           %b Updated:
           %span= Time.zone.now.to_s
-        %h1 CgminerManager
+        %h1
+          = link_to "CgminerManager", root_url
         .clear
 
       = yield
