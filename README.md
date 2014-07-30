@@ -1,6 +1,6 @@
 # CgminerManager
 
-A Rails web manager for cgminer instances.
+A web manager for cgminer instances.
 
 ## Note
 
@@ -13,8 +13,6 @@ This application is intended to only be used on a secure local network. By defau
 * [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (0.0.1+)
 
 ## Installation
-
-Clone this repository.
 
     git clone git@github.com:jramos/cgminer_manager.git
     cd cgminer_manager
