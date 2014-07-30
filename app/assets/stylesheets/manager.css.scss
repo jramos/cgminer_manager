@@ -2,16 +2,6 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
-table {
-  width: 100%;
-}
-
-td {
-  margin: 0;
-  padding: 10px;
-  border-top: 1px solid;
-}
-
 #updated {
   float: right;
 }
@@ -47,8 +37,4 @@ td {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid;
-}
-
-.clear {
-  clear: both;
 }

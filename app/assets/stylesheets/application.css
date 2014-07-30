@@ -23,3 +23,18 @@ a {
 .text-center {
   text-align: center;
 }
+
+table {
+  width: 100%;
+  padding-top: 10px;
+}
+
+td {
+  margin: 0;
+  padding: 10px 0;
+  border-top: 1px solid;
+}
+
+.clear {
+  clear: both;
+}
