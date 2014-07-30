@@ -87,7 +87,7 @@ Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
 
 ## Donating
 
-If you find this gem useful, please consider donating.
+If you find this application useful, please consider donating.
 
 BTC: ``***REMOVED***``
 
