@@ -71,6 +71,8 @@ Automatically:
 
 Manually:
 
+    env RAILS_ENV=production rake assets:clean
+    env RAILS_ENV=production rake assets:precompile
     env SECRET_KEY_BASE=`rake secret` bundle exec rails server --binding=127.0.0.1 -e production
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
