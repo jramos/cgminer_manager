@@ -6,6 +6,13 @@
     = javascript_include_tag "application"
     = csrf_meta_tags
   %body
+
+    #ribbon(style="display:none;")
+      = link_to image_tag('/forkme_right_orange_ff7600.png', style: 'position: absolute; top: 0; right: 0; border: 0;', alt: 'Fork me on GitHub'), 'https://github.com/jramos/cgminer_manager'
+
+    :javascript
+      if(config.show_github_ribbon) { $('#ribbon').fadeIn(1000); } else { $('#ribbon').remove(); }
+
     #content
       #header
         #updated
