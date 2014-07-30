@@ -1,6 +1,6 @@
 # CgminerManager
 
-A web manager for cgminer instances.
+A web manager for cgminer instances written in Ruby on Rails.
 
 ## Note
 
@@ -8,9 +8,9 @@ This application is intended to only be used on a secure local network. By defau
 
 ## Requirements
 
-* Ruby (1.9.3+)
-* bundler (1.6.0+)
-* [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (0.0.1+)
+* [Ruby](https://www.ruby-lang.org) (~> 1.9.3, ~> 2.0.0, ~> 2.1.0)
+* [bundler](http://bundler.io/) (~> 1.6.0)
+* [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.0.1)
 
 ## Installation
 
