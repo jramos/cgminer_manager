@@ -2,19 +2,19 @@
   %h2 Summary
 
   #total-ghs
-    %h3 Total GH/s
+    %h3 Local Rate
     %table(cellpadding="0" cellspacing="0")
       %tbody
         %tr
           %td 5s
           %td
-            = @summary[:ghs_5s].sum.round(1)
-            %span.average-ghs= '(avg ' + (@summary[:ghs_5s].sum / @summary[:ghs_5s].count).round(1).to_s + ')'
+            = formatHashrate(@summary[:ghs_5s].sum * 1e9 )
+            %span.average-ghs= '(avg ' + formatHashrate(@summary[:ghs_5s].sum / @summary[:ghs_5s].count * 1e9) + ')'
         %tr
           %td Avg
           %td
-            = @summary[:ghs_avg].sum.round(1)
-            %span.average-ghs= '(avg ' + (@summary[:ghs_avg].sum / @summary[:ghs_avg].count).round(1).to_s + ')'
+            = formatHashrate(@summary[:ghs_avg].sum * 1e9)
+            %span.average-ghs= '(avg ' + formatHashrate(@summary[:ghs_avg].sum / @summary[:ghs_avg].count * 1e9) + ')'
 
   #error-rate
     %h3 Error Rate
@@ -28,10 +28,10 @@
           %td= average_error_pct.round(4).to_s + '%'
         %tr
           %td 5s
-          %td= (average_error_rate * @summary[:ghs_5s].sum).round(2).to_s + ' GH/s'
+          %td= formatHashrate(average_error_rate * @summary[:ghs_5s].sum * 1e9)
         %tr
           %td Avg
-          %td= (average_error_rate * @summary[:ghs_avg].sum).round(2).to_s + ' GH/s'
+          %td= formatHashrate(average_error_rate * @summary[:ghs_avg].sum * 1e9)
 
   #temperature
     %h3 Temperature

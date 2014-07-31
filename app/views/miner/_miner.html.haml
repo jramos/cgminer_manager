@@ -3,12 +3,12 @@
 
   #tabs
     %ul
-      %li= link_to 'Summary', '#summary'
+      %li= link_to 'Summary', '#miner-summary'
       %li= link_to 'Devices', '#devices'
       %li= link_to 'Pools',   '#pools'
       %li= link_to 'Stats',   '#stats'
 
-    #summary
+    #miner-summary
       %ul
         %li= link_to "Overview", '#overview'
         %li= link_to "Coin", '#coin'
@@ -73,7 +73,7 @@
 :javascript
   $(function() {
     $('#tabs').tabs();
-    $('#summary').tabs();
+    $('#miner-summary').tabs();
     $('#stats').tabs();
     $('#pools').tabs();
     $('#devices').tabs();

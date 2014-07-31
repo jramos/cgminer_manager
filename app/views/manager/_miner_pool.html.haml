@@ -4,8 +4,8 @@
   %table(cellpadding="0" cellspacing="0")
     %thead
       %th Host
-      %th GH/s(5s)
-      %th GH/s(avg)
+      %th Rate(5s)
+      %th Rate(avg)
       %th Devices
 
     %tbody
@@ -16,8 +16,8 @@
         %tr
           %td
             = link_to miner.host + ':' + miner.port.to_s, miner_url(index)
-          %td.text-center= miner.summary[:ghs_5s]
-          %td.text-center= miner.summary[:ghs_av]
+          %td.text-center= formatHashrate(miner.summary[:ghs_5s] * 1e9)
+          %td.text-center= formatHashrate(miner.summary[:ghs_av] * 1e9)
           %td
             %table(cellpadding="0" cellspacing="0")
               %thead
