@@ -7,12 +7,12 @@
       %tbody
         %tr
           %td 5s
-          %td
+          %td.text-center
             = formatHashrate(@summary[:ghs_5s].sum * 1e9 )
             %span.average-ghs= '(avg ' + formatHashrate(@summary[:ghs_5s].sum / @summary[:ghs_5s].count * 1e9) + ')'
         %tr
           %td Avg
-          %td
+          %td.text-center
             = formatHashrate(@summary[:ghs_avg].sum * 1e9)
             %span.average-ghs= '(avg ' + formatHashrate(@summary[:ghs_avg].sum / @summary[:ghs_avg].count * 1e9) + ')'
 
