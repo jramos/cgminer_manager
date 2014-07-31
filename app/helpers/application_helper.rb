@@ -23,6 +23,18 @@ module ApplicationHelper
       rate /= 1000; unit = 'PH/s'
     end
 
+    if(rate >= 1000)
+      rate /= 1000; unit = 'EH/s'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'ZH/s'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'YH/s'
+    end
+
     return (rate.round(2).to_s + ' ' + unit);
   end
 end
