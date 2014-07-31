@@ -32,10 +32,10 @@
                   - @summary[:temperature] << device[:temperature]
                   - @summary[:uptime]      << device[:device_elapsed]
 
-                  %tr
+                  %tr.text-center
                     %td= device[:name] + index.to_s
                     %td= device[:status]
-                    %td= (device[:device_elapsed] / 60).to_s + ' min'
+                    %td= time_ago_in_words(Time.now - device[:device_elapsed])
                     %td= device[:temperature].to_s + ' C'
                     %td= device[:'device_hardware%'].to_s + '%'
 
@@ -44,6 +44,6 @@
                       - status = chain_stats.send(:[], :"chain_acs#{i}") rescue nil
                       - next if status.empty?
 
-                      %tr
+                      %tr.text-center
                         %td= "ACS#{(i - 1).to_s}"
-                        %td(colspan="4" class="text-center")= status
+                        %td(colspan="4")= status
