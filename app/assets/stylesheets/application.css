@@ -38,3 +38,7 @@ td {
 .clear {
   clear: both;
 }
+
+.ui-widget .ui-widget {
+  font-size: 0.9em;
+}
