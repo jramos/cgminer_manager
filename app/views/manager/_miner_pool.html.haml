@@ -36,7 +36,7 @@
                     %td= device[:name] + index.to_s
                     %td= device[:status]
                     %td= time_ago_in_words(Time.now - device[:device_elapsed])
-                    %td= device[:temperature].to_s + ' C'
+                    %td= device[:temperature].to_s + ' C / ' + toF(device[:temperature]).to_s + ' F'
                     %td= device[:'device_hardware%'].to_s + '%'
 
                   - if chain_stats = get_chain_stats_for(miner, device[:name]+index.to_s)
