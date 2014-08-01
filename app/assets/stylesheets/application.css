@@ -51,3 +51,11 @@ td {
 .average-ghs {
   text-align: center;
 }
+
+.red {
+  color: red;
+}
+
+.bold {
+  font-weight: bold;
+}

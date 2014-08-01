@@ -46,4 +46,4 @@
 
                       %tr.text-center
                         %td= "ACS#{(i - 1).to_s}"
-                        %td(colspan="4")= status
+                        %td(colspan="4")= raw(status.gsub('x', '<span class="red bold">x</span>'))
