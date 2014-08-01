@@ -42,3 +42,8 @@ td {
 .ui-widget .ui-widget {
   font-size: 0.9em;
 }
+
+.average-ghs {
+  font-size: 0.8em;
+  text-align: center;
+}
