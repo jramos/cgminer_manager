@@ -15,8 +15,12 @@
  *= require_self
  */
 
+body {
+  font-size: 0.7em;
+}
+
 a {
-  color: blue;
+  color: blue !important;
   text-decoration: none;
 }
 
@@ -45,6 +49,5 @@ td {
 }
 
 .average-ghs {
-  font-size: 0.8em;
   text-align: center;
 }

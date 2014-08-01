@@ -2,6 +2,15 @@
   - content_for(:miner_pool) do
     = render partial: 'miner_pool'
 
-  = render partial: 'summary'
-  = yield :miner_pool
+  #tabs
+    %ul
+      %li= link_to 'Summary', '#summary'
+      %li= link_to 'Miner Pool', '#miner-pool'
+
+    = render partial: 'summary'
+    = yield :miner_pool
+
   = render partial: 'general'
+
+  :javascript
+    $('#tabs').tabs();

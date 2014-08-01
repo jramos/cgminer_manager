@@ -1,3 +1,16 @@
 // Place all the styles related to the Miner controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+#miner {
+  #miner-summary,
+  #devices,
+  #pools,
+  #stats,
+  #config {
+    td:first-child {
+      width: 300px;
+      font-weight: bold;
+    }
+  }
+}
