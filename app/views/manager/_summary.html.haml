@@ -18,33 +18,27 @@
 
   #error-rate
     %h3 Error Rate
+    - average_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count
+    - average_error_rate = average_error_pct / 100
+
     %table(cellpadding="0" cellspacing="0")
       %tbody
         %tr
-          %td Average
-          - average_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count
-          - average_error_rate = average_error_pct / 100
-
-          %td= average_error_pct.round(4).to_s + '%'
-        %tr
           %td 5s
-          %td= formatHashrate(average_error_rate * @summary[:ghs_5s].sum * 1e9)
+          %td= formatHashrate(average_error_rate * @summary[:error_rate].count * @summary[:ghs_5s].sum * 1e9)
         %tr
           %td Avg
-          %td= formatHashrate(average_error_rate * @summary[:ghs_avg].sum * 1e9)
+          %td= formatHashrate(average_error_rate * @summary[:error_rate].count * @summary[:ghs_avg].sum * 1e9)
 
   #temperature
     %h3 Temperature
     %table(cellpadding="0" cellspacing="0")
       %tbody
         %tr
-          %td Min
-          %td= @summary[:temperature].min.round(1).to_s + ' C'
+          %td Range
+          %td= @summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s + ' C'
         %tr
           %td Avg
           %td= (@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + ' C'
-        %tr
-          %td Max
-          %td= @summary[:temperature].max.round(1).to_s + ' C'
 
   .clear
