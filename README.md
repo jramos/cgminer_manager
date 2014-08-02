@@ -2,9 +2,9 @@
 
 A web manager for cgminer written in Ruby on Rails. It allows for remote management and monitoring of a multiple cgminer instances. Features include:
 
-* Pool summary - aggregate miner statistics
-* Miner summary - an overview of miner status
-* Miner detail - a breakdown of miner performance and configuration
+* Pool and miner summary pages
+* A breakdown of miner performance and configuration
+* The ability to send API commands to one or more miners
 
 ## Requirements
 
