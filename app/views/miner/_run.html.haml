@@ -1,0 +1,35 @@
+= form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, confirm: 'Are you sure?', id: 'run_form') do
+  %h2.red Run Query
+
+  %div
+    = label_tag(:command, "Command:")
+    = text_field_tag(:command)
+  %div
+    = label_tag(:command, "Arguments:")
+    = text_field_tag(:'arguments')
+  = submit_tag("Run")
+
+  #run-results
+    - if @results
+      - if @results.is_a?(Array)
+        - @results.each_with_index do |result, index|
+          %h1 Result #{index}
+          %table(cellpadding="0" cellspacing="0" id="run-results")
+            - result.each_pair do |key, value|
+              %tr
+                %td= key
+                %td= value
+      - elsif @results.is_a?(Hash)
+        %table(cellpadding="0" cellspacing="0" id="run-results")
+          - @results.each_pair do |key, value|
+            %tr
+              %td= key
+              %td= value
+      - else
+        = @results
+
+
+:javascript
+  $('#run_form').on('ajax:complete', function(event, xhr, status) {
+    $(this).replaceWith(xhr.responseText)
+  });

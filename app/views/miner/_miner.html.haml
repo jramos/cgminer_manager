@@ -3,11 +3,12 @@
 #miner
   #tabs
     %ul
-      %li= link_to 'Summary', '#miner-summary'
-      %li= link_to 'Devices', '#devices'
-      %li= link_to 'Pools',   '#pools'
-      %li= link_to 'Stats',   '#stats'
-      %li= link_to 'Config',   '#config'
+      %li= link_to 'Summary',   '#miner-summary'
+      %li= link_to 'Devices',   '#devices'
+      %li= link_to 'Pools',     '#pools'
+      %li= link_to 'Stats',     '#stats'
+      %li= link_to 'Config',    '#config'
+      %li= link_to 'Run Query', '#run-query', class: 'danger'
 
     #miner-summary
       %ul
@@ -82,6 +83,9 @@
           %tr
             %td= key
             %td= value
+
+    #run-query
+      = render partial: 'run'
 
 :javascript
   $(function() {
