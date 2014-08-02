@@ -76,7 +76,7 @@ This application is intended to only be used on a secure local network. By defau
 
 ### Manually
 
-    env RAILS_ENV=production rake assets:clean
+    env RAILS_ENV=production rake assets:clobber
     env RAILS_ENV=production rake assets:precompile
     env SECRET_KEY_BASE=`rake secret` bundle exec rails server --binding=127.0.0.1 -e production
 
