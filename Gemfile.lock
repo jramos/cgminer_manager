@@ -29,7 +29,7 @@ GEM
       tzinfo (~> 1.1)
     arel (5.0.1.20140414130214)
     builder (3.2.2)
-    cgminer_api_client (0.0.1)
+    cgminer_api_client (0.0.2)
     erubis (2.7.0)
     execjs (2.2.1)
     haml (4.0.5)
