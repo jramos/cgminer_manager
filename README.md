@@ -2,10 +2,6 @@
 
 A web manager for cgminer instances written in Ruby on Rails.
 
-## Note
-
-This application is intended to only be used on a secure local network. By default, it will only allow access from 127.0.0.1.
-
 ## Requirements
 
 * [Ruby](https://www.ruby-lang.org) (~> 1.9.3, ~> 2.0.0, ~> 2.1.0)
@@ -65,22 +61,22 @@ To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to fa
 
 ## Running
 
-Automatically:
+### Note
+
+This application is intended to only be used on a secure local network. By default, it will only allow access from 127.0.0.1.
+
+
+### Automatically
 
     rake server
 
-Manually:
+### Manually
 
     env RAILS_ENV=production rake assets:clean
     env RAILS_ENV=production rake assets:precompile
     env SECRET_KEY_BASE=`rake secret` bundle exec rails server --binding=127.0.0.1 -e production
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
-  
-  
-## Screenshot
-
-![Screenshot](public/screenshot.png)
 
 ## Contributing
 
