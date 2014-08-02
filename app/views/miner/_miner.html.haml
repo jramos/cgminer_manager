@@ -8,7 +8,7 @@
       %li= link_to 'Pools',     '#pools'
       %li= link_to 'Stats',     '#stats'
       %li= link_to 'Config',    '#config'
-      %li= link_to 'Run Query', '#run-query', class: 'danger'
+      %li= link_to 'Run Command', '#run-command', class: 'danger'
 
     #miner-summary
       %ul
@@ -84,7 +84,7 @@
             %td= key
             %td= value
 
-    #run-query
+    #run-command
       = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
         = render partial: 'shared/run'
 

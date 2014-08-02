@@ -6,12 +6,12 @@
     %ul
       %li= link_to 'Summary', '#summary'
       %li= link_to 'Miner Pool', '#miner-pool'
-      %li= link_to 'Run Pool Query', '#run-pool-query', class: 'danger'
+      %li= link_to 'Run Pool Command', '#run-pool-command', class: 'danger'
 
     = render partial: 'summary'
     = yield :miner_pool
 
-    #run-pool-query
+    #run-pool-command
       = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
         = render partial: 'shared/run'
 
