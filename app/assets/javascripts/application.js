@@ -5,6 +5,7 @@
 
 var reload = function() {
   $('#updated').addClass('updating').text('Updating...');
+  $('title').text('Updating...');
   location.reload();
 };
 
