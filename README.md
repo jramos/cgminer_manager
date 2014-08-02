@@ -1,6 +1,6 @@
 # CgminerManager
 
-A web manager for cgminer instances written in Ruby on Rails.
+A web manager for cgminer instances written in Ruby on Rails. It allows for remote management and monitoring of a multiple cgminer instances.
 
 ## Requirements
 
