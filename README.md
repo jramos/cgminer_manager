@@ -67,7 +67,7 @@ To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to fa
 
 ### Note
 
-This application is designed to be used on a secure local network. By default, it will only allow access from 127.0.0.1. Allowing access from other IP addresses is discouraged, since it would allow anyone on your local network and possibly the internet at large to run arbirary commands on your mining pool. *There are no additional security features at this time.*
+This application is designed to be used on a secure local network. By default, it will only allow access from 127.0.0.1. Allowing access from other IP addresses is discouraged, since it would allow anyone on your local network and possibly the internet at large to run arbirary commands on your mining pool.
 
 
 ### Automatically
