@@ -6,9 +6,21 @@
     %ul
       %li= link_to 'Summary', '#summary'
       %li= link_to 'Miner Pool', '#miner-pool'
+      %li= link_to 'Run Query', '#run-query', class: 'danger'
 
     = render partial: 'summary'
     = yield :miner_pool
+
+    #run-query
+      = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_form') do
+        = render partial: 'shared/run'
+
+      :javascript
+        $('#run_form').on('ajax:success', function(event, data, status, xhr) {
+          $(this).empty();
+          $(this).append(xhr.responseText);
+        });
+
 
   = render partial: 'general'
 

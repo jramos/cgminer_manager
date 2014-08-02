@@ -4,6 +4,16 @@ class ManagerController < ApplicationController
   def index
   end
 
+  def run
+    @results = begin
+      @miner_pool.query(params[:command].to_sym, params[:arguments].try(:split, ','))
+    rescue
+      'invalid command and/or parameters'
+    end
+
+    render partial: 'shared/run', layout: false
+  end
+
   private
   
   def setup_summary

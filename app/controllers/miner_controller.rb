@@ -11,7 +11,7 @@ class MinerController < ApplicationController
       'invalid command and/or parameters'
     end
 
-    render partial: 'run', layout: false
+    render partial: 'shared/run', layout: false
   end
 
   private
