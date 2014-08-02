@@ -1,6 +1,10 @@
 # CgminerManager
 
-A web manager for cgminer instances written in Ruby on Rails. It allows for remote management and monitoring of a multiple cgminer instances.
+A web manager for cgminer written in Ruby on Rails. It allows for remote management and monitoring of a multiple cgminer instances. Features include:
+
+* Pool summary - aggregate miner statistics
+* Miner summary - an overview of miner status
+* Miner detail - a breakdown of miner performance and configuration
 
 ## Requirements
 
