@@ -19,7 +19,7 @@
           %b Updated:
           %span= Time.zone.now.to_s
         %h1
-          = link_to "CgminerManager", root_url
+          = content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
         .clear
 
       = yield
