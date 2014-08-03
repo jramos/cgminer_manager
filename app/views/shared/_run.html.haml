@@ -6,6 +6,14 @@
   = text_field_tag(:'arguments')
 = submit_tag("Run")
 
+%br
+%br
+
+%div
+  See
+  = link_to "cgminer_api_client README", "https://github.com/jramos/cgminer_api_client#commands"
+  for available commands
+
 #run-results
   - if @results
     - if @miner_id # miner results
