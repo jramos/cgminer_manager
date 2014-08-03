@@ -1,0 +1,19 @@
+- if @updated
+  .bold.red= @updated
+
+- 0.upto(2) do |i|
+  - pool = @miner.pools.detect{|pool| pool[:pool] == i} || {}
+
+  %h3 Pool #{i}
+  %table
+    %tr
+      %td= label_tag(:"url[#{i}]", "Url:")
+      %td= text_field_tag(:"url[#{i}]", pool[:url])
+    %tr
+      %td= label_tag(:"user[#{i}]", "User:")
+      %td= text_field_tag(:"user[#{i}]", pool[:user])
+    %tr
+      %td= label_tag(:"pass[#{i}]", "Pass:")
+      %td= text_field_tag(:"pass[#{i}]", nil, placeholder: "Not Shown - Renter when updating")
+
+= submit_tag("Update")

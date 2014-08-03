@@ -9,6 +9,7 @@
       %li= link_to 'Stats',     '#stats'
       %li= link_to 'Config',    '#config'
       %li= link_to 'Run Command', '#run-command', class: 'danger'
+      %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
 
     #miner-summary
       %ul
@@ -90,6 +91,16 @@
 
       :javascript
         $('#run_form').on('ajax:success', function(event, data, status, xhr) {
+          $(this).empty();
+          $(this).append(xhr.responseText);
+        });
+
+    #manage-pools
+      = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
+        = render partial: 'shared/manage_pools'
+
+      :javascript
+        $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
           $(this).empty();
           $(this).append(xhr.responseText);
         });

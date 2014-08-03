@@ -5,5 +5,6 @@ Rails.application.routes.draw do
 
   resources :miner, :only => [:show] do
     match 'run', to: 'miner#run', via: [:post]
+    match 'manage_pools', to: 'miner#manage_pools', via: [:post]
   end
 end
