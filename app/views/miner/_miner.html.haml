@@ -8,8 +8,7 @@
       %li= link_to 'Pools',     '#pools'
       %li= link_to 'Stats',     '#stats'
       %li= link_to 'Config',    '#config'
-      %li= link_to 'Run Command', '#run-command', class: 'danger'
-      %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
+      %li= link_to 'Admin',     '#admin', class: 'danger'
 
     #miner-summary
       %ul
@@ -85,25 +84,30 @@
             %td= key
             %td= value
 
-    #run-command
-      = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
-        = render partial: 'shared/run'
+    #admin
+      %ul
+        %li= link_to 'Run Command', '#run-command', class: 'danger'
+        %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
 
-      :javascript
-        $('#run_form').on('ajax:success', function(event, data, status, xhr) {
-          $(this).empty();
-          $(this).append(xhr.responseText);
-        });
+      #run-command
+        = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
+          = render partial: 'shared/run'
 
-    #manage-pools
-      = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
-        = render partial: 'shared/manage_pools'
+        :javascript
+          $('#run_form').on('ajax:success', function(event, data, status, xhr) {
+            $(this).empty();
+            $(this).append(xhr.responseText);
+          });
 
-      :javascript
-        $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
-          $(this).empty();
-          $(this).append(xhr.responseText);
-        });
+      #manage-pools
+        = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
+          = render partial: 'shared/manage_pools'
+
+        :javascript
+          $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
+            $(this).empty();
+            $(this).append(xhr.responseText);
+          });
 
 :javascript
   $(function() {
@@ -112,4 +116,5 @@
     $('#stats').tabs();
     $('#pools').tabs();
     $('#devices').tabs();
+    $('#admin').tabs();
   });

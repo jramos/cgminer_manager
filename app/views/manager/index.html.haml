@@ -6,23 +6,28 @@
     %ul
       %li= link_to 'Summary', '#summary'
       %li= link_to 'Miner Pool', '#miner-pool'
-      %li= link_to 'Run Pool Command', '#run-pool-command', class: 'danger'
+      %li= link_to 'Admin', '#admin', class: 'danger'
 
     = render partial: 'summary'
     = yield :miner_pool
 
-    #run-pool-command
-      = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
-        = render partial: 'shared/run'
+    #admin
+      %ul
+        %li= link_to "Run Pool Command", '#run-pool-command', class: 'danger'
 
-      :javascript
-        $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
-          $(this).empty();
-          $(this).append(xhr.responseText);
-        });
+      #run-pool-command
+        = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
+          = render partial: 'shared/run'
+
+        :javascript
+          $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
+            $(this).empty();
+            $(this).append(xhr.responseText);
+          });
 
 
   = render partial: 'general'
 
   :javascript
     $('#tabs').tabs();
+    $('#admin').tabs();
