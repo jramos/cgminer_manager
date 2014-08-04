@@ -3,5 +3,13 @@
   - @up_since = Time.now - @uptime_in_seconds
 
   .text-center
-    %p= 'Total processing time: ' + time_ago_in_words(@up_since)
-    %p= 'Total processed: ' + formatHashrate(@uptime_in_seconds * @summary[:ghs_avg].sum * 1e9).sub('/s', '')
+    %table
+      %tr
+        %td Pool size
+        %td= @miner_pool.miners.count.to_s + ' miners'
+      %tr
+        %td Total processing time
+        %td= time_ago_in_words(@up_since)
+      %tr
+        %td Total processed
+        %td= formatHashrate(@uptime_in_seconds * @summary[:ghs_avg].sum * 1e9).sub('/s', '')
