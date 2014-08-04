@@ -43,16 +43,19 @@
       %tbody
         %thead
           %th
-          %th Global
+          %th C
+          %th F
         %tr
           %td Range
           %td.text-center
-            = @summary[:temperature].min.round(1).to_s + '-' + @summary[:temperature].max.round(1).to_s + ' C / '
-            = toF(@summary[:temperature].min).to_s + '-' + toF(@summary[:temperature].max).to_s + ' F'
+            = @summary[:temperature].min.round(1).to_s + '-' + @summary[:temperature].max.round(1).to_s
+          %td.text-center
+            = toF(@summary[:temperature].min).to_s + '-' + toF(@summary[:temperature].max).to_s
         %tr
           %td Avg
           %td.text-center
-            = (@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + ' C / '
-            = toF(@summary[:temperature].sum / @summary[:temperature].count).to_s + ' F'
+            = (@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s
+          %td.text-center
+            = toF(@summary[:temperature].sum / @summary[:temperature].count).to_s
 
   .clear
