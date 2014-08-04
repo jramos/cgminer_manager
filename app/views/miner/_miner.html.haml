@@ -86,18 +86,8 @@
 
     #admin
       %ul
-        %li= link_to 'Run Command', '#run-command', class: 'danger'
         %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
-
-      #run-command
-        = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
-          = render partial: 'shared/run'
-
-        :javascript
-          $('#run_form').on('ajax:success', function(event, data, status, xhr) {
-            $(this).empty();
-            $(this).append(xhr.responseText);
-          });
+        %li= link_to 'Run Command', '#run-command', class: 'danger'
 
       #manage-pools
         = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
@@ -105,6 +95,16 @@
 
         :javascript
           $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
+            $(this).empty();
+            $(this).append(xhr.responseText);
+          });
+
+      #run-command
+        = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
+          = render partial: 'shared/run'
+
+        :javascript
+          $('#run_form').on('ajax:success', function(event, data, status, xhr) {
             $(this).empty();
             $(this).append(xhr.responseText);
           });

@@ -15,11 +15,7 @@ class MinerController < ApplicationController
   end
 
   def manage_pools
-    pools = @miner.pools.clone
-
-    0.upto(pools.count - 1) do |i|
-      @miner.disablepool(i)
-    end
+    orig_pool_ids = @miner.pools.collect{|pool| pool[:pool] }
 
     0.upto(2) do |i|
       j = i.to_s
@@ -28,10 +24,21 @@ class MinerController < ApplicationController
       end
     end
 
-    sleep(5)  # wait for old pools to be disabled
+    new_pool_ids = @miner.pools.collect{|pool| pool[:pool] }
+    added_pool_ids = new_pool_ids - orig_pool_ids
 
-    0.upto(pools.count - 1) do |i|
-      @miner.removepool(i)
+    if added_pool_ids.count > 0
+      @miner.enablepool(added_pool_ids.first)
+
+      orig_pool_ids.each do |pool_id|
+        begin
+          @miner.disablepool(pool_id)
+          sleep(1)
+          @miner.removepool(pool_id)
+        rescue Exception => e
+          logger.info "Couldn't disable/remove pool #{pool_id}: #{e.message}"
+        end
+      end
     end
 
     @updated = 'Pools updated'
