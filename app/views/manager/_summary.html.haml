@@ -48,14 +48,14 @@
         %tr
           %td Range
           %td.text-center
-            = @summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s
+            = raw(@summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s + '&deg;')
           %td.text-center
-            = toF(@summary[:temperature].min).to_s + ' - ' + toF(@summary[:temperature].max).to_s
+            = raw(toF(@summary[:temperature].min).to_s + ' - ' + toF(@summary[:temperature].max).to_s + '&deg;')
         %tr
           %td Avg
           %td.text-center
-            = (@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s
+            = raw((@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;')
           %td.text-center
-            = toF(@summary[:temperature].sum / @summary[:temperature].count).to_s
+            = raw(toF(@summary[:temperature].sum / @summary[:temperature].count).to_s + '&deg;')
 
   .clear
