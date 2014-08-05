@@ -21,6 +21,8 @@
 
   #error-rate
     %h3 Error Rate
+    - avg_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count
+    - avg_error_rate = avg_error_pct / 100
 
     %table(cellpadding="0" cellspacing="0")
       %tbody
@@ -30,12 +32,12 @@
           %th Avg
         %tr
           %td 5s
-          %td.text-center= formatHashrate(@summary[:error_rate].sum * @summary[:ghs_5s].sum * 1e9 / 100)
-          %td.average-ghs= formatHashrate(@summary[:error_rate].sum * @summary[:ghs_5s].sum * 1e9 / 100 / @summary[:error_rate].count)
+          %td.text-center= formatHashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9)
+          %td.average-ghs= formatHashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count)
         %tr
           %td Avg
-          %td.text-center= formatHashrate(@summary[:error_rate].sum * @summary[:ghs_avg].sum * 1e9 / 100)
-          %td.average-ghs= formatHashrate(@summary[:error_rate].sum * @summary[:ghs_avg].sum * 1e9 / 100 / @summary[:error_rate].count)
+          %td.text-center= formatHashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9)
+          %td.average-ghs= formatHashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
 
   #temperature
     %h3 Temperature

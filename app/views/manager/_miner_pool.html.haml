@@ -22,7 +22,8 @@
                 %th Name
                 %th Status
                 %th Elapsed
-                %th Temp
+                %th C
+                %th F
                 %th Error
               %tbody
                 - miner.devs.each_with_index do |device, index|
@@ -34,7 +35,8 @@
                     %td= device[:name] + index.to_s
                     %td= device[:status]
                     %td= time_ago_in_words(Time.now - device[:device_elapsed])
-                    %td= device[:temperature].to_s + ' C / ' + toF(device[:temperature]).to_s + ' F'
+                    %td= raw(device[:temperature].to_s + '&deg;')
+                    %td= raw(toF(device[:temperature]).to_s + '&deg;')
                     %td= device[:'device_hardware%'].to_s + '%'
 
                   - if chain_stats = get_chain_stats_for(miner, device[:name]+index.to_s)
