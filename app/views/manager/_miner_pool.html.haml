@@ -24,6 +24,7 @@
                 %th Elapsed
                 %th C
                 %th F
+                %th Rejected
                 %th Error
               %tbody
                 - miner.devs.each_with_index do |device, index|
@@ -37,6 +38,7 @@
                     %td= time_ago_in_words(Time.now - device[:device_elapsed])
                     %td= raw(device[:temperature].to_s + '&deg;')
                     %td= raw(toF(device[:temperature]).to_s + '&deg;')
+                    %td= device[:'device_rejected%'].to_s + '%'
                     %td= device[:'device_hardware%'].to_s + '%'
 
                   - if chain_stats = get_chain_stats_for(miner, device[:name]+index.to_s)
@@ -46,5 +48,5 @@
 
                       %tr.text-center
                         %td= "ACS#{(i - 1).to_s}"
-                        %td(colspan="4")= raw(status.gsub('x', '<span class="red bold">x</span>'))
+                        %td(colspan="5")= raw(status.gsub('x', '<span class="red bold">x</span>'))
                         %td= ((1.0 - (status.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).to_s + '%'
