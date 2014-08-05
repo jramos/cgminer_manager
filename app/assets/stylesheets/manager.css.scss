@@ -22,6 +22,11 @@
     float: left;
     margin-right: 10px;
   }
+
+  table td:first-child {
+    font-weight: bold;
+    text-align: left;
+  }
 }
 
 #general {
