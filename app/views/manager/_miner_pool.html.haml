@@ -47,3 +47,4 @@
                       %tr.text-center
                         %td= "ACS#{(i - 1).to_s}"
                         %td(colspan="4")= raw(status.gsub('x', '<span class="red bold">x</span>'))
+                        %td= ((1.0 - (status.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).to_s + '%'
