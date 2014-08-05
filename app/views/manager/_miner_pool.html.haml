@@ -11,7 +11,7 @@
         - @summary[:ghs_5s] << miner.summary[:ghs_5s]
         - @summary[:ghs_avg] << miner.summary[:ghs_av]
 
-        %tr
+        %tr(onclick="document.location='#{miner_url(index)}';")
           %td
             = link_to miner.host + ':' + miner.port.to_s, miner_url(index)
           %td.text-center= formatHashrate(miner.summary[:ghs_5s] * 1e9)
