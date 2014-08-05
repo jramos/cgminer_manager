@@ -85,7 +85,7 @@ This application is designed to be used on a secure local network. By default, i
 
     env RAILS_ENV=production rake assets:clobber
     env RAILS_ENV=production rake assets:precompile
-    env SECRET_KEY_BASE=`rake secret` bundle exec rails server --binding=127.0.0.1 -e production
+    env SECRET_KEY_BASE=`rake secret` bundle exec unicorn_rails -c config/unicorn.rb -E production
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
 
