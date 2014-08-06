@@ -1,3 +1,8 @@
+PATH
+  remote: ../cgminer_api_client
+  specs:
+    cgminer_api_client (0.1.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -29,7 +34,6 @@ GEM
       tzinfo (~> 1.1)
     arel (5.0.1.20140414130214)
     builder (3.2.2)
-    cgminer_api_client (0.1.0)
     coderay (1.1.0)
     erubis (2.7.0)
     execjs (2.2.1)
@@ -117,7 +121,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  cgminer_api_client (~> 0.1.0)
+  cgminer_api_client!
   haml-rails (~> 0.5.3)
   jquery-rails (~> 3.1.1)
   jquery-ui-rails (~> 5.0.0)

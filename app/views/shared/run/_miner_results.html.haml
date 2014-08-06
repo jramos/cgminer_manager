@@ -1,0 +1,16 @@
+- if @results.is_a?(Array)
+  - @results.each_with_index do |result, index|
+    %h1 Result #{index}
+    %table(cellpadding="0" cellspacing="0" id="run-results")
+      - result.each_pair do |key, value|
+        %tr
+          %td= key
+          %td= value
+- elsif @results.is_a?(Hash)
+  %table(cellpadding="0" cellspacing="0" id="run-results")
+    - @results.each_pair do |key, value|
+      %tr
+        %td= key
+        %td= value
+- else
+  = @results
