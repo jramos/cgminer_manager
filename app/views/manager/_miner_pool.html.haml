@@ -42,11 +42,12 @@
                     %td= device[:'device_hardware%'].to_s + '%'
 
                   - if chain_stats = get_chain_stats_for(miner, device[:name]+index.to_s)
-                    - 1.upto(4) do |i|
-                      - status = chain_stats.send(:[], :"chain_acs#{i}") rescue nil
-                      - next if status.empty?
+                    - [:acs, :pga].each do |type|
+                      - 1.upto(4) do |i|
+                        - status = chain_stats.send(:[], :"chain_#{type}#{i}") rescue nil
+                        - next if status.nil? || status.try(:empty?)
 
-                      %tr.text-center
-                        %td= "ACS#{(i - 1).to_s}"
-                        %td(colspan="5")= raw(status.gsub('x', '<span class="red bold">x</span>'))
-                        %td= ((1.0 - (status.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).to_s + '%'
+                        %tr.text-center
+                          %td= "#{type.to_s.upcase}#{(i - 1).to_s}"
+                          %td(colspan="5")= raw(status.downcase.gsub('x', '<span class="red bold">x</span>'))
+                          %td= ((1.0 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).to_s + '%'
