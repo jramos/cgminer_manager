@@ -40,6 +40,10 @@ td {
   border-top: 1px solid #ccc;
 }
 
+label {
+  font-weight: bold;
+}
+
 .clear {
   clear: both;
 }

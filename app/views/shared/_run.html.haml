@@ -1,19 +1,18 @@
-%div
-  = label_tag(:command, "Command:")
-  = text_field_tag(:command)
-%div
-  = label_tag(:command, "Arguments:")
-  = text_field_tag(:'arguments')
+%p
+  %div
+    = label_tag(:command, "Command:")
+    = text_field_tag(:command)
+  %div
+    = label_tag(:command, "Arguments:")
+    = text_field_tag(:'arguments')
 
-= submit_tag("Run")
+  = submit_tag("Run")
 
-%br
-%br
-
-%div
-  See
-  = link_to "cgminer_api_client README", "https://github.com/jramos/cgminer_api_client#commands"
-  for available commands
+%p
+  %div
+    See
+    = link_to "cgminer_api_client README", "https://github.com/jramos/cgminer_api_client#commands", target: '_blank'
+    for available commands and required/optional arguments.
 
 #run-results
   - if @results
