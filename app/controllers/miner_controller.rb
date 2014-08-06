@@ -8,7 +8,11 @@ class MinerController < ApplicationController
 
   def run
     @results = begin
-      @miner.query(params[:command].to_sym, params[:arguments].try(:split, ','))
+      if params[:arguments].present?
+        @miner.query(params[:command].to_sym, *params[:arguments].split(','))
+      else
+        @miner.query(params[:command].to_sym)
+      end
     rescue
       'invalid command and/or parameters'
     end

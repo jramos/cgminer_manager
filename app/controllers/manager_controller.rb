@@ -11,7 +11,11 @@ class ManagerController < ApplicationController
 
   def run
     @results = begin
-      @miner_pool.query(params[:command].to_sym, params[:arguments].try(:split, ','))
+      if params[:arguments].present?
+        @miner_pool.query(params[:command].to_sym, *params[:arguments].split(','))
+      else
+        @miner_pool.query(params[:command].to_sym)
+      end
     rescue
       'invalid command and/or parameters'
     end

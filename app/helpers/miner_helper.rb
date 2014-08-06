@@ -22,15 +22,16 @@ module MinerHelper
         end
       end
 
-      sleep(1)
+      sleep(5)
 
-      orig_pool_ids.each do |pool_id|
+      orig_pool_ids.reverse.each do |pool_id|
         begin
-          while(true)
+          @disabled = false
+          while(!@disabled)
             pool = miner.pools.detect{|pool| pool[:pool].to_s == pool_id.to_s}
             if pool && pool[:status] == 'Disabled'
+              @disabled = true
               miner.removepool(pool_id)
-              break
             end
           end
         rescue Exception => e
@@ -38,5 +39,9 @@ module MinerHelper
         end
       end
     end
+  end
+
+  def save_miner_config!(filename = nil)
+    filename ? @miner.query(:save, filename) : @miner.query(:save)
   end
 end
