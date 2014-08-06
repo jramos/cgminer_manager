@@ -89,6 +89,11 @@ This application is designed to be used on a secure local network. By default, i
 
 Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
 
+## Updating
+
+    git pull
+    bundle install
+
 ## Contributing
 
 1. Fork it ( https://github.com/jramos/cgminer_manager/fork )
