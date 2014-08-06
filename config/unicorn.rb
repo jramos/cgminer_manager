@@ -1,5 +1,5 @@
 listen 3000
-timeout 120
+timeout 30
 worker_processes 4
 preload_app true
 
