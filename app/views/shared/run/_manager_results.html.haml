@@ -1,40 +1,69 @@
-#manager_results
-  %ul
+- if is_multi_command?
+  #manager_results
+    %ul
+      - @results.each_with_index do |miner_results, index|
+        %li= link_to "Miner #{index}", "#miner-#{index}"
+
+    - @results.each_with_index do |miner_results, miner_results_index|
+      %div(id="miner-#{miner_results_index}" class="miner")
+        %ul
+          - miner_results.each_pair do |key, results|
+            - next if key == :id
+            - results = results.first[key] if results.respond_to?(:first)
+            - next unless results
+            %li= link_to key.to_s, "#result-#{key.to_s}"
+
+        - miner_results.each_pair do |key, results|
+          - next if key == :id
+          - results = results.first[key] if results.respond_to?(:first)
+          - next unless results
+
+          %div(id="result-#{key.to_s}" class="miner")
+            - if results.is_a?(Array)
+              %ul
+                - results.each_with_index do |result, index|
+                  %li= link_to "Result #{index}", "#result-#{key.to_s}-#{index}"
+
+            = render partial: 'shared/run/results_table', locals: { results: results, key: key.to_s } if results
+
+- else
+  #manager_results
+    %ul
+      - @results.each_with_index do |miner_results, index|
+        %li= link_to "Miner #{index}", "#miner-#{index}"
+
     - @results.each_with_index do |miner_results, index|
-      %li= link_to "Miner #{index}", "#miner-#{index}"
+      - miner = @miner_pool.miners[index]
+      - next unless miner
 
-  - @results.each_with_index do |miner_results, index|
-    - miner = @miner_pool.miners[index]
-    - next unless miner
+      %div(id="miner-#{index}" class="miner")
+        %h3 Miner #{miner.host + ':' + miner.port.to_s}
 
-    %div(id="miner-#{index}" class="miner")
-      %h3 Miner #{miner.host + ':' + miner.port.to_s}
-
-      %ul
-        - miner_results.each_with_index do |miner_result, miner_result_index|
-          %li= link_to 'Result ' + miner_result_index.to_s, "#result-#{miner_result_index}"
+        %ul
+          - miner_results.each_with_index do |miner_result, miner_result_index|
+            %li= link_to 'Result ' + miner_result_index.to_s, "#result-#{miner_result_index}"
   
-      - miner_results.each_with_index do |miner_result, miner_result_index|
-        %div(id="result-#{miner_result_index}" class="result")
-          %h3 Result #{miner_result_index}
-          - if miner_result.is_a?(Array)
-            - miner_result.each_with_index do |result, index|
-              - if result.is_a?(Hash)
-                %table(cellpadding="0" cellspacing="0" id="run-results")
-                  - result.each_pair do |key, value|
-                    %tr
-                      %td= key
-                      %td= value
-              - else
-                = miner_result
-          - elsif miner_result.is_a?(Hash)
-            %table(cellpadding="0" cellspacing="0" id="run-results")
-              - miner_result.each_pair do |key, value|
-                %tr
-                  %td= key
-                  %td= value
-          - else
-            = miner_result
+        - miner_results.each_with_index do |miner_result, miner_result_index|
+          %div(id="result-#{miner_result_index}" class="result")
+            %h3 Result #{miner_result_index}
+            - if miner_result.is_a?(Array)
+              - miner_result.each_with_index do |result, index|
+                - if result.is_a?(Hash)
+                  %table(cellpadding="0" cellspacing="0" id="run-results")
+                    - result.each_pair do |key, value|
+                      %tr
+                        %td= key
+                        %td= value
+                - else
+                  = miner_result
+            - elsif miner_result.is_a?(Hash)
+              %table(cellpadding="0" cellspacing="0" id="run-results")
+                - miner_result.each_pair do |key, value|
+                  %tr
+                    %td= key
+                    %td= value
+            - else
+              = miner_result
 
 :javascript
   $('#manager_results').tabs();
