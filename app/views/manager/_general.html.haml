@@ -12,4 +12,4 @@
         %td= time_ago_in_words(@up_since)
       %tr
         %td Total processed
-        %td= formatHashrate(@uptime_in_seconds * @summary[:ghs_avg].sum * 1e9).sub('/s', '')
+        %td= format_hashrate(@uptime_in_seconds * @summary[:ghs_avg].sum * 1e9).sub('/s', '')

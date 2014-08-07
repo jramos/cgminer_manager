@@ -1,5 +1,5 @@
 module ApplicationHelper
-  def formatHashrate(rate)
+  def format_hashrate(rate)
     rate = rate.to_f
     unit = 'H/s'
 
@@ -38,7 +38,11 @@ module ApplicationHelper
     return (rate.round(2).to_s + ' ' + unit);
   end
 
-  def toF(centigrade)
+  def to_ferinheight(centigrade)
     (1.8 * centigrade.to_f + 32).round(1)
+  end
+
+  def is_multi_command?
+    !!params[:command].match('\+')
   end
 end
