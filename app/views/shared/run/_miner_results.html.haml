@@ -1,31 +1,39 @@
-#miner_results
-  - if @results.is_a?(Array)
+- if is_multi_command?
+  #miner_results
     %ul
-      - @results.each_with_index do |result, index|
-        %li= link_to "Result #{index}", "#result-#{index}"
-  - else
-    %ul
-      %li= link_to "Result", '#result'
+      - @results.each_pair do |key, results|
+        - next if key == :id
+        - results = results.first[key] if results.respond_to?(:first)
+        - next unless results
+        %li= link_to key.to_s, "#result-#{key}"
 
-  - if @results.is_a?(Array)
-    - @results.each_with_index do |result, index|
-      %div(id="result-#{index}")
-        %table(cellpadding="0" cellspacing="0" id="run-results")
-          - result.each_pair do |key, value|
-            %tr
-              %td= key
-              %td= value
+    - @results.each_pair do |key, results|
+      - next if key == :id
+      - results = results.first[key] if results.respond_to?(:first)
+      - next unless results
 
-  - elsif @results.is_a?(Hash)
-    %div(id="result")
-      %table(cellpadding="0" cellspacing="0" id="run-results")
-        - @results.each_pair do |key, value|
-          %tr
-            %td= key
-            %td= value
-  - else
-    %div(id="result")
-      = @results
+      %div(id="result-#{key.to_s}")
+        - if results.is_a?(Array)
+          %ul
+            - results.each_with_index do |result, index|
+              %li= link_to "Result #{index}", "#result-#{index}"
+
+        = render partial: 'shared/run/results_table', locals: { results: results } if results
+
+        :javascript
+          $('#result-#{key.to_s}').tabs();
+
+- else
+  #miner_results
+    - if @results.is_a?(Array)
+      %ul
+        - @results.each_with_index do |result, index|
+          %li= link_to "Result #{index}", "#result-#{index}"
+    - else
+      %ul
+        %li= link_to "Result", '#result'
+
+    = render partial: 'shared/run/results_table', locals: { results: @results }
 
 :javascript
   $('#miner_results').tabs();

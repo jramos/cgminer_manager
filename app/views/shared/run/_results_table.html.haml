@@ -1,0 +1,19 @@
+- if results.is_a?(Array)
+  - results.each_with_index do |result, index|
+    %div(id="result-#{index}")
+      %table(cellpadding="0" cellspacing="0" id="run-results")
+        - result.each_pair do |key, value|
+          %tr
+            %td= key
+            %td= value
+
+- elsif results.is_a?(Hash)
+  %div(id="result")
+    %table(cellpadding="0" cellspacing="0" id="run-results")
+      - results.each_pair do |key, value|
+        %tr
+          %td= key
+          %td= value
+- else
+  %div(id="result")
+    = results
