@@ -51,4 +51,4 @@
                         %tr.text-center
                           %td= "#{type.to_s.upcase}#{(i - 1).to_s}"
                           %td(colspan="5")= raw(status.downcase.gsub('x', '<span class="red bold">x</span>'))
-                          %td= ((1.0 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).to_s + '%'
+                          %td= ((1.0 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).round(2).to_s + '%'
