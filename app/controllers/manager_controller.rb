@@ -7,6 +7,9 @@ class ManagerController < ApplicationController
   before_filter :setup_summary, :only => [:index]
 
   def index
+    if request.xhr?
+      render layout: false && return
+    end
   end
 
   def run

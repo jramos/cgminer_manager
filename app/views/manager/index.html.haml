@@ -1,46 +1,58 @@
-- unless @miner_pool.miners.empty?
-  - @miner = @miner_pool.miners.first   # use the first miner as a model for the rest
+#manager
+  - unless @miner_pool.miners.empty?
+    - @miner = @miner_pool.miners.first   # use the first miner as a model for the rest
 
-  - content_for(:miner_pool) do
-    = render partial: 'miner_pool'
+    - content_for(:miner_pool) do
+      = render partial: 'miner_pool'
 
-  #tabs
-    %ul
-      %li= link_to 'Summary', '#summary'
-      %li= link_to 'Miner Pool', '#miner-pool'
-      %li= link_to 'Admin', '#admin', class: 'danger'
-
-    = render partial: 'summary'
-    = yield :miner_pool
-
-    #admin
+    #manager-content
       %ul
-        %li= link_to "Manage Pools", '#manage-pools', class: 'danger'
-        %li= link_to "Run Command", '#run-pool-command', class: 'danger'
+        %li= link_to 'Summary', '#summary'
+        %li= link_to 'Miner Pool', '#miner-pool'
+        %li= link_to 'Admin', '#admin', class: 'danger'
 
-      #manage-pools
-        = form_tag(manager_manage_pools_url(), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
-          = render partial: 'shared/manage_pools'
+      = render partial: 'summary'
+      = yield :miner_pool
 
-        :javascript
-          $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
-            $(this).empty();
-            $(this).append(xhr.responseText);
-          });
+      #admin
+        %ul
+          %li= link_to "Manage Pools", '#manage-pools', class: 'danger'
+          %li= link_to "Run Command", '#run-pool-command', class: 'danger'
 
-      #run-pool-command
-        = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
-          = render partial: 'shared/run'
+        #manage-pools
+          = form_tag(manager_manage_pools_url(), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
+            = render partial: 'shared/manage_pools'
 
-        :javascript
-          $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
-            $(this).empty();
-            $(this).append(xhr.responseText);
-          });
+          :javascript
+            $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
+              $(this).empty();
+              $(this).append(xhr.responseText);
+            });
+
+        #run-pool-command
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
+            = render partial: 'shared/run'
+
+          :javascript
+            $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
+              $(this).empty();
+              $(this).append(xhr.responseText);
+            });
 
 
-  = render partial: 'general'
+    = render partial: 'general'
 
   :javascript
-    $('#tabs').tabs();
+    $('#manager-content').tabs({activate: setWindowHash});
     $('#admin').tabs();
+
+:javascript
+  $(document).on('update', function() {
+    $('#updated').addClass('updating').text('Updating...');
+    $('title').text('Updating...');
+
+    $('#manager').load('#{root_url}', function() {
+      $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
+      $('title').text('#{Rails.application.class.parent_name}');
+    });
+  });

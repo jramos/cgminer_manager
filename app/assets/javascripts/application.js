@@ -3,14 +3,16 @@
 //= require jquery-ui
 //= require_tree .
 
-var reload = function() {
-  $('#updated').addClass('updating').text('Updating...');
-  $('title').text('Updating...');
-  location.reload();
+var update = function() {
+  $(document).trigger('update');
 };
+
+var setWindowHash = function(event, ui) {
+  window.location.hash = ui.newPanel[0].id;
+}
 
 $(document).ready(function() {
   if (parseInt(config.reload_interval) > 0) {
-    setInterval(reload, config.reload_interval * 1000);
+    setInterval(update, config.reload_interval * 1000);
   }
 });
