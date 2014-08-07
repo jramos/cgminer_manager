@@ -35,7 +35,12 @@
 
                   %tr.text-center
                     %td= device[:name] + index.to_s
-                    %td= device[:status]
+
+                    - if device[:status] == 'Alive'
+                      %td.green.bold= device[:status]
+                    - else
+                      %td.red.bold= device[:status]
+
                     %td= time_ago_in_words(Time.now - device[:device_elapsed])
                     %td= raw(device[:temperature].to_s + '&deg;')
                     %td= raw(toF(device[:temperature]).to_s + '&deg;')
