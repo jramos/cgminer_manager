@@ -1,6 +1,3 @@
-require 'net/http'
-require 'uri'
-
 class ManagerController < ApplicationController
   include MinerHelper
 
