@@ -33,6 +33,10 @@ table {
   padding-top: 10px;
 }
 
+table tr:hover {
+  background: #efefef;
+}
+
 td {
   margin: 0;
   padding: 10px 0;
