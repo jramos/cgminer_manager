@@ -1,12 +1,13 @@
-%p
-  %div
-    = label_tag(:command, "Command:")
-    = text_field_tag(:command)
-  %div
-    = label_tag(:command, "Arguments:")
-    = text_field_tag(:'arguments')
-
-  = submit_tag("Run")
+%table
+  %tr
+    %td= label_tag(:command, "Command:")
+    %td= text_field_tag(:command)
+  %tr
+    %td= label_tag(:command, "Arguments:")
+    %td= text_field_tag(:'arguments')
+  %tr
+    %td(colspan="2")
+      = submit_tag("Run")
 
 %p
   %div
