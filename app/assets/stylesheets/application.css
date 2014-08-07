@@ -72,3 +72,13 @@ label {
   color: red !important;
   font-weight: bold !important;
 }
+
+#updated-container {
+  float: right;
+  text-align: right;
+}
+
+#updated.updating {
+  font-weight: bold;
+  color: green;
+}

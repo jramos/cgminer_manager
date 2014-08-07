@@ -15,9 +15,13 @@
 
     #content
       #header
-        #updated
-          %b Updated:
-          %span= Time.zone.now.to_s
+        #updated-container
+          #updated
+            %b Updated:
+            %span= Time.zone.now.to_s
+          #update-now
+            = link_to "Update Now", "#", onclick: 'update();'
+
         %h1
           = content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
         .clear
