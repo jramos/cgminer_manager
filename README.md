@@ -50,11 +50,11 @@ You can adjust these options by editing `app/assets/javascripts/config.js`.
 
 #### Page Refreshing
 
-The data on each page of the site will refresh every 5 minutes (300 seconds) by default. You can adjust this via `reload_interval`. Change to 0 to disable refreshing.
+The data on each page of the site will refresh every minute (60 seconds) by default. You can adjust this via `reload_interval`. Change to 0 to disable refreshing.
 
     var config = {
       // data reload interval in seconds
-      reload_interval : 60,  // 1 minute
+      reload_interval : 300,  // 5 minutes
       
       // misc UI options
       show_github_ribbon: true
