@@ -4,7 +4,7 @@ require 'uri'
 class ManagerController < ApplicationController
   include MinerHelper
 
-  before_filter :setup_summary
+  before_filter :setup_summary, :only => [:index]
 
   def index
   end
