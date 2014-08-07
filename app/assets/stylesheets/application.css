@@ -82,3 +82,8 @@ label {
   font-weight: bold;
   color: green;
 }
+
+#update-now {
+  color: blue;
+  cursor: pointer;
+}
