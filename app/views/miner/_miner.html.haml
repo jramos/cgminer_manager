@@ -1,4 +1,4 @@
-- version = @miner.version
+- version = @miner_data[:version].first[:version].first
 
 #miner
   #tabs
@@ -23,26 +23,28 @@
           %td api version
           %td= version[:api]
 
-        - @miner.summary.each_pair do |key, value|
+        - summary = @miner_data[:summary].first[:summary].first
+        - summary.each_pair do |key, value|
           %tr
             %td= key
             %td= value
 
-      - config = @miner.config
+      - config = @miner_data[:config].first[:config].first
       %table(cellpadding="0" cellspacing="0" id="config")
         - config.each_pair do |key, value|
           %tr
             %td= key
             %td= value
 
+      - coin = @miner_data[:coin].first[:coin].first
       %table(cellpadding="0" cellspacing="0" id="coin")
-        - @miner.coin.each_pair do |key, value|
+        - coin.each_pair do |key, value|
           %tr
             %td= key
             %td= value
   
     #devices
-      - devices = @miner.devs
+      - devices = @miner_data[:devs].first[:devs]
       %ul
         - devices.each_with_index do |device, index|
           - if asc = device.delete(:asc)
@@ -58,7 +60,7 @@
               %td= value
 
     #pools
-      - pools = @miner.pools
+      - pools = @miner_data[:pools].first[:pools]
       %ul
         - pools.each_with_index do |pool, index|
           - if id = pool.delete(:pool)
@@ -72,7 +74,7 @@
               %td= value
 
     #stats
-      - stats = @miner.stats
+      - stats = @miner_data[:stats].first[:stats]
       %ul
         - stats.each_with_index do |stat, index|
           - stat.delete(:stats)
