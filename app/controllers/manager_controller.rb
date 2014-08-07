@@ -16,8 +16,8 @@ class ManagerController < ApplicationController
       else
         @miner_pool.query(params[:command].to_sym)
       end
-    rescue
-      'invalid command and/or parameters'
+    rescue StandardError => e
+      "invalid command and/or parameters; #{e.message}"
     end
 
     render partial: 'shared/run', layout: false
