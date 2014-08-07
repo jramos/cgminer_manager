@@ -13,6 +13,15 @@
       font-weight: bold;
     }
   }
+
+  #tabs table {
+    width: 860px;
+    padding: 0;
+
+    td {
+      width: 430px !important;
+    }
+  }
 }
 
 #manage-pools {
