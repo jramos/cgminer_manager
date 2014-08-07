@@ -56,3 +56,15 @@
   background: #efefef;
   cursor: pointer;
 }
+
+#manager_results {
+  table {
+    td {
+      width: 50%;
+    }
+
+    td:first-child {
+      font-weight: bold;
+    }
+  }
+}
