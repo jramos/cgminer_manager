@@ -21,8 +21,8 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 * rails (= 4.1.4)
 * rake (~> 10.3.2)
 * sass-rails (~> 4.0.3)
+* thin (~> 1.6.2)
 * uglifier (~> 2.5.3)
-* unicorn (~> 4.8.3)
 
 ## Installation
 

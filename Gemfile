@@ -14,8 +14,8 @@ gem 'cgminer_api_client', '~> 0.1.2'
 
 # misc
 gem 'rake',               '~> 10.3.2'
+gem 'thin',               '~> 1.6.2'
 gem 'uglifier',           '~> 2.5.3'
-gem 'unicorn',            '~> 4.8.3'
 
 group :development do
   gem 'pry'
