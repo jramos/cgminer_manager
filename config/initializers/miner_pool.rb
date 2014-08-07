@@ -1,0 +1,1 @@
+MINER_POOL = CgminerApiClient::MinerPool.new

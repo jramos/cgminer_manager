@@ -5,6 +5,7 @@
     = render partial: 'miner'
 
     :javascript
+      $(document).unbind('update');
       $(document).on('update', function() {
         $('#updated').addClass('updating').text('Updating...');
         $('title').text('Updating...');

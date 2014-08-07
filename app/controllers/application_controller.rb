@@ -4,6 +4,6 @@ class ApplicationController < ActionController::Base
   private
 
   def load_miner_pool
-    @miner_pool ||= CgminerApiClient::MinerPool.new
+    @miner_pool ||= MINER_POOL
   end
 end
