@@ -7,19 +7,30 @@
       %li= link_to 'Devices',   '#devices'
       %li= link_to 'Pools',     '#pools'
       %li= link_to 'Stats',     '#stats'
-      %li= link_to 'Config',    '#config'
       %li= link_to 'Admin',     '#admin', class: 'danger'
 
     #miner-summary
       %ul
         %li= link_to "Overview", '#overview'
+        %li= link_to 'Config',    '#config'
         %li= link_to "Coin", '#coin'
 
       %table(cellpadding="0" cellspacing="0" id="overview")
         %tr
-          %td(colspan="2")
-            %h4 Version: cgminer #{version[:cgminer]} (API #{version[:api]})
+          %td cgminer version
+          %td= version[:cgminer]
+        %tr
+          %td api version
+          %td= version[:api]
+
         - @miner.summary.each_pair do |key, value|
+          %tr
+            %td= key
+            %td= value
+
+      - config = @miner.config
+      %table(cellpadding="0" cellspacing="0" id="config")
+        - config.each_pair do |key, value|
           %tr
             %td= key
             %td= value
@@ -74,15 +85,6 @@
             %tr
               %td= key
               %td= value
-
-    #config
-      - config = @miner.config
-
-      %table(cellpadding="0" cellspacing="0")
-        - config.each_pair do |key, value|
-          %tr
-            %td= key
-            %td= value
 
     #admin
       %ul
