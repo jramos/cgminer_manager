@@ -66,7 +66,7 @@ To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to fa
 
     var config = {
       // data reload interval in seconds
-      reload_interval : 300,  // 5 minutes
+      reload_interval : 60,  // 1 minute
       
       // misc UI options
       show_github_ribbon: false
