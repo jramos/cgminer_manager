@@ -113,7 +113,7 @@
 
 :javascript
   $(function() {
-    $('#tabs').tabs();
+    $('#tabs').tabs({activate: setWindowHash});
     $('#miner-summary').tabs();
     $('#stats').tabs();
     $('#pools').tabs();

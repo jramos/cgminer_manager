@@ -1,4 +1,16 @@
-- unless @miner.nil?
-  - content_for(:page_title) do
-    = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
-  = render partial: 'miner'
+#miner-show
+  - unless @miner.nil?
+    - content_for(:page_title) do
+      = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
+    = render partial: 'miner'
+
+    :javascript
+      $(document).on('update', function() {
+        $('#updated').addClass('updating').text('Updating...');
+        $('title').text('Updating...');
+
+        $('#miner-show').load('#{miner_url(@miner_id)}', function() {
+          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
+          $('title').text('#{Rails.application.class.parent_name}');
+        });
+      });

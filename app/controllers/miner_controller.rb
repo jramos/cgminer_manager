@@ -4,6 +4,9 @@ class MinerController < ApplicationController
   before_filter :lookup_miner
 
   def show
+    if request.xhr?
+      render layout: false && return
+    end
   end
 
   def run
