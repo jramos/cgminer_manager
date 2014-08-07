@@ -12,9 +12,9 @@ class MinerController < ApplicationController
   def run
     @results = begin
       if params[:arguments].present?
-        @miner.query(params[:command].to_sym, *params[:arguments].split(','))
+        @miner.query(params[:command], *params[:arguments].split(','))
       else
-        @miner.query(params[:command].to_sym)
+        @miner.query(params[:command])
       end
     rescue StandardError => e
       "invalid command and/or parameters; #{e.message}"

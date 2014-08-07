@@ -2,6 +2,7 @@ class ManagerController < ApplicationController
   include MinerHelper
 
   before_filter :setup_summary, :only => [:index]
+  before_filter :retrieve_miner_data, :only => [:index]
 
   def index
     if request.xhr?
@@ -24,7 +25,7 @@ class ManagerController < ApplicationController
   end
 
   def manage_pools
-    threads = @miner_pool.miners.enum_for(:each_with_index).collect do |miner, index|
+    threads = @miner_pool.miners.collect do |miner|
       Thread.new do
         update_pools_for(miner, params)
       end
@@ -47,5 +48,9 @@ class ManagerController < ApplicationController
       :temperature    => [],
       :uptime         => []
     }
+  end
+
+  def retrieve_miner_data
+    @miner_data ||= @miner_pool.query('version+summary+coin+devs+pools+stats+config')
   end
 end
