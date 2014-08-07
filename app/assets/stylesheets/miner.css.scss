@@ -13,19 +13,22 @@
       font-weight: bold;
     }
   }
-
-  #tabs table {
-    width: 860px;
-    padding: 0;
-
-    td {
-      width: 430px !important;
-    }
-  }
 }
 
 #manage-pools {
   input[type=text] {
     width: 300px;
+  }
+}
+
+#miner_results {
+  table {
+    td {
+      width: 50%;
+    }
+
+    td:first-child {
+      font-weight: bold;
+    }
   }
 }
