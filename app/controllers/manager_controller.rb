@@ -40,11 +40,12 @@ class ManagerController < ApplicationController
   
   def setup_summary
     @summary = {
-      :ghs_avg     => [],
-      :ghs_5s      => [],
-      :error_rate  => [],
-      :temperature => [],
-      :uptime      => []
+      :error_rate     => [],
+      :ghs_avg        => [],
+      :ghs_5s         => [],
+      :rejected_rate  => [],
+      :temperature    => [],
+      :uptime         => []
     }
   end
 end

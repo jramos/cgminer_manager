@@ -28,9 +28,10 @@
                 %th Error
               %tbody
                 - miner.devs.each_with_index do |device, index|
-                  - @summary[:error_rate]  << device[:'device_hardware%']
-                  - @summary[:temperature] << device[:temperature]
-                  - @summary[:uptime]      << device[:device_elapsed]
+                  - @summary[:error_rate]     << device[:'device_hardware%']
+                  - @summary[:rejected_rate]  << device[:'device_rejected%']
+                  - @summary[:temperature]    << device[:temperature]
+                  - @summary[:uptime]         << device[:device_elapsed]
 
                   %tr.text-center
                     %td= device[:name] + index.to_s
