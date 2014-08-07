@@ -42,18 +42,18 @@
 
     = render partial: 'general'
 
-  :javascript
-    $('#manager-content').tabs({activate: setWindowHash});
-    $('#admin').tabs();
+    :javascript
+      $('#manager-content').tabs({activate: setWindowHash});
+      $('#admin').tabs();
 
-:javascript
-  $(document).unbind('update');
-  $(document).on('update', function() {
-    $('#updated').addClass('updating').text('Updating...');
-    $('title').text('Updating...');
+    :javascript
+      $(document).unbind('update');
+      $(document).on('update', function() {
+        $('#updated').addClass('updating').text('Updating...');
+        $('title').text('Updating...');
 
-    $('#manager').load('#{root_url}', function() {
-      $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
-      $('title').text('#{Rails.application.class.parent_name}');
-    });
-  });
+        $('#manager').load('#{root_url}', function() {
+          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
+          $('title').text('#{Rails.application.class.parent_name}');
+        });
+      });
