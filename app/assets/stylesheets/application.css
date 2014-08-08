@@ -17,6 +17,7 @@
 
 body {
   font-size: 0.7em;
+  background: #efefef;
 }
 
 a {
@@ -39,7 +40,7 @@ table tr:hover {
 
 td {
   margin: 0;
-  padding: 10px 0;
+  padding: 10px;
   text-align: center;
   border-top: 1px solid #ccc;
 }
