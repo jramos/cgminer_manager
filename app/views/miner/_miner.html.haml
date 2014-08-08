@@ -1,5 +1,3 @@
-- version = @miner_data[:version].first[:version].first
-
 #miner
   #tabs
     %ul
@@ -9,42 +7,10 @@
       %li= link_to 'Stats',     '#stats'
       %li= link_to 'Admin',     '#admin', class: 'danger'
 
-    #miner-summary
-      %ul
-        %li= link_to "Overview", '#overview'
-        %li= link_to 'Config',    '#config'
-        %li= link_to "Coin", '#coin'
+    = render partial: 'summary'
 
-      %table(cellpadding="0" cellspacing="0" id="overview")
-        %tr
-          %td cgminer version
-          %td= version[:cgminer]
-        %tr
-          %td api version
-          %td= version[:api]
-
-        - summary = @miner_data[:summary].first[:summary].first
-        - summary.each_pair do |key, value|
-          %tr
-            %td= key
-            %td= value
-
-      - config = @miner_data[:config].first[:config].first
-      %table(cellpadding="0" cellspacing="0" id="config")
-        - config.each_pair do |key, value|
-          %tr
-            %td= key
-            %td= value
-
-      - coin = @miner_data[:coin].first[:coin].first
-      %table(cellpadding="0" cellspacing="0" id="coin")
-        - coin.each_pair do |key, value|
-          %tr
-            %td= key
-            %td= value
-  
     #devices
-      - devices = @miner_data[:devs].first[:devs]
+      - devices = @miner_data[@miner_id][:devs].first[:devs]
       %ul
         - devices.each_with_index do |device, index|
           - if asc = device.delete(:asc)
@@ -60,7 +26,7 @@
               %td= value
 
     #pools
-      - pools = @miner_data[:pools].first[:pools]
+      - pools = @miner_data[@miner_id][:pools].first[:pools]
       %ul
         - pools.each_with_index do |pool, index|
           - if id = pool.delete(:pool)
@@ -74,7 +40,7 @@
               %td= value
 
     #stats
-      - stats = @miner_data[:stats].first[:stats]
+      - stats = @miner_data[@miner_id][:stats].first[:stats]
       %ul
         - stats.each_with_index do |stat, index|
           - stat.delete(:stats)

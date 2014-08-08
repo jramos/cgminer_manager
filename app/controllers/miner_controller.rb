@@ -1,6 +1,7 @@
 class MinerController < ApplicationController
   include MinerHelper
 
+  before_filter :setup_summary, :only => [:show]
   before_filter :lookup_miner
 
   def show
@@ -35,6 +36,8 @@ class MinerController < ApplicationController
   def lookup_miner
     @miner_id   ||= params[:id].to_i
     @miner      ||= @miner_pool.miners[@miner_id]
-    @miner_data = @miner.query('version+summary+coin+devs+pools+stats+config') if @miner
+    @miner_data ||= []
+
+    @miner_data[@miner_id] = @miner.query('version+summary+coin+devs+pools+stats+config') if @miner
   end
 end

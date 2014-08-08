@@ -1,0 +1,80 @@
+- version = @miner_data[@miner_id][:version].first[:version].first
+- summary = @miner_data[@miner_id][:summary].first[:summary].first
+- config = @miner_data[@miner_id][:config].first[:config].first
+- coin = @miner_data[@miner_id][:coin].first[:coin].first
+
+#miner-summary
+  %ul
+    %li= link_to "Overview", '#overview'
+    %li= link_to 'Config',    '#config'
+    %li= link_to "Coin", '#coin'
+
+  #overview
+    %table(cellpadding="0" cellspacing="0")
+      %thead
+        %th Host
+        %th Rate(5s)
+        %th Rate(avg)
+        %th Devices
+      %tbody
+        = render partial: 'shared/miner_summary_row', locals: { miner: @miner, miner_index: @miner_id }
+
+    %table(cellpadding="0" cellspacing="0" id="overview-table" class="table table-hover")
+      %tbody
+        %tr
+          %td.text-left.bold Cgminer version
+          %td.text-right= version[:cgminer]
+          %td.text-left.bold API version
+          %td.text-right= version[:api]
+        %tr
+          %td.text-left.bold Found blocks
+          %td.text-right= summary[:found_blocks]
+          %td.text-left.bold Get works
+          %td.text-right= summary[:getworks]
+        %tr
+          %td.text-left.bold Accepted
+          %td.text-right= summary[:accepted]
+          %td.text-left.bold Rejected
+          %td.text-right= summary[:rejected]
+        %tr
+          %td.text-left.bold Hardware errors
+          %td.text-right= summary[:hardware_errors]
+          %td.text-left.bold Utility
+          %td.text-right= summary[:utility]
+        %tr
+          %td.text-left.bold Discarded
+          %td.text-right= summary[:discarded]
+          %td.text-left.bold Stale
+          %td.text-right= summary[:stale]
+        %tr
+          %td.text-left.bold Local work
+          %td.text-right= summary[:local_work]
+          %td.text-left.bold Network blocks
+          %td.text-right= summary[:network_blocks]
+        %tr
+          %td.text-left.bold Total processed
+          %td.text-right= format_hashrate(summary[:total_mh])
+          %td.text-left.bold Work utility
+          %td.text-right= summary[:work_utility]
+        %tr
+          %td.text-left.bold Difficulty accepted
+          %td.text-right= summary[:difficulty_accepted]
+          %td.text-left.bold Difficulty rejected
+          %td.text-right= summary[:difficulty_rejected]
+        %tr
+          %td.text-left.bold Best share
+          %td.text-right= summary[:best_share]
+          %td.text-left.bold Last getwork
+          %td.text-right= summary[:last_getwork]
+
+  %table(cellpadding="0" cellspacing="0" id="config")
+    - config.each_pair do |key, value|
+      %tr
+        %td= key
+        %td= value
+
+  %table(cellpadding="0" cellspacing="0" id="coin")
+    - coin.each_pair do |key, value|
+      %tr
+        %td= key
+        %td= value

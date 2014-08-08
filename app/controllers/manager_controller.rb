@@ -38,20 +38,6 @@ class ManagerController < ApplicationController
   end
 
   private
-  
-  def setup_summary
-    @summary = {
-      :error_rate     => [],
-      :ghs_avg        => [],
-      :ghs_5s         => [],
-      :net_bytes_sent => [],
-      :net_bytes_recv => [],
-      :pool_stale     => [],
-      :rejected_rate  => [],
-      :temperature    => [],
-      :uptime         => []
-    }
-  end
 
   def retrieve_miner_data
     @miner_data ||= @miner_pool.query('version+summary+coin+devs+pools+stats+config')

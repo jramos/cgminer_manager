@@ -22,6 +22,17 @@
   }
 }
 
+#miner-summary {
+  #overview-table {
+    display: table;
+    width: 100%;
+
+    td {
+      width: 25%;
+    }
+  }
+}
+
 #general {
   margin-top: 10px;
 
