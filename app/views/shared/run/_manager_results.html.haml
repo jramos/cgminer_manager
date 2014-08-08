@@ -34,36 +34,39 @@
 
     - @results.each_with_index do |miner_results, index|
       - miner = @miner_pool.miners[index]
-      - next unless miner && miner_results
+      - next unless miner
 
       %div(id="miner-#{index}" class="miner")
         %h3 Miner #{miner.host + ':' + miner.port.to_s}
 
-        %ul
-          - miner_results.each_with_index do |miner_result, miner_result_index|
-            %li= link_to 'Result ' + miner_result_index.to_s, "#result-#{miner_result_index}"
+        - if miner_results
+          %ul
+            - miner_results.each_with_index do |miner_result, miner_result_index|
+              %li= link_to 'Result ' + miner_result_index.to_s, "#result-#{miner_result_index}"
   
-        - miner_results.each_with_index do |miner_result, miner_result_index|
-          %div(id="result-#{miner_result_index}" class="result")
-            %h3 Result #{miner_result_index}
-            - if miner_result.is_a?(Array)
-              - miner_result.each_with_index do |result, index|
-                - if result.is_a?(Hash)
-                  %table(cellpadding="0" cellspacing="0" id="run-results")
-                    - result.each_pair do |key, value|
-                      %tr
-                        %td= key
-                        %td= value
-                - else
-                  = miner_result
-            - elsif miner_result.is_a?(Hash)
-              %table(cellpadding="0" cellspacing="0" id="run-results")
-                - miner_result.each_pair do |key, value|
-                  %tr
-                    %td= key
-                    %td= value
-            - else
-              = miner_result
+          - miner_results.each_with_index do |miner_result, miner_result_index|
+            %div(id="result-#{miner_result_index}" class="result")
+              %h3 Result #{miner_result_index}
+              - if miner_result.is_a?(Array)
+                - miner_result.each_with_index do |result, index|
+                  - if result.is_a?(Hash)
+                    %table(cellpadding="0" cellspacing="0" id="run-results")
+                      - result.each_pair do |key, value|
+                        %tr
+                          %td= key
+                          %td= value
+                  - else
+                    = miner_result
+              - elsif miner_result.is_a?(Hash)
+                %table(cellpadding="0" cellspacing="0" id="run-results")
+                  - miner_result.each_pair do |key, value|
+                    %tr
+                      %td= key
+                      %td= value
+              - else
+                = miner_result
+        - elsif !miner.available?
+          .red.bold Unavailable
 
 :javascript
   $('#manager_results').tabs();
