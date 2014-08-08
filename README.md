@@ -33,7 +33,7 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 
 ## Configuration
 
-Copy ``config/miners.yml.example`` to ``config/miners.yml`` and update with the IP addresses (and optional ports) of your cgminer instances. E.g.
+Copy [``config/miners.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/miners.yml.example) to ``config/miners.yml`` and update with the IP addresses (and optional ports) of your cgminer instances. E.g.
 
     # connect to localhost on the default port (4028)
     - host: 127.0.0.1
