@@ -3,7 +3,7 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 #miner {
-  #miner-summary {
+  #summary {
     #coin,
     #config {
       display: table;
@@ -15,6 +15,12 @@
 
       td:first-child {
         font-weight: bold;
+      }
+    }
+
+    #host-summary {
+      td:first-child {
+        font-weight: normal;
       }
     }
   }
