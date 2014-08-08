@@ -35,6 +35,6 @@ class MinerController < ApplicationController
   def lookup_miner
     @miner_id   ||= params[:id].to_i
     @miner      ||= @miner_pool.miners[@miner_id]
-    @miner_data ||= @miner.query('version+summary+coin+devs+pools+stats+config')
+    @miner_data = @miner.query('version+summary+coin+devs+pools+stats+config') if @miner
   end
 end
