@@ -26,7 +26,7 @@ Rails.application.configure do
   config.assets.js_compressor = :uglifier
   config.assets.css_compressor = :sass
 
-  # Fallback to assets pipeline if a precompiled asset is missed.
+  # Don't fallback on asset pipeline if a precompiled asset is missed.
   config.assets.compile = false
 
   # Generate digests for assets URLs.
