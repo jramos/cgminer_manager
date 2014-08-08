@@ -3,11 +3,26 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 #miner {
+  #miner-summary {
+    #coin,
+    #config {
+      display: table;
+      width: 100%;
+
+      td {
+        width: 50%;
+      }
+
+      td:first-child {
+        font-weight: bold;
+      }
+    }
+  }
+
   #devices,
   #pools,
-  #stats,
-  #config {
-    table {
+  #stats {
+   table {
       display: table;
       width: 100%;
       padding: 0;
