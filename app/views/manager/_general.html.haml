@@ -1,12 +1,15 @@
 #general
   - @uptime_in_seconds = @summary[:uptime].sum
   - @up_since = Time.now - @uptime_in_seconds
+  - available = @miner_pool.miners.select{|miner| miner.available? }
 
   .text-center
     %table
       %tr
         %td Pool size
-        %td= @miner_pool.miners.count.to_s + ' miners'
+        %td
+          = "#{@miner_pool.miners.count.to_s} miners"
+          = "(#{available.count} available)"
       %tr
         %td Total processing time
         %td= time_ago_in_words(@up_since)
