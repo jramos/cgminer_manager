@@ -8,8 +8,8 @@
       %tr
         %td Pool size
         %td
-          = "#{@miner_pool.miners.count.to_s} miners"
-          = "(#{available.count} available)"
+          = "#{available.count} available"
+          = "(#{@miner_pool.miners.count.to_s} total)"
       %tr
         %td Total processing time
         - if @uptime_in_seconds > 0
