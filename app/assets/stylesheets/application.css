@@ -91,3 +91,8 @@ label {
   color: blue;
   cursor: pointer;
 }
+
+#run-command input[type=text],
+#run-pool-command input[type=text] {
+  width: 300px;
+}
