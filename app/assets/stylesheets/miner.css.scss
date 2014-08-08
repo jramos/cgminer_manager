@@ -3,42 +3,34 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 #miner {
-  #summary {
-    #coin,
-    #config {
-      display: table;
-      width: 100%;
+  #summary #coin {
+    display: table;
+    width: 100%;
 
-      td {
-        width: 50%;
-      }
-
-      td:first-child {
-        font-weight: bold;
-      }
+    td {
+      width: 50%;
     }
 
-    #host-summary {
-      td:first-child {
-        font-weight: normal;
-      }
+    td:first-child {
+      font-weight: bold;
+    }
+  }
+    
+  #summary #config,
+  #devices .device,
+  #pools .pool,
+  #stats .stat {
+    display: table;
+    width: 100%;
+
+    td {
+      width: 25%;
     }
   }
 
-  #devices,
-  #pools,
-  #stats {
-   table {
-      display: table;
-      width: 100%;
-      padding: 0;
-
-      td {
-        width: 50%;
-      }
-      td:first-child {
-        font-weight: bold;
-      }
+  #host-summary {
+    td:first-child {
+      font-weight: normal;
     }
   }
 }

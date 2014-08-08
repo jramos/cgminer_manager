@@ -5,11 +5,12 @@
       %li= link_to device[:name] + device[:id].to_s, "#device-#{index.to_s}"
 
   - devices.each_with_index do |device, index|
-    %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}")
-      - device.each_pair do |key, value|
+    %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}" class="device")
+      - device.to_a.in_groups_of(2) do |group|
         %tr
-          %td= key
-          %td= value
+          - group.each do |key, value|
+            %td.text-left.bold= key
+            %td.text-right= value
 
 :javascript
   $(function() {
