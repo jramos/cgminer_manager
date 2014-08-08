@@ -43,7 +43,7 @@ Copy ``config/miners.yml.example`` to ``config/miners.yml`` and update with the 
 
 ### Remote API Access
 
-If connecting to a cgminer instance on any host other than 127.0.0.1, remote API access must be enabled. See [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) for more information.
+If connecting to a cgminer instance on any host other than 127.0.0.1, remote API access must be enabled. See [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client#remote-api-access) for more information.
 
 ### UI Options
 
