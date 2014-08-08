@@ -14,6 +14,7 @@ gem 'cgminer_api_client', '~> 0.1.6'
 
 # misc
 gem 'rake',               '~> 10.3.2'
+gem 'therubyracer',       '~> 0.12.1'
 gem 'thin',               '~> 1.6.2'
 gem 'uglifier',           '~> 2.5.3'
 
