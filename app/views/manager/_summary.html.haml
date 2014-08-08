@@ -85,3 +85,44 @@
           %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
 
   .clear
+
+  #pool-stale
+    - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count
+    - avg_stale_rate = avg_stale_pct / 100
+
+    %h3 Pool Stale Rate - #{avg_stale_pct.round(2)}% avg
+
+    %table(cellpadding="0" cellspacing="0")
+      %tbody
+        %thead
+          %th
+          %th Global
+          %th Avg
+        %tr
+          %td 5s
+          %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9)
+          %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count)
+        %tr
+          %td Avg
+          %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9)
+          %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
+
+  #pool-network
+    %h3 Pool Network Traffic
+
+    %table(cellpadding="0" cellspacing="0")
+      %tbody
+        %thead
+          %th
+          %th Global
+          %th Avg
+        %tr
+          %td Sent
+          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum)
+          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count)
+        %tr
+          %td Recv
+          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum)
+          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count)
+
+  .clear

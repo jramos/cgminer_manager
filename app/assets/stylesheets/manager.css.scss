@@ -8,10 +8,11 @@
 }
 
 #summary {
-  #total-ghs, #error-rate, #rejected-rate, #temperature {
+  #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale, #pool-network {
     width: 418px;
     float: left;
     margin-right: 10px;
+    margin-bottom: 20px;
   }
 
   table td:first-child {

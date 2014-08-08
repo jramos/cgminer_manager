@@ -44,6 +44,9 @@ class ManagerController < ApplicationController
       :error_rate     => [],
       :ghs_avg        => [],
       :ghs_5s         => [],
+      :net_bytes_sent => [],
+      :net_bytes_recv => [],
+      :pool_stale     => [],
       :rejected_rate  => [],
       :temperature    => [],
       :uptime         => []

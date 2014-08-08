@@ -38,6 +38,33 @@ module ApplicationHelper
     return (rate.round(2).to_s + ' ' + unit);
   end
 
+  def format_bytes(bytes)
+    rate = bytes.to_i
+    unit = 'B'
+
+    if (rate >= 1000)
+      rate /= 1000; unit = 'KB'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'MB'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'GB'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'TB'
+    end
+
+    if(rate >= 1000)
+      rate /= 1000; unit = 'PB'
+    end
+
+    return (rate.round(2).to_s + ' ' + unit);
+  end
+
   def to_ferinheight(centigrade)
     (1.8 * centigrade.to_f + 32).round(1)
   end
