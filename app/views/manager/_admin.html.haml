@@ -31,6 +31,7 @@
       $('#quick-links-response').empty();
       $('#quick-links-response').append(xhr.responseText);
     });
+
   #manage-pools
     = form_tag(manager_manage_pools_url(), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
       = render partial: 'shared/manage_pools'
