@@ -13,31 +13,7 @@
 
       = render partial: 'summary'
       = yield :miner_pool
-
-      #admin
-        %ul
-          %li= link_to "Manage Pools", '#manage-pools', class: 'danger'
-          %li= link_to "Run Command", '#run-pool-command', class: 'danger'
-
-        #manage-pools
-          = form_tag(manager_manage_pools_url(), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
-            = render partial: 'shared/manage_pools'
-
-          :javascript
-            $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
-              $(this).empty();
-              $(this).append(xhr.responseText);
-            });
-
-        #run-pool-command
-          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
-            = render partial: 'shared/run'
-
-          :javascript
-            $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
-              $(this).empty();
-              $(this).append(xhr.responseText);
-            });
+      = render partial: 'admin'
 
     = render partial: 'general'
 

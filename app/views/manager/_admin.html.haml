@@ -1,0 +1,52 @@
+#admin
+  %ul
+    %li= link_to "Quick Links", '#quick-links', class: 'danger'
+    %li= link_to "Manage Pools", '#manage-pools', class: 'danger'
+    %li= link_to "Run Command", '#run-pool-command', class: 'danger'
+
+  #quick-links
+    %table
+      %tr
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'quit'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Quit'
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'restart'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Restart'
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'zero'
+            = hidden_field_tag :'arguments', 'all,false'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Zero'
+
+    #quick-links-response
+
+  :javascript
+    $('.quick-link').on('ajax:success', function(event, data, status, xhr) {
+      $('#quick-links-response').empty();
+      $('#quick-links-response').append(xhr.responseText);
+    });
+  #manage-pools
+    = form_tag(manager_manage_pools_url(), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
+      = render partial: 'shared/manage_pools'
+
+    :javascript
+      $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
+        $(this).empty();
+        $(this).append(xhr.responseText);
+      });
+
+  #run-pool-command
+    = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, id: 'run_pool_form') do
+      = render partial: 'shared/run'
+
+    :javascript
+      $('#run_pool_form').on('ajax:success', function(event, data, status, xhr) {
+        $(this).empty();
+        $(this).append(xhr.responseText);
+      });
