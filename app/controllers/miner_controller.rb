@@ -36,7 +36,7 @@ class MinerController < ApplicationController
   private
   
   def lookup_miner
-    @miner_id   ||= params[:id].to_i
+    @miner_id   ||= (params[:id] || params[:miner_id]).to_i
     @miner      ||= @miner_pool.miners[@miner_id]
     @miner_data ||= []
 
