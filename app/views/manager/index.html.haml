@@ -1,6 +1,7 @@
 #manager
   - unless @miner_pool.miners.empty?
-    - @miner = @miner_pool.miners.first   # use the first miner as a model for the rest
+    - @miner = @miner_pool.miners.detect{|miner| miner.available? }
+    - @miner_id = @miner_pool.miners.index(@miner)
 
     - content_for(:miner_pool) do
       = render partial: 'miner_pool'

@@ -1,8 +1,10 @@
+- pools = @miner_data[@miner_id][:pools].first[:pools]
+
 - if @updated
   .bold.red= @updated
 
 - 0.upto(2) do |i|
-  - pool = @miner.pools.detect{|pool| pool[:pool] == i} || {}
+  - pool = pools.detect{|pool| pool[:pool] == i} || {}
 
   %h3 Pool #{i}
   %table
