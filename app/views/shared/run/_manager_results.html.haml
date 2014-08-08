@@ -34,7 +34,7 @@
 
     - @results.each_with_index do |miner_results, index|
       - miner = @miner_pool.miners[index]
-      - next unless miner
+      - next unless miner && miner_results
 
       %div(id="miner-#{index}" class="miner")
         %h3 Miner #{miner.host + ':' + miner.port.to_s}
