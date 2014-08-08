@@ -3,7 +3,7 @@
 - config = @miner_data[@miner_id][:config].first[:config].first
 - coin = @miner_data[@miner_id][:coin].first[:coin].first
 
-#miner-summary
+#summary
   %ul
     %li= link_to "Overview", '#overview'
     %li= link_to 'Config',    '#config'
@@ -78,3 +78,8 @@
       %tr
         %td= key
         %td= value
+
+:javascript
+  $(function() {
+    $('#summary').tabs();
+  });

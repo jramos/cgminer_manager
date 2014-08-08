@@ -1,0 +1,19 @@
+#stats
+  - stats = @miner_data[@miner_id][:stats].first[:stats]
+  %ul
+    - stats.each_with_index do |stat, index|
+      - stat.delete(:stats)
+      - id = stat.delete(:id)
+      %li= link_to id, '#stat-' + index.to_s
+
+  - stats.each_with_index do |stat, index|
+    %table(cellpadding="0" cellspacing="0" id="stat-#{index.to_s}")
+      - stat.each_pair do |key, value|
+        %tr
+          %td= key
+          %td= value
+
+:javascript
+  $(function() {
+    $('#stats').tabs();
+  });

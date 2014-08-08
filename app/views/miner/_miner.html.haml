@@ -1,7 +1,7 @@
 #miner
   #tabs
     %ul
-      %li= link_to 'Summary',   '#miner-summary'
+      %li= link_to 'Summary',   '#summary'
       %li= link_to 'Devices',   '#devices'
       %li= link_to 'Pools',     '#pools'
       %li= link_to 'Stats',     '#stats'
@@ -9,67 +9,11 @@
 
     = render partial: 'summary'
     = render partial: 'devices'
-
-    #pools
-      - pools = @miner_data[@miner_id][:pools].first[:pools]
-      %ul
-        - pools.each_with_index do |pool, index|
-          - if id = pool.delete(:pool)
-            %li= link_to 'Pool ' + id.to_s, '#pool-' + index.to_s
-
-      - pools.each_with_index do |pool, index|
-        %table(cellpadding="0" cellspacing="0" id="pool-#{index.to_s}")
-          - pool.each_pair do |key, value|
-            %tr
-              %td= key
-              %td= value
-
-    #stats
-      - stats = @miner_data[@miner_id][:stats].first[:stats]
-      %ul
-        - stats.each_with_index do |stat, index|
-          - stat.delete(:stats)
-          - id = stat.delete(:id)
-          %li= link_to id, '#stat-' + index.to_s
-
-      - stats.each_with_index do |stat, index|
-        %table(cellpadding="0" cellspacing="0" id="stat-#{index.to_s}")
-          - stat.each_pair do |key, value|
-            %tr
-              %td= key
-              %td= value
-
-    #admin
-      %ul
-        %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
-        %li= link_to 'Run Command', '#run-command', class: 'danger'
-
-      #manage-pools
-        = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
-          = render partial: 'shared/manage_pools'
-
-        :javascript
-          $('#manage_pools_form').on('ajax:success', function(event, data, status, xhr) {
-            $(this).empty();
-            $(this).append(xhr.responseText);
-          });
-
-      #run-command
-        = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'run_form') do
-          = render partial: 'shared/run'
-
-        :javascript
-          $('#run_form').on('ajax:success', function(event, data, status, xhr) {
-            $(this).empty();
-            $(this).append(xhr.responseText);
-          });
+    = render partial: 'pools'
+    = render partial: 'stats'
+    = render partial: 'admin'
 
 :javascript
   $(function() {
     $('#tabs').tabs({activate: setWindowHash});
-    $('#miner-summary').tabs();
-    $('#stats').tabs();
-    $('#pools').tabs();
-    $('#devices').tabs();
-    $('#admin').tabs();
   });

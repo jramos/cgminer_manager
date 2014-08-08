@@ -1,0 +1,18 @@
+#pools
+  - pools = @miner_data[@miner_id][:pools].first[:pools]
+  %ul
+    - pools.each_with_index do |pool, index|
+      - if id = pool.delete(:pool)
+        %li= link_to 'Pool ' + id.to_s, '#pool-' + index.to_s
+
+  - pools.each_with_index do |pool, index|
+    %table(cellpadding="0" cellspacing="0" id="pool-#{index.to_s}")
+      - pool.each_pair do |key, value|
+        %tr
+          %td= key
+          %td= value
+
+:javascript
+  $(function() {
+    $('#pools').tabs();
+  });
