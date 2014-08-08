@@ -12,14 +12,16 @@ class MinerController < ApplicationController
 
   def run
     @results = begin
-      if params[:arguments].present?
-        @miner.query(params[:command], *params[:arguments].split(','))
+      if params[:'arguments'].present?
+        @miner.query(params[:command], *params[:'arguments'].split(','))
       else
         @miner.query(params[:command])
       end
     rescue StandardError => e
       "invalid command and/or parameters; #{e.message}"
     end
+
+    @results = "command successful" if @results.nil?
 
     render partial: 'shared/run', layout: false
   end

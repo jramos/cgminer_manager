@@ -1,19 +1,20 @@
-%table
-  %tr
-    %td= label_tag(:command, "Command(s):")
-    %td= text_field_tag(:command, params[:command], placeholder: 'e.g. version, stats+summary')
-  %tr
-    %td= label_tag(:command, "Arguments:")
-    %td= text_field_tag(:'arguments', params[:'arguments'], placeholder: 'required for some commands')
-  %tr
-    %td(colspan="2")
-      = submit_tag("Run")
+- unless params[:quicklink]
+  %table
+    %tr
+      %td= label_tag(:command, "Command(s):")
+      %td= text_field_tag(:command, params[:command], placeholder: 'e.g. version, stats+summary')
+    %tr
+      %td= label_tag(:command, "Arguments:")
+      %td= text_field_tag(:'arguments', params[:'arguments'], placeholder: 'required for some commands')
+    %tr
+      %td(colspan="2")
+        = submit_tag("Run")
 
-%p
-  %div
-    See
-    = link_to "cgminer_api_client README", "https://github.com/jramos/cgminer_api_client#commands", target: '_blank'
-    for available commands and required/optional arguments.
+  %p
+    %div
+      See
+      = link_to "cgminer_api_client README", "https://github.com/jramos/cgminer_api_client#commands", target: '_blank'
+      for available commands and required/optional arguments.
 
 #run-results
   - if @results

@@ -1,7 +1,36 @@
 #admin
   %ul
+    %li= link_to "Quick Links", '#quick-links', class: 'danger'
     %li= link_to 'Manage Pools', '#manage-pools', class: 'danger'
     %li= link_to 'Run Command', '#run-command', class: 'danger'
+
+  #quick-links
+    %table
+      %tr
+        %td
+          = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'quit'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Quit'
+        %td
+          = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'restart'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Restart'
+        %td
+          = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
+            = hidden_field_tag :command, 'zero'
+            = hidden_field_tag :'arguments', 'all,false'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Zero'
+
+    #quick-links-response
+
+  :javascript
+    $('.quick-link').on('ajax:success', function(event, data, status, xhr) {
+      $('#quick-links-response').empty();
+      $('#quick-links-response').append(xhr.responseText);
+    });
 
   #manage-pools
     = form_tag(miner_manage_pools_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, id: 'manage_pools_form') do
