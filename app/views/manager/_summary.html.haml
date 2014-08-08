@@ -45,33 +45,6 @@
 
   .clear
 
-  #rejected-rate
-    - avg_rejected_pct = @summary[:rejected_rate].sum / @summary[:rejected_rate].count rescue 0
-    - avg_rejected_rate = avg_rejected_pct / 100
-  
-    %h3 Rejected Rate - #{avg_rejected_pct.round(2)}% avg
-
-    %table(cellpadding="0" cellspacing="0")
-      %tbody
-        %thead
-          %th
-          %th Global
-          %th Avg
-        %tr
-          %td 5s
-          %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9)
-          - if @summary[:rejected_rate].count > 0
-            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
-          - else
-            %td.average-ghs= format_hashrate(0)
-        %tr
-          %td Avg
-          %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9)
-          - if @summary[:rejected_rate].count > 0
-            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)
-          - else
-            %td.average-ghs= format_hashrate(0)
-
   #error-rate
     - avg_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count rescue 0
     - avg_error_rate = avg_error_pct / 100
@@ -99,13 +72,62 @@
           - else
             %td.average-ghs= format_hashrate(0)
 
+  #pool-network
+    - avg_sent = (@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count) rescue 0
+    - avg_recv = (@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count) rescue 0
+    - total = @summary[:net_bytes_sent].sum + @summary[:net_bytes_recv].sum
+
+    %h3 Network Traffic - #{format_bytes(total)} total
+
+    %table(cellpadding="0" cellspacing="0")
+      %tbody
+        %thead
+          %th
+          %th Global
+          %th Avg
+        %tr
+          %td Sent
+          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum)
+          %td.text-center= format_bytes(avg_sent)
+        %tr
+          %td Recv
+          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum)
+          %td.text-center= format_bytes(avg_recv)
+
   .clear
+
+  #rejected-rate
+    - avg_rejected_pct = @summary[:rejected_rate].sum / @summary[:rejected_rate].count rescue 0
+    - avg_rejected_rate = avg_rejected_pct / 100
+  
+    %h3 Rejected Rate - #{avg_rejected_pct.round(2)}% avg
+
+    %table(cellpadding="0" cellspacing="0")
+      %tbody
+        %thead
+          %th
+          %th Global
+          %th Avg
+        %tr
+          %td 5s
+          %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9)
+          - if @summary[:rejected_rate].count > 0
+            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
+        %tr
+          %td Avg
+          %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9)
+          - if @summary[:rejected_rate].count > 0
+            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
 
   #pool-stale
     - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count rescue 0
     - avg_stale_rate = avg_stale_pct / 100
 
-    %h3 Pool Stale Rate - #{avg_stale_pct.round(2)}% avg
+    %h3 Stale Rate - #{avg_stale_pct.round(2)}% avg
 
     %table(cellpadding="0" cellspacing="0")
       %tbody
@@ -128,27 +150,5 @@
             %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
           - else
             %td.average-ghs= format_hashrate(0)
-
-  #pool-network
-    - avg_sent = (@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count) rescue 0
-    - avg_recv = (@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count) rescue 0
-    - total = @summary[:net_bytes_sent].sum + @summary[:net_bytes_recv].sum
-
-    %h3 Pool Network Traffic - #{format_bytes(total)} total
-
-    %table(cellpadding="0" cellspacing="0")
-      %tbody
-        %thead
-          %th
-          %th Global
-          %th Avg
-        %tr
-          %td Sent
-          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum)
-          %td.text-center= format_bytes(avg_sent)
-        %tr
-          %td Recv
-          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum)
-          %td.text-center= format_bytes(avg_recv)
 
   .clear
