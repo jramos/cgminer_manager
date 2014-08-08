@@ -9,7 +9,10 @@
       %tr
         %td Pool size
         %td
-          = "#{available}/#{total} available"
+          - if available == total
+            = "#{available}/#{total} available"
+          - else
+            .red.bold= "#{available}/#{total} available"
       %tr
         %td Total processing time
         - if uptime > 0
