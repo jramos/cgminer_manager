@@ -8,22 +8,7 @@
       %li= link_to 'Admin',     '#admin', class: 'danger'
 
     = render partial: 'summary'
-
-    #devices
-      - devices = @miner_data[@miner_id][:devs].first[:devs]
-      %ul
-        - devices.each_with_index do |device, index|
-          - if asc = device.delete(:asc)
-            %li= link_to 'ASC ' + asc.to_s, '#device-' + index.to_s
-          - elsif pga = device.delete(:pga)
-            %li= link_to 'PGA ' + pga.to_s, '#device-' + index.to_s
-
-      - devices.each_with_index do |device, index|
-        %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}")
-          - device.each_pair do |key, value|
-            %tr
-              %td= key
-              %td= value
+    = render partial: 'devices'
 
     #pools
       - pools = @miner_data[@miner_id][:pools].first[:pools]
