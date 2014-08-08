@@ -1,8 +1,8 @@
 #summary
   #total-ghs
     %h3 Local Rate
-    - avg_ghs_5s = @summary[:ghs_5s].sum / @summary[:ghs_5s].count
-    - avg_ghs_avg = @summary[:ghs_avg].sum / @summary[:ghs_avg].count
+    - avg_ghs_5s = @summary[:ghs_5s].sum / @summary[:ghs_5s].count rescue 0
+    - avg_ghs_avg = @summary[:ghs_avg].sum / @summary[:ghs_avg].count rescue 0
 
     %table(cellpadding="0" cellspacing="0")
       %tbody
@@ -30,20 +30,23 @@
         %tr
           %td Range
           %td.text-center
-            = raw(@summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s + '&deg;')
+            = raw(@summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s + '&deg;') rescue raw('&dash;')
           %td.text-center
-            = raw(to_ferinheight(@summary[:temperature].min).to_s + ' - ' + to_ferinheight(@summary[:temperature].max).to_s + '&deg;')
+            - if @summary[:temperature].min && @summary[:temperature].max
+              = raw(to_ferinheight(@summary[:temperature].min).to_s + ' - ' + to_ferinheight(@summary[:temperature].max).to_s + '&deg;')
+            - else
+              = raw('&dash;')
         %tr
           %td Avg
           %td.text-center
-            = raw((@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;')
+            = raw((@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;') rescue raw('&dash;')
           %td.text-center
-            = raw(to_ferinheight(@summary[:temperature].sum / @summary[:temperature].count).to_s + '&deg;')
+            = raw(to_ferinheight(@summary[:temperature].sum / @summary[:temperature].count).to_s + '&deg;') rescue raw('&dash;')
 
   .clear
 
   #rejected-rate
-    - avg_rejected_pct = @summary[:rejected_rate].sum / @summary[:rejected_rate].count
+    - avg_rejected_pct = @summary[:rejected_rate].sum / @summary[:rejected_rate].count rescue 0
     - avg_rejected_rate = avg_rejected_pct / 100
   
     %h3 Rejected Rate - #{avg_rejected_pct.round(2)}% avg
@@ -57,14 +60,20 @@
         %tr
           %td 5s
           %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
+          - if @summary[:rejected_rate].count > 0
+            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)    
+          - if @summary[:rejected_rate].count > 0
+            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
 
   #error-rate
-    - avg_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count
+    - avg_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count rescue 0
     - avg_error_rate = avg_error_pct / 100
 
     %h3 Error Rate - #{avg_error_pct.round(2)}% avg
@@ -78,16 +87,22 @@
         %tr
           %td 5s
           %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count)
+          - if @summary[:ghs_5s].count > 0
+            %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
+          - if @summary[:ghs_5s].count > 0
+            %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
 
   .clear
 
   #pool-stale
-    - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count
+    - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count rescue 0
     - avg_stale_rate = avg_stale_pct / 100
 
     %h3 Pool Stale Rate - #{avg_stale_pct.round(2)}% avg
@@ -101,11 +116,18 @@
         %tr
           %td 5s
           %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count)
+          - if @summary[:pool_stale].count > 0
+            %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
+            
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
+          - if @summary[:pool_stale].count > 0
+            %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
+          - else
+            %td.average-ghs= format_hashrate(0)
 
   #pool-network
     %h3 Pool Network Traffic
@@ -119,10 +141,10 @@
         %tr
           %td Sent
           %td.text-center= format_bytes(@summary[:net_bytes_sent].sum)
-          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count)
+          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count) rescue format_bytes(0)
         %tr
           %td Recv
           %td.text-center= format_bytes(@summary[:net_bytes_recv].sum)
-          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count)
+          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count) rescue format_bytes(0)
 
   .clear

@@ -2,7 +2,7 @@
   .bold.red= @updated
 
 - 0.upto(2) do |i|
-  - pool = @miner.pools.detect{|pool| pool[:pool] == i} || {}
+  - pool = @miner.pools.detect{|pool| pool[:pool] == i} rescue {}
 
   %h3 Pool #{i}
   %table

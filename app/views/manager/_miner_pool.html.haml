@@ -8,6 +8,8 @@
 
     %tbody
       - @miner_pool.miners.each_with_index do |miner, miner_index|
+        - next unless miner.available?
+
         - summary    = @miner_data[miner_index][:summary].first[:summary].first
         - devices    = @miner_data[miner_index][:devs].first[:devs]
         - pool_stats = @miner_data[miner_index][:stats].first[:stats].select{|stat| !!stat[:id].match('^POOL') }
