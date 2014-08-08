@@ -8,8 +8,7 @@
       %tr
         %td Pool size
         %td
-          = "#{available.count} available"
-          = "(#{@miner_pool.miners.count.to_s} total)"
+          = "#{available.count}/#{@miner_pool.miners.count.to_s} available"
       %tr
         %td Total processing time
         - if @uptime_in_seconds > 0
