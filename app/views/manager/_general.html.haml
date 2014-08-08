@@ -12,7 +12,10 @@
           = "(#{available.count} available)"
       %tr
         %td Total processing time
-        %td= time_ago_in_words(@up_since)
+        - if @uptime_in_seconds > 0
+          %td= time_ago_in_words(@up_since)
+        - else
+          %td= @uptime_in_seconds.to_s + ' sec'
       %tr
         %td Total processed
         %td= format_hashrate(@uptime_in_seconds * @summary[:ghs_avg].sum * 1e9).sub('/s', '')
