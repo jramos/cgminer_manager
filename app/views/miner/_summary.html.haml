@@ -53,7 +53,7 @@
           %td.text-right= summary[:network_blocks]
         %tr
           %td.text-left.bold Total processed
-          %td.text-right= format_hashrate(summary[:total_mh])
+          %td.text-right= format_hashrate(summary[:total_mh] * 1e3).sub('/s','')
           %td.text-left.bold Work utility
           %td.text-right= summary[:work_utility]
         %tr
