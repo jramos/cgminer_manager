@@ -16,6 +16,6 @@
       %td= text_field_tag(:"user[#{i}]", pool[:user])
     %tr
       %td= label_tag(:"pass[#{i}]", "Pass:")
-      %td= text_field_tag(:"pass[#{i}]", nil, placeholder: "Not Shown - Renter when updating")
+      %td= text_field_tag(:"pass[#{i}]", nil, placeholder: "Not Shown - Reenter when updating")
 
 = submit_tag("Update")
