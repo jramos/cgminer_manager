@@ -65,7 +65,7 @@
           %td.text-left.bold Best share
           %td.text-right= summary[:best_share]
           %td.text-left.bold Last getwork
-          %td.text-right= summary[:last_getwork]
+          %td.text-right= time_ago_in_words(Time.at(summary[:last_getwork]))
 
   %table(cellpadding="0" cellspacing="0" id="config")
     - config.to_a.in_groups_of(2) do |group|
