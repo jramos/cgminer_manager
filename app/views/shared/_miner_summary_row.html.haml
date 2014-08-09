@@ -41,8 +41,8 @@
               %td= time_ago_in_words(Time.now - device[:device_elapsed])
               %td= raw(device[:temperature].to_s + '&deg;')
               %td= raw(to_ferinheight(device[:temperature]).to_s + '&deg;')
-              %td= device[:'device_rejected%'].to_s + '%'
-              %td= device[:'device_hardware%'].to_s + '%'
+              %td= device[:'device_rejected%'].round(2).to_s + '%'
+              %td= device[:'device_hardware%'].round(2).to_s + '%'
 
             - if chain_stats = get_stats_for(miner_index, device[:name]+device_index.to_s)
               - [:acs, :pga].each do |type|
