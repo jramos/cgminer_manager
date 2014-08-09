@@ -13,6 +13,7 @@ class ApplicationController < ActionController::Base
       :pool_stale     => [],
       :rejected_rate  => [],
       :temperature    => [],
+      :total_mh       => [],
       :uptime         => []
     }
   end

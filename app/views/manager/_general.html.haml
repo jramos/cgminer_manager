@@ -1,18 +1,19 @@
 #general
-  - uptime    = @summary[:uptime].sum
-  - up_since  = Time.now - uptime
-  - available = @miner_pool.miners.select{|miner| miner.available? }.count
-  - total     = @miner_pool.miners.count
+  - uptime          = @summary[:uptime].sum
+  - up_since        = Time.now - uptime
+  - miner_available = @miner_pool.miners.select{|miner| miner.available? }.count
+  - miner_total     = @miner_pool.miners.count
+  - total_processed = @summary[:total_mh].sum * 1e3
 
   .text-center
     %table
       %tr
         %td Pool size
         %td
-          - if available == total
-            = "#{available}/#{total} available"
+          - if miner_available == miner_total
+            = "#{miner_available}/#{miner_total} available"
           - else
-            .red.bold= "#{available}/#{total} available"
+            .red.bold= "#{miner_available}/#{miner_total} available"
       %tr
         %td Total processing time
         - if uptime > 0
@@ -21,4 +22,4 @@
           %td= uptime.to_s + ' sec'
       %tr
         %td Total processed
-        %td= format_hashrate(uptime * @summary[:ghs_avg].sum * 1e9).sub('/s', '')
+        %td= format_hashrate(total_processed).sub('/s', '')
