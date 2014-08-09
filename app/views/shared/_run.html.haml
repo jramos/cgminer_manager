@@ -5,7 +5,7 @@
       %td= text_field_tag(:command, params[:command], placeholder: 'e.g. version, stats+summary')
     %tr
       %td= label_tag(:command, "Arguments:")
-      %td= text_field_tag(:'arguments', params[:'arguments'], placeholder: 'required for some commands')
+      %td= text_field_tag(:args, params[:args], placeholder: 'required for some commands')
     %tr
       %td(colspan="2")
         = submit_tag("Run")

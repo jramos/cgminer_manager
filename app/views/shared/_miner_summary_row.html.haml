@@ -53,7 +53,11 @@
                   %tr.text-center
                     %td= "#{type.to_s.upcase}#{(i - 1).to_s}"
                     %td(colspan="5")= raw(status.downcase.gsub('x', '<span class="red bold">x</span>'))
-                    %td= ((1.0 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100).round(2).to_s + '%'
+                    - error_rate = (1 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100
+                    - if error_rate > 0
+                      %td.red.bold= error_rate.round(2).to_s + '%'
+                    - else
+                      %td= error_rate.round(2).to_s + '%'
 - else
   %tr
     %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)

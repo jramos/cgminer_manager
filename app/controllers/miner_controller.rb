@@ -12,8 +12,8 @@ class MinerController < ApplicationController
 
   def run
     @results = begin
-      if params[:'arguments'].present?
-        @miner.query(params[:command], *params[:'arguments'].split(','))
+      if params[:args].present?
+        @miner.query(params[:command], *params[:args].split(','))
       else
         @miner.query(params[:command])
       end

@@ -12,8 +12,8 @@ class ManagerController < ApplicationController
 
   def run
     @results = begin
-      if params[:arguments].present?
-        @miner_pool.query(params[:command].to_sym, *params[:arguments].split(','))
+      if params[:args].present?
+        @miner_pool.query(params[:command].to_sym, *params[:args].split(','))
       else
         @miner_pool.query(params[:command].to_sym)
       end
