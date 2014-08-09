@@ -7,6 +7,14 @@
   margin: 0 auto;
 }
 
+.warning {
+  padding: 20px;
+  color: white;
+  font-weight: bold;
+  border: #ac2925;
+  background: #c9302c;
+}
+
 #summary {
   #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale, #pool-network {
     width: 408px;

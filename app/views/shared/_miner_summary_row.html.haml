@@ -45,6 +45,7 @@
               %td= device[:'device_hardware%'].round(2).to_s + '%'
 
             - if chain_stats = get_stats_for(miner_index, device[:name]+device_index.to_s)
+              - @bad_chain_elements ||= []
               - [:acs, :pga].each do |type|
                 - 1.upto(4) do |i|
                   - status = chain_stats.send(:[], :"chain_#{type}#{i}") rescue nil
@@ -56,6 +57,7 @@
                     - error_rate = (1 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100
                     - if error_rate > 0
                       %td.red.bold= error_rate.round(2).to_s + '%'
+                      - @bad_chain_elements << miner
                     - else
                       %td= error_rate.round(2).to_s + '%'
 - else

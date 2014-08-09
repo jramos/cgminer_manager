@@ -1,4 +1,13 @@
 #summary
+  - unless @bad_chain_elements.empty?
+    - @bad_chain_elements.uniq!
+
+    #bad-chain-elements.warning
+      Bad chain element(s) detected on:
+      %ul
+        - @bad_chain_elements.each do |miner|
+          %li= miner.host + ':' + miner.port.to_s
+
   #total-ghs
     %h3 Local Rate
     - avg_ghs_5s = @summary[:ghs_5s].sum / @summary[:ghs_5s].count rescue 0
