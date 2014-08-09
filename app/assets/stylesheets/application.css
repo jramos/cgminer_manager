@@ -105,3 +105,10 @@ label {
 #run-pool-command input[type=text] {
   width: 300px;
 }
+
+#quick-links td {
+  width: 33%;
+}
+#quick-links-response {
+  margin-top: 20px;
+}

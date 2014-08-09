@@ -5,14 +5,34 @@
     %li= link_to "Run Command", '#run-pool-command', class: 'danger'
 
   #quick-links
+    %h3 General
+    %table
+      %tr
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link') do
+            = hidden_field_tag :command, 'summary'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Summary'
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link') do
+            = hidden_field_tag :command, 'stats'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Stats'
+        %td
+          = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link') do
+            = hidden_field_tag :command, 'devs'
+            = hidden_field_tag :quicklink, true
+            = submit_tag 'Devices'
+    
     %h3 System
     %table
       %tr
         %td
           = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
-            = hidden_field_tag :command, 'quit'
+            = hidden_field_tag :command, 'zero'
+            = hidden_field_tag :args, 'all,false'
             = hidden_field_tag :quicklink, true
-            = submit_tag 'Quit'
+            = submit_tag 'Zero'
         %td
           = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
             = hidden_field_tag :command, 'restart'
@@ -20,10 +40,9 @@
             = submit_tag 'Restart'
         %td
           = form_tag(manager_run_url(), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
-            = hidden_field_tag :command, 'zero'
-            = hidden_field_tag :args, 'all,false'
+            = hidden_field_tag :command, 'quit'
             = hidden_field_tag :quicklink, true
-            = submit_tag 'Zero'
+            = submit_tag 'Quit'
 
     #quick-links-response
 

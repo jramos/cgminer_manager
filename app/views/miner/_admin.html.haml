@@ -10,9 +10,10 @@
       %tr
         %td
           = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
-            = hidden_field_tag :command, 'quit'
+            = hidden_field_tag :command, 'zero'
+            = hidden_field_tag :args, 'all,false'
             = hidden_field_tag :quicklink, true
-            = submit_tag 'Quit'
+            = submit_tag 'Zero'
         %td
           = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
             = hidden_field_tag :command, 'restart'
@@ -20,10 +21,9 @@
             = submit_tag 'Restart'
         %td
           = form_tag(miner_run_url(miner_id: @miner_id), :'data-method' => 'post', remote: true, class: 'quick-link', :'data-confirm' => 'Are you sure?') do
-            = hidden_field_tag :command, 'zero'
-            = hidden_field_tag :args, 'all,false'
+            = hidden_field_tag :command, 'quit'
             = hidden_field_tag :quicklink, true
-            = submit_tag 'Zero'
+            = submit_tag 'Quit'
 
     #quick-links-response
 
