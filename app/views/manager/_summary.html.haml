@@ -13,11 +13,11 @@
         %tr
           %td 5s
           %td.text-center= format_hashrate(@summary[:ghs_5s].sum * 1e9 )
-          %td.average-ghs= format_hashrate(avg_ghs_5s * 1e9)
+          %td.text-center= format_hashrate(avg_ghs_5s * 1e9)
         %tr
           %td Avg
           %td.text-center= format_hashrate(@summary[:ghs_avg].sum * 1e9)
-          %td.average-ghs= format_hashrate(avg_ghs_avg * 1e9)
+          %td.text-center= format_hashrate(avg_ghs_avg * 1e9)
 
   #temperature
     %h3 Temperature
@@ -61,16 +61,16 @@
           %td 5s
           %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9)
           - if @summary[:ghs_5s].count > 0
-            %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count)
+            %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9)
           - if @summary[:ghs_5s].count > 0
-            %td.average-ghs= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
+            %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
 
   #pool-network
     - avg_sent = (@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count) rescue 0
@@ -112,16 +112,16 @@
           %td 5s
           %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9)
           - if @summary[:rejected_rate].count > 0
-            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
+            %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9)
           - if @summary[:rejected_rate].count > 0
-            %td.average-ghs= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)
+            %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
 
   #pool-stale
     - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count rescue 0
@@ -139,16 +139,16 @@
           %td 5s
           %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9)
           - if @summary[:pool_stale].count > 0
-            %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count)
+            %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
             
         %tr
           %td Avg
           %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9)
           - if @summary[:pool_stale].count > 0
-            %td.average-ghs= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
+            %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count)
           - else
-            %td.average-ghs= format_hashrate(0)
+            %td.text-center= format_hashrate(0)
 
   .clear
