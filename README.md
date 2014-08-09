@@ -5,7 +5,7 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 * Pool and miner summary pages
 * Breakdown of miner performance and configuration
 * Quick updates to mining pool configuration
-* Allows sending of raw API commands to one or more miners
+* Allows sending raw API commands to one or more miners
 * Multi-command support; send API commands in bulk
 
 ## Screenshots
