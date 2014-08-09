@@ -40,6 +40,6 @@ class MinerController < ApplicationController
     @miner      ||= @miner_pool.miners[@miner_id]
     @miner_data ||= []
 
-    @miner_data[@miner_id] = @miner.query('version+summary+coin+devs+pools+stats+config') if @miner
+    @miner_data[@miner_id] = @miner.query('version+summary+coin+devs+pools+stats+usbstats+config') if @miner
   end
 end

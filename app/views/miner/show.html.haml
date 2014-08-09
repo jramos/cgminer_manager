@@ -4,7 +4,27 @@
       = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
 
     - if @miner.available?
-      = render partial: 'miner'
+      #miner
+        #tabs
+          %ul
+            %li= link_to 'Summary',   '#summary'
+            %li= link_to 'Devices',   '#devices'
+            %li= link_to 'Pools',     '#pools'
+            %li= link_to 'Stats',     '#stats'
+            %li= link_to 'USB Stats', '#usbstats'
+            %li= link_to 'Admin',     '#admin', class: 'danger'
+
+          = render partial: 'summary'
+          = render partial: 'devices'
+          = render partial: 'pools'
+          = render partial: 'stats'
+          = render partial: 'usbstats'
+          = render partial: 'admin'
+
+      :javascript
+        $(function() {
+          $('#tabs').tabs({activate: setWindowHash});
+        });
 
       :javascript
         $(document).unbind('update');
@@ -17,9 +37,11 @@
             $('title').text('#{Rails.application.class.parent_name}');
           });
         });
+
     - else
       #miner
         .red.bold Unavailable
+
   - else
     #miner
       .red.bold Unknown miner
