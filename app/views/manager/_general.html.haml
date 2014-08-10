@@ -11,7 +11,7 @@
         %td Pool size
         %td
           - if miner_available == miner_total
-            = "#{miner_available}/#{miner_total} available"
+            .green.bold= "#{miner_available}/#{miner_total} available"
           - else
             .red.bold= "#{miner_available}/#{miner_total} available"
       %tr
