@@ -82,9 +82,9 @@
             %td.text-center= format_hashrate(0)
 
   #pool-network
-    - avg_sent = (@summary[:net_bytes_sent].sum / @summary[:net_bytes_sent].count) rescue 0
-    - avg_recv = (@summary[:net_bytes_recv].sum / @summary[:net_bytes_recv].count) rescue 0
-    - total = @summary[:net_bytes_sent].sum + @summary[:net_bytes_recv].sum
+    - avg_sent = (@summary[:net_bytes_sent].compact.sum / @summary[:net_bytes_sent].compact.count) rescue 0
+    - avg_recv = (@summary[:net_bytes_recv].compact.sum / @summary[:net_bytes_recv].compact.count) rescue 0
+    - total = @summary[:net_bytes_sent].compact.sum + @summary[:net_bytes_recv].compact.sum
 
     %h3 Network Traffic - #{format_bytes(total)} total
 
@@ -96,11 +96,11 @@
           %th Avg
         %tr
           %td Sent
-          %td.text-center= format_bytes(@summary[:net_bytes_sent].sum)
+          %td.text-center= format_bytes(@summary[:net_bytes_sent].compact.sum)
           %td.text-center= format_bytes(avg_sent)
         %tr
           %td Recv
-          %td.text-center= format_bytes(@summary[:net_bytes_recv].sum)
+          %td.text-center= format_bytes(@summary[:net_bytes_recv].compact.sum)
           %td.text-center= format_bytes(avg_recv)
 
   .clear
