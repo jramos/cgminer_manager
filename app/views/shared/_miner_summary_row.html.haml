@@ -1,7 +1,7 @@
 - if miner.available?
-  - summary    = @miner_data[miner_index][:summary].first[:summary].first
-  - devices    = @miner_data[miner_index][:devs].first[:devs]
-  - pool_stats = @miner_data[miner_index][:stats].first[:stats].select{|stat| !!stat[:id].match('^POOL') }
+  - summary    = @miner_data[miner_index][:summary].first[:summary].first rescue {}
+  - devices    = @miner_data[miner_index][:devs].first[:devs] rescue []
+  - pool_stats = @miner_data[miner_index][:stats].first[:stats].select{|stat| !!stat[:id].match('^POOL') } rescue []
   - pool_stats.each{|pool| @summary[:net_bytes_sent] << pool[:net_bytes_sent]; @summary[:net_bytes_recv] << pool[:net_bytes_recv];}
 
   - @summary[:ghs_5s]         << summary[:ghs_5s]

@@ -1,7 +1,7 @@
-- version = @miner_data[@miner_id][:version].first[:version].first
-- summary = @miner_data[@miner_id][:summary].first[:summary].first
-- config = @miner_data[@miner_id][:config].first[:config].first
-- coin = @miner_data[@miner_id][:coin].first[:coin].first
+- version = @miner_data[@miner_id][:version].first[:version].first rescue {}
+- summary = @miner_data[@miner_id][:summary].first[:summary].first rescue {}
+- config = @miner_data[@miner_id][:config].first[:config].first rescue {}
+- coin = @miner_data[@miner_id][:coin].first[:coin].first rescue {}
 
 #summary
   %ul
