@@ -47,17 +47,6 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 
 ## Configuration
 
-### mongodb
-
-Copy [``config/mongoid.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/mongoid.yml.example) to ``config/mongoid.yml`` and update as necessary.
-
-    production:
-      sessions:
-        default:
-          database: cgminer_monitor
-          hosts:
-            - localhost:27017
-
 ### cgminer\_api\_client
 
 Copy [``config/miners.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/miners.yml.example) to ``config/miners.yml`` and update with the IP addresses (and optional ports) of your cgminer instances. E.g.
@@ -67,6 +56,17 @@ Copy [``config/miners.yml.example``](https://github.com/jramos/cgminer_manager/b
     # connect to 192.168.1.1 on a non-standard port (1234)
     - host: 192.168.1.1
       port: 1234
+
+### cgminer\_monitor
+
+Copy [``config/mongoid.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/mongoid.yml.example) to ``config/mongoid.yml`` and update as necessary.
+
+    production:
+      sessions:
+        default:
+          database: cgminer_monitor
+          hosts:
+            - localhost:27017
 
 ### Remote API Access
 
