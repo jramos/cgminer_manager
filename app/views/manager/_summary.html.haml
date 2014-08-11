@@ -28,9 +28,13 @@
 
           var data = {
             labels: labels,
-            datasets: [{
-              data: hash_rates
-            }]
+            datasets: [
+              {
+                label: 'Local Hashrate',
+                fillColor: "#5bb75b",
+                data: hash_rates
+              }
+            ]
           }
 
           var options = {
