@@ -9,9 +9,9 @@
     %li= link_to 'Config',    '#config'
     %li= link_to "Coin", '#coin'
 
-  = render partial: 'shared/hashrate_graph', locals: { target: 'miner' }
-
   #overview
+    = render partial: 'shared/hashrate_graph', locals: { target: 'miner' }
+
     %table(cellpadding="0" cellspacing="0" id="host-summary")
       %thead
         %th Host
