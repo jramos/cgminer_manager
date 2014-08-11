@@ -3,6 +3,14 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 #miner {
+  background: white;
+
+  #unknown-unavailable {
+    color: red;
+    font-weight: bold;
+    padding: 20px;
+  }
+
   #summary #coin {
     display: table;
     width: 100%;
