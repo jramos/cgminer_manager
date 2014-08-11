@@ -3,43 +3,7 @@
 #summary
   = render partial: 'warnings'
 
-  - if defined?(CgminerMonitor)
-    %h2 Local Hashrate
-    %canvas(id="local_hashrate" width="864" height="400")
-
-    :javascript
-      $(document).ready(function(){
-        $.getJSON('/cgminer_monitor/api/v1/graph_data/local_hashrate.json', function(hash_rate_response){
-          var hash_rates = [];
-          var labels = [];
-
-          $.each(hash_rate_response, function(index, response) {
-            date = new Date(response[0] * 1000);
-            labels.push(date.getHours() + ':' + date.getMinutes());
-            hash_rates.push(response[1]);
-          });
-
-          var data = {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Local Hashrate',
-                fillColor: "#5bb75b",
-                data: hash_rates
-              }
-            ]
-          }
-
-          var options = {
-            animation    : false,
-            pointDot     : false,
-            showTooltips : false,
-          };
-
-          var ctx = $("#local_hashrate").get(0).getContext("2d");
-          var myLineChart = new Chart(ctx).Line(data, options);
-        });
-      });
+  = render partial: 'shared/hashrate_graph', locals: { target: 'local' }
 
   #total-ghs
     %h3 Local Rate
