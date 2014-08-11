@@ -1,46 +1,36 @@
 #miner-show
-  - unless @miner.nil?
+  - unless @miner.nil? || !@miner.available?
     - content_for(:page_title) do
       = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
 
-    - if @miner.available?
-      #miner
-        #tabs
-          %ul
-            %li= link_to 'Summary',   '#summary'
-            %li= link_to 'Devices',   '#devices'
-            %li= link_to 'Pools',     '#pools'
-            %li= link_to 'Stats',     '#stats'
-            %li= link_to 'USB Stats', '#usbstats'
-            %li= link_to 'Admin',     '#admin', class: 'danger'
+    #miner
+      #tabs
+        %ul
+          %li= link_to 'Summary',   '#summary'
+          %li= link_to 'Devices',   '#devices'
+          %li= link_to 'Pools',     '#pools'
+          %li= link_to 'Stats',     '#stats'
+          %li= link_to 'USB Stats', '#usbstats'
+          %li= link_to 'Admin',     '#admin', class: 'danger'
 
-          = render partial: 'summary'
-          = render partial: 'devices'
-          = render partial: 'pools'
-          = render partial: 'stats'
-          = render partial: 'usbstats'
-          = render partial: 'admin'
+        = render partial: 'summary'
+        = render partial: 'devices'
+        = render partial: 'pools'
+        = render partial: 'stats'
+        = render partial: 'usbstats'
+        = render partial: 'admin'
 
-      :javascript
-        $(document).unbind('update');
-        $(document).on('update', function() {
-          $('#updated').addClass('updating').text('Updating...');
-          $('title').text('Updating...');
+    :javascript
+      $(document).unbind('update');
+      $(document).on('update', function() {
+        $('#updated').addClass('updating').text('Updating...');
+        $('title').text('Updating...');
 
-          $('#miner-show').load('#{miner_url(@miner_id)}', function() {
-            $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
-            $('title').text('#{Rails.application.class.parent_name}');
-          });
+        $('#miner-show').load('#{miner_url(@miner_id)}', function() {
+          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.to_s}</span>");
+          $('title').text('#{Rails.application.class.parent_name}');
         });
-
-    - else
-      #miner
-        #tabs
-          %ul
-            %li= link_to 'Summary',   '#summary'
-
-        #summary
-          %p.red.bold Miner unavailable
+      });
 
   - else
     #miner
@@ -49,7 +39,11 @@
           %li= link_to 'Summary',   '#summary'
 
       #summary
-        %p.red.bold Unknown miner
+        %p.red.bold
+          - if @miner.nil?
+            Unknown miner
+          - else
+            Miner unavailable
 
 :javascript
   $(function() {
