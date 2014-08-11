@@ -22,11 +22,6 @@
           = render partial: 'admin'
 
       :javascript
-        $(function() {
-          $('#tabs').tabs({activate: setWindowHash});
-        });
-
-      :javascript
         $(document).unbind('update');
         $(document).on('update', function() {
           $('#updated').addClass('updating').text('Updating...');
@@ -40,8 +35,23 @@
 
     - else
       #miner
-        .red.bold Unavailable
+        #tabs
+          %ul
+            %li= link_to 'Summary',   '#summary'
+
+        #summary
+          %p.red.bold Miner unavailable
 
   - else
     #miner
-      .red.bold Unknown miner
+      #tabs
+        %ul
+          %li= link_to 'Summary',   '#summary'
+
+      #summary
+        %p.red.bold Unknown miner
+
+:javascript
+  $(function() {
+    $('#tabs').tabs({activate: setWindowHash});
+  });
