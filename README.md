@@ -23,10 +23,12 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 
 * [Ruby](https://www.ruby-lang.org) (~> 2.0.0, ~> 2.1.0)
 * [bundler](http://bundler.io/) (~> 1.6.0)
+* [mongodb](http://www.mongodb.org/) (~> 2.6)
 
 ## Dependencies
 
 * [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.1.10)
+* [cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.0.1)
 * haml-rails (~> 0.5.3)
 * jquery-rails (~> 3.1.1)
 * jquery-ui-rails (~> 5.0.0)
@@ -44,6 +46,19 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
     bundle install
 
 ## Configuration
+
+### mongodb
+
+Copy [``config/mongoid.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/mongoid.yml.example) to ``config/mongoid.yml`` and update as necessary.
+
+    production:
+      sessions:
+        default:
+          database: cgminer_monitor
+          hosts:
+            - localhost:27017
+
+### cgminer\_api\_client
 
 Copy [``config/miners.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/miners.yml.example) to ``config/miners.yml`` and update with the IP addresses (and optional ports) of your cgminer instances. E.g.
 
