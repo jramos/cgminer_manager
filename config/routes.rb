@@ -8,4 +8,6 @@ Rails.application.routes.draw do
     match 'run', to: 'miner#run', via: [:post]
     match 'manage_pools', to: 'miner#manage_pools', via: [:post]
   end
+
+  mount CgminerMonitor::Engine => "/"
 end
