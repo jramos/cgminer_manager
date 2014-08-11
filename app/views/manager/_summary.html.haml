@@ -1,14 +1,7 @@
 - @summary.each_pair{|key, values| values.compact!}
 
 #summary
-  - unless @bad_chain_elements.empty?
-    - @bad_chain_elements.uniq!
-
-    #bad-chain-elements.warning
-      Bad chain element(s) detected on:
-      %ul
-        - @bad_chain_elements.each do |miner|
-          %li= miner.host + ':' + miner.port.to_s
+  = render partial: 'warnings'
 
   - if defined?(CgminerMonitor)
     %h2 Local Hashrate

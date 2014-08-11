@@ -1,3 +1,6 @@
+- @miner_unavailable ||= []
+- @bad_chain_elements ||= []
+
 - if miner.available?
   - summary    = @miner_data[miner_index][:summary].first[:summary].first rescue {}
   - devices    = @miner_data[miner_index][:devs].first[:devs] rescue []
@@ -45,7 +48,6 @@
               %td= device[:'device_hardware%'].round(2).to_s + '%'
 
             - if chain_stats = get_stats_for(miner_index, device[:name]+device_index.to_s)
-              - @bad_chain_elements ||= []
               - [:acs, :pga].each do |type|
                 - 1.upto(4) do |i|
                   - status = chain_stats.send(:[], :"chain_#{type}#{i}") rescue nil
@@ -61,6 +63,8 @@
                     - else
                       %td= error_rate.round(2).to_s + '%'
 - else
+  = @miner_unavailable << miner
+
   %tr
     %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
     %td.text-center= format_hashrate(0)

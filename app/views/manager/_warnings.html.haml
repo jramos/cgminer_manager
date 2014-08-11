@@ -1,0 +1,17 @@
+- unless @bad_chain_elements.empty?
+  - @bad_chain_elements.uniq!
+
+  #bad-chain-elements.warning
+    Bad chain element(s) detected on:
+    %ul
+      - @bad_chain_elements.each do |miner|
+        %li= miner.host + ':' + miner.port.to_s
+
+- unless @miner_unavailable.empty?
+  - @miner_unavailable.uniq!
+
+  #miner-unavailable.warning
+    One or more miners is unavailable:
+    %ul
+      - @miner_unavailable.each do |miner|
+        %li= miner.host + ':' + miner.port.to_s
