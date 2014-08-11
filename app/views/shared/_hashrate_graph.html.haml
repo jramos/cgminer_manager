@@ -1,12 +1,13 @@
 - if defined?(CgminerMonitor)
-  - target = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
+  - width = target == 'miner' ? '850' : '864'
+  - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
 
   %h2 Local Hashrate
-  %canvas(id="local_hashrate" width="864" height="400")
+  %canvas(id="local_hashrate" width="#{width}" height="400")
 
   :javascript
     $(document).ready(function(){
-      $.getJSON('/cgminer_monitor/api/v1/graph_data/#{target}', function(hash_rate_response){
+      $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
         var labels = [];
         var hash_rates = [];
         var error_rates = [];
