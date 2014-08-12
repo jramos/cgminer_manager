@@ -10,7 +10,7 @@
     %li= link_to "Coin", '#coin'
 
   #overview
-    = render partial: 'shared/hashrate_graph', locals: { target: 'miner' }
+    = render partial: 'shared/graphs/hashrate', locals: { target: 'miner' }
 
     %table(cellpadding="0" cellspacing="0" id="host-summary")
       %thead
@@ -21,7 +21,7 @@
       %tbody
         = render partial: 'shared/miner_summary_row', locals: { miner: @miner, miner_index: @miner_id }
 
-    = render partial: 'shared/temperature_graph', locals: { target: 'miner' }
+    = render partial: 'shared/graphs/temperature', locals: { target: 'miner' }
 
     %table(cellpadding="0" cellspacing="0" id="overview-table" class="table table-hover")
       %tbody

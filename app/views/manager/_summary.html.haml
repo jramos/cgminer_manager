@@ -3,7 +3,7 @@
 #summary
   = render partial: 'warnings'
 
-  = render partial: 'shared/hashrate_graph', locals: { target: 'local' }
+  = render partial: 'shared/graphs/hashrate', locals: { target: 'local' }
 
   #total-ghs
     - avg_ghs_5s = @summary[:ghs_5s].sum / @summary[:ghs_5s].count rescue 0
@@ -30,7 +30,7 @@
           %td.text-center= format_hashrate(avg_ghs_avg * 1e9)
           %td.text-center= format_hashrate(@summary[:ghs_avg].max * 1e9 )
 
-  = render partial: 'shared/temperature_graph', locals: { target: 'local' }
+  = render partial: 'shared/graphs/temperature', locals: { target: 'local' }
 
   #temperature
     %table(cellpadding="0" cellspacing="0")
