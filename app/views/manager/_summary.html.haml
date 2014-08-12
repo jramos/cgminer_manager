@@ -160,3 +160,6 @@
             %td.text-center= @summary[:pool_stale].min.round(2).to_s + '%'
             %td.text-center= avg_stale_pct.round(2).to_s + '%'
             %td.text-center= @summary[:pool_stale].max.round(2).to_s + '%'
+
+  .container
+    = render partial: 'shared/graphs/availability', locals: { target: 'local' }
