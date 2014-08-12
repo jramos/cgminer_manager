@@ -16,8 +16,6 @@
       = yield :miner_pool
       = render partial: 'admin'
 
-    = render partial: 'general'
-
     :javascript
       $('#manager-content').tabs({activate: setWindowHash});
       $('#admin').tabs();

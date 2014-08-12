@@ -41,29 +41,6 @@
   }
 }
 
-#general {
-  margin-top: 10px;
-
-  table {
-    width: 300px;
-    margin: 0 auto;
-
-    td {
-      border: 0;
-      padding: 0;
-      width: 50%;
-    }
-
-    td:first-child {
-      text-align: right;
-    }
-    td:last-child {
-      padding-left: 10px;
-      text-align: left;
-    }
-  }
-}
-
 #miner-pool tbody tr:hover {
   cursor: pointer;
 }

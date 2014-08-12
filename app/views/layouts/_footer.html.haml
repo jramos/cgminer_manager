@@ -1,0 +1,27 @@
+#footer
+  - miner_available = @miner_pool.miners.select{|miner| miner.available? }.count
+  - miner_total     = @miner_pool.miners.count
+
+  .text-center
+    %table
+      %tr
+        %td cgminer_monitor
+        %td(id="cgminer-monitor-status")
+      %tr
+        %td pool size
+        %td
+          - if miner_available == miner_total
+            .green.bold= "#{miner_available}/#{miner_total} available"
+          - else
+            .red.bold= "#{miner_available}/#{miner_total} available"
+
+:javascript
+  $.getJSON('/cgminer_monitor/api/v1/ping.json', function(data) {
+    status = data['status'];
+
+    if (status == 'running') {
+      $('#cgminer-monitor-status').addClass('green bold').text(data['status']);
+    } else {
+      $('#cgminer-monitor-status').addClass('red bold').text(data['status']);
+    }
+  });
