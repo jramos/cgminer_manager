@@ -15,3 +15,10 @@
     %ul
       - @miner_unavailable.each do |miner|
         %li= miner.host + ':' + miner.port.to_s
+
+- unless @bad_chain_elements.empty? && @miner_unavailable.empty?
+  %audio(id="audio-warning")
+    %source(src="audio/warning.mp3" type="audio/mp3")
+
+  :javascript
+    playWarningSound();
