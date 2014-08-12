@@ -6,7 +6,6 @@
   = render partial: 'shared/hashrate_graph', locals: { target: 'local' }
 
   #total-ghs
-    %h3 Local Rate
     - avg_ghs_5s = @summary[:ghs_5s].sum / @summary[:ghs_5s].count rescue 0
     - avg_ghs_avg = @summary[:ghs_avg].sum / @summary[:ghs_avg].count rescue 0
 
@@ -15,39 +14,42 @@
         %thead
           %th
           %th Global
+          %th Min
           %th Avg
+          %th Max
         %tr
           %td 5s
           %td.text-center= format_hashrate(@summary[:ghs_5s].sum * 1e9 )
+          %td.text-center= format_hashrate(@summary[:ghs_5s].min * 1e9 )
           %td.text-center= format_hashrate(avg_ghs_5s * 1e9)
+          %td.text-center= format_hashrate(@summary[:ghs_5s].max * 1e9 )
         %tr
           %td Avg
           %td.text-center= format_hashrate(@summary[:ghs_avg].sum * 1e9)
+          %td.text-center= format_hashrate(@summary[:ghs_avg].min * 1e9 )
           %td.text-center= format_hashrate(avg_ghs_avg * 1e9)
+          %td.text-center= format_hashrate(@summary[:ghs_avg].max * 1e9 )
+
+  = render partial: 'shared/temperature_graph', locals: { target: 'local' }
 
   #temperature
-    %h3 Temperature
     %table(cellpadding="0" cellspacing="0")
       %tbody
         %thead
           %th
-          %th C
-          %th F
+          %th Min
+          %th Avg
+          %th Max
         %tr
-          %td Range
-          %td.text-center
-            = raw(@summary[:temperature].min.round(1).to_s + ' - ' + @summary[:temperature].max.round(1).to_s + '&deg;') rescue raw('&dash;')
-          %td.text-center
-            - if @summary[:temperature].min && @summary[:temperature].max
-              = raw(to_ferinheight(@summary[:temperature].min).to_s + ' - ' + to_ferinheight(@summary[:temperature].max).to_s + '&deg;')
-            - else
-              = raw('&dash;')
+          %td C
+          %td.text-center= raw((@summary[:temperature].min).round(1).to_s + '&deg;') rescue raw('&dash;')
+          %td.text-center= raw((@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;') rescue raw('&dash;')
+          %td.text-center= raw((@summary[:temperature].max).round(1).to_s + '&deg;') rescue raw('&dash;')
         %tr
-          %td Avg
-          %td.text-center
-            = raw((@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;') rescue raw('&dash;')
-          %td.text-center
-            = raw(to_ferinheight(@summary[:temperature].sum / @summary[:temperature].count).to_s + '&deg;') rescue raw('&dash;')
+          %td F
+          %td.text-center= raw(to_ferinheight(@summary[:temperature].min).round(1).to_s + '&deg;') rescue raw('&dash;')
+          %td.text-center= raw(to_ferinheight(@summary[:temperature].sum / @summary[:temperature].count).round(1).to_s + '&deg;') rescue raw('&dash;')
+          %td.text-center= raw(to_ferinheight(@summary[:temperature].max).round(1).to_s + '&deg;') rescue raw('&dash;')
 
   .clear
 
