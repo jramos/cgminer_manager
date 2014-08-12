@@ -2,7 +2,7 @@
   - pools = @miner_data[@miner_id][:pools].first[:pools]
   %ul
     - pools.each_with_index do |pool, index|
-      - if id = pool.delete(:pool)
+      - if id = pool.delete('pool')
         %li= link_to 'POOL' + id.to_s, '#pool-' + index.to_s
 
   - pools.each_with_index do |pool, index|

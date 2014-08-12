@@ -2,11 +2,12 @@
   - stats = @miner_data[@miner_id][:stats].first[:stats]
   %ul
     - stats.each_with_index do |stat, index|
-      - stat.delete(:stats)
-      - id = stat.delete(:id)
-      %li= link_to id, '#stat-' + index.to_s
+      - name = stat[:id]
+      %li= link_to name, '#stat-' + index.to_s
 
   - stats.each_with_index do |stat, index|
+    - stat.delete('id')
+    - stat.delete('stats')
     %table(cellpadding="0" cellspacing="0" id="stat-#{index.to_s}" class="stat")
       - stat.to_a.in_groups_of(2) do |group|
         %tr
