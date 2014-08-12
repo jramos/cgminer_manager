@@ -16,19 +16,11 @@
 }
 
 #summary {
-  #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale, #pool-network {
-    float: left;
+  #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale {
+    width: 100%;
     margin-right: 10px;
     margin-left: 10px;
     margin-bottom: 20px;
-  }
-
-  #total-ghs, #temperature, #error-rate {
-    width: 100%;
-  }
-
-  #rejected-rate, #pool-stale, #pool-network {
-    width: 408px;
   }
 
   table td:first-child {

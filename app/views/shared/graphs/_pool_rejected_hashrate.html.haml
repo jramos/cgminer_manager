@@ -2,9 +2,9 @@
   - width = target == 'miner' ? '850' : '864'
   - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
 
-  #hardware-error-hashrate-graph
-    %h2 Hardware Error Hashrate
-    %canvas(id="hardware_error_hashrate" width="#{width}" height="400")
+  #pool-rejected-hashrate-graph
+    %h2 Pool Rejected Hashrate
+    %canvas(id="pool_rejected_hashrate" width="#{width}" height="400")
 
   :javascript
     $(document).ready(function(){
@@ -21,15 +21,15 @@
             } else {
               labels.push("");
             }
-            hash_rates.push(response[4]);
+            hash_rates.push(response[2]);
           });
 
           var data = {
             labels: labels,
             datasets: [
               {
-                label: 'Hardware Error Hashrate',
-                fillColor: "red",
+                label: 'Pool Rejected Hashrate',
+                fillColor: "orange",
                 data: hash_rates
               }
             ]
@@ -41,10 +41,10 @@
             tooltipTemplate         : "<%= value.toFixed(2) %> GH/s",
           };
 
-          var ctx = $("#hardware_error_hashrate").get(0).getContext("2d");
+          var ctx = $("#pool_rejected_hashrate").get(0).getContext("2d");
           var myLineChart = new Chart(ctx).Line(data, options);
         } else {
-          $("#hardware-error-hashrate-graph").remove();
+          $("#pool-rejected-hashrate-graph").remove();
         }
       });
     });
