@@ -23,6 +23,7 @@ body {
 a {
   color: blue !important;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .text-left {

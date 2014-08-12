@@ -84,7 +84,25 @@ The data on each page of the site will refresh every minute (60 seconds) by defa
     var config = {
       // data reload interval in seconds
       reload_interval : 300,  // 5 minutes
-      
+    
+      // Enable audio notifications
+      enable_audio: true,
+    
+      // misc UI options
+      show_github_ribbon: true
+    }
+
+#### Disable audio notifications
+
+By default, audio is played when a warning is triggered, since as when a miner becomes unavailable or an ASC reports a bad chip. This can be disabled via the `enable_audio` configuration option. Set it to false if you don't want to hear audio notifications.
+
+    var config = {
+      // data reload interval in seconds
+      reload_interval : 300,  // 5 minutes
+    
+      // Enable audio notifications
+      enable_audio: false,
+    
       // misc UI options
       show_github_ribbon: true
     }
@@ -95,8 +113,11 @@ To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to fa
 
     var config = {
       // data reload interval in seconds
-      reload_interval : 60,  // 1 minute
-      
+      reload_interval : 300,  // 5 minutes
+    
+      // Enable audio notifications
+      enable_audio: false,
+    
       // misc UI options
       show_github_ribbon: false
     }
