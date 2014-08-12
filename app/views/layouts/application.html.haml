@@ -19,19 +19,15 @@
           #updated
             %b Updated:
             %span= Time.zone.now.to_s
-          #update-now
-            %span(onclick="update(); return false;") Update Now
+          #audio-notifications
+            %span Audio notifications:
+            %a(onclick="toggleAudio();" id="audio-status")
+
+          :javascript
+            initAudio();
 
         %h1= content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
 
         .clear
 
       = yield
-
-    #audio-notifications.text-center
-      %br
-      %span Audio notifications:
-      %a(onclick="toggleAudio();" id="audio-status")
-
-    :javascript
-      initAudio();
