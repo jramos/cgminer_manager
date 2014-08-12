@@ -40,6 +40,14 @@ class ManagerController < ApplicationController
   private
 
   def retrieve_miner_data
-    @miner_data ||= @miner_pool.query('version+summary+coin+devs+pools+stats+config')
+    @miner_data ||= @miner_pool.query('version+coin+config')
+
+    [:summary, :devs, :pools, :stats].each do |type|
+      last_entry = "CgminerMonitor::Document::#{type.to_s.capitalize}".constantize.last_entry
+
+      @miner_pool.miners.each_with_index do |miner, index|
+        @miner_data[index][type] = [{type => last_entry[:results][index]}]
+      end
+    end
   end
 end

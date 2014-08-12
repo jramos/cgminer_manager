@@ -40,6 +40,13 @@ class MinerController < ApplicationController
     @miner      ||= @miner_pool.miners[@miner_id]
     @miner_data ||= []
 
-    @miner_data[@miner_id] = @miner.query('version+summary+coin+devs+pools+stats+usbstats+config') if @miner
+    if @miner
+      @miner_data[@miner_id] = @miner.query('version+coin+usbstats+config')
+
+      [:summary, :devs, :pools, :stats].each do |type|
+        last_entry = "CgminerMonitor::Document::#{type.to_s.capitalize}".constantize.last_entry
+        @miner_data[@miner_id][type] = [{type => last_entry[:results][@miner_id]}]
+      end
+    end
   end
 end
