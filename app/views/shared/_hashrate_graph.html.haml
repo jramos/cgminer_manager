@@ -9,7 +9,7 @@
   :javascript
     $(document).ready(function(){
       $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
-        if (hash_rate_response && hash_rate_response.size > 0) {
+        if (hash_rate_response && hash_rate_response.length > 0) {
           var labels = [];
           var hash_rates = [];
 
