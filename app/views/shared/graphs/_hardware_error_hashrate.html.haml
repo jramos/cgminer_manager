@@ -1,0 +1,50 @@
+- if defined?(CgminerMonitor)
+  - width = target == 'miner' ? '850' : '864'
+  - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
+
+  #hardware-error-hashrate-graph
+    %h2 Hardware Error Hashrate
+    %canvas(id="hardware_error_hashrate" width="#{width}" height="400")
+
+  :javascript
+    $(document).ready(function(){
+      $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
+        if (hash_rate_response && hash_rate_response.length > 1) {
+          var labels = [];
+          var hash_rates = [];
+
+          $.each(hash_rate_response, function(index, response) {
+            date = new Date(response[0] * 1000);
+            if (index % 5 == 0 || index == 0 ) {
+              minutes = "00" + date.getMinutes().toString();
+              labels.push(date.getHours() + ':' + minutes.slice(-2));
+            } else {
+              labels.push("");
+            }
+            hash_rates.push(response[2]);
+          });
+
+          var data = {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Hardware Error Hashrate',
+                fillColor: "red",
+                data: hash_rates
+              }
+            ]
+          }
+
+          var options = {
+            pointHitDetectionRadius : 1,
+            animation               : false,
+            tooltipTemplate         : "<%= value.toFixed(2) %>",
+          };
+
+          var ctx = $("#hardware_error_hashrate").get(0).getContext("2d");
+          var myLineChart = new Chart(ctx).Line(data, options);
+        } else {
+          $("#hardware-error-hashrate-graph").remove();
+        }
+      });
+    });
