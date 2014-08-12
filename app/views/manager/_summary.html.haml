@@ -59,6 +59,8 @@
     #error-rate
       - avg_error_pct = @summary[:error_rate].sum / @summary[:error_rate].count rescue 0
       - avg_error_rate = avg_error_pct / 100
+      - total_ghs_5s = (0...@summary[:error_rate].count).inject(0) {|r, i| r + @summary[:error_rate][i] / 100 * @summary[:ghs_5s][i]}
+      - total_ghs_avg = (0...@summary[:error_rate].count).inject(0) {|r, i| r + @summary[:error_rate][i] / 100 * @summary[:ghs_avg][i]}
 
       %table(cellpadding="0" cellspacing="0")
         %tbody
@@ -70,13 +72,13 @@
             %th Max
           %tr
             %td 5s
-            %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_5s * 1e9)
             %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].min * 1e9)
             %td.text-center= format_hashrate(((avg_error_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:error_rate].count) rescue 0))
             %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_5s].max * 1e9)
           %tr
             %td Avg
-            %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_avg * 1e9)
             %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].min * 1e9)
             %td.text-center= format_hashrate(((avg_error_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:error_rate].count) rescue 0))
             %td.text-center= format_hashrate(avg_error_rate * @summary[:ghs_avg].max * 1e9)
@@ -93,7 +95,9 @@
     #rejected-rate
       - avg_rejected_pct = @summary[:rejected_rate].sum / @summary[:rejected_rate].count rescue 0
       - avg_rejected_rate = avg_rejected_pct / 100
-  
+      - total_ghs_5s = (0...@summary[:rejected_rate].count).inject(0) {|r, i| r + @summary[:rejected_rate][i] / 100 * @summary[:ghs_5s][i]}
+      - total_ghs_avg = (0...@summary[:rejected_rate].count).inject(0) {|r, i| r + @summary[:rejected_rate][i] / 100 * @summary[:ghs_avg][i]}
+
       %table(cellpadding="0" cellspacing="0")
         %tbody
           %thead
@@ -104,13 +108,13 @@
             %th Max
           %tr
             %td 5s
-            %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_5s * 1e9)
             %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].min * 1e9)
             %td.text-center= format_hashrate(((avg_rejected_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:rejected_rate].count) rescue 0))
             %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_5s].max * 1e9)
           %tr
             %td Avg
-            %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_avg * 1e9)
             %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].min * 1e9)
             %td.text-center= format_hashrate(((avg_rejected_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:rejected_rate].count) rescue 0))
             %td.text-center= format_hashrate(avg_rejected_rate * @summary[:ghs_avg].max * 1e9)
@@ -127,6 +131,8 @@
     #pool-stale
       - avg_stale_pct = @summary[:pool_stale].sum / @summary[:pool_stale].count rescue 0
       - avg_stale_rate = avg_stale_pct / 100
+      - total_ghs_5s = (0...@summary[:pool_stale].count).inject(0) {|r, i| r + @summary[:pool_stale][i] / 100 * @summary[:ghs_5s][i]}
+      - total_ghs_avg = (0...@summary[:pool_stale].count).inject(0) {|r, i| r + @summary[:pool_stale][i] / 100 * @summary[:ghs_avg][i]}
 
       %table(cellpadding="0" cellspacing="0")
         %tbody
@@ -138,13 +144,13 @@
             %th Max
           %tr
             %td 5s
-            %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_5s * 1e9)
             %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].min * 1e9)
             %td.text-center= format_hashrate(((avg_stale_rate * @summary[:ghs_5s].sum * 1e9 / @summary[:pool_stale].count) rescue 0))
             %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_5s].max * 1e9)
           %tr
             %td Avg
-            %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].sum * 1e9)
+            %td.text-center= format_hashrate(total_ghs_avg * 1e9)
             %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].min * 1e9)
             %td.text-center= format_hashrate(((avg_stale_rate * @summary[:ghs_avg].sum * 1e9 / @summary[:pool_stale].count) rescue 0))
             %td.text-center= format_hashrate(avg_stale_rate * @summary[:ghs_avg].max * 1e9)
