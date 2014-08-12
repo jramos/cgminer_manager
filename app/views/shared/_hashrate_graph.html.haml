@@ -36,9 +36,9 @@
           }
 
           var options = {
-            showTooltips : false,
-            pointDot     : false,
-            animation    : false
+            pointHitDetectionRadius : 1,
+            animation               : false,
+            tooltipTemplate         : "<%= value.toFixed(2) %>",
           };
 
           var ctx = $("#local_hashrate").get(0).getContext("2d");
