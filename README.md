@@ -6,6 +6,7 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 * Hashrate, temperature and error rate graphs via [cgminer_monitor](https://github.com/jramos/cgminer_monitor)
 * Breakdown of miner performance and configuration
 * Audio notifications when things go awry
+* Mobile responsive UI
 * Quick updates to mining pool configuration
 * Allows sending raw API commands to one or more miners
 * Multi-command support; send API commands in bulk
