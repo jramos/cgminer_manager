@@ -1,4 +1,4 @@
-- pools = @miner_data[@miner_id][:pools].first[:pools]
+- pools = @miner_data[@miner_id][:pools].first[:pools] || []
 
 - if @updated
   .bold.red= @updated
