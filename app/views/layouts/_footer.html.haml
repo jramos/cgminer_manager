@@ -16,19 +16,4 @@
             .red.bold= "#{miner_available}/#{miner_total} available"
 
 :javascript
-  $.getJSON('/cgminer_monitor/api/v1/ping.json', function(data) {
-    status = data['status'];
-
-    if (status == 'running') {
-      $('#cgminer-monitor-status').addClass('green bold').text(data['status']);
-    } else {
-      $('#cgminer-monitor-status').addClass('red bold').text(data['status']);
-      div = $('<div/>').
-        attr('id', 'cgminer-monitor-unavailable').
-        addClass('warning').
-        text('cgminer_monitor is unavailable');
-
-      $('#warnings').append(div);
-      playWarningSound();
-    }
-  });
+  updateCgminerMonitorStatus();
