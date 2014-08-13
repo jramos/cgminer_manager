@@ -34,7 +34,6 @@ td {
   margin: 0;
   padding: 10px;
   text-align: center;
-  border-top: 1px solid #ccc;
 }
 
 label {
@@ -158,4 +157,9 @@ label {
       text-align: left;
     }
   }
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #ccc;
 }
