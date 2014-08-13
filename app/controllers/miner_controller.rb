@@ -41,7 +41,7 @@ class MinerController < ApplicationController
     @miner_data ||= []
 
     if @miner
-      @miner_data[@miner_id] = @miner.query('version+coin+usbstats+config')
+      @miner_data[@miner_id] ||= {}
 
       [:summary, :devs, :pools, :stats].each do |type|
         last_entry = "CgminerMonitor::Document::#{type.to_s.capitalize}".constantize.last_entry

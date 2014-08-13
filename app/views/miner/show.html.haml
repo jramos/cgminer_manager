@@ -10,14 +10,12 @@
           %li= link_to 'Devices',   '#devices'
           %li= link_to 'Pools',     '#pools'
           %li= link_to 'Stats',     '#stats'
-          %li= link_to 'USB Stats', '#usbstats'
           %li= link_to 'Admin',     '#admin', class: 'danger'
 
         = render partial: 'summary'
         = render partial: 'devices'
         = render partial: 'pools'
         = render partial: 'stats'
-        = render partial: 'usbstats'
         = render partial: 'admin'
 
     :javascript

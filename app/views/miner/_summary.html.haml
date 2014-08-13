@@ -1,14 +1,6 @@
-- version = @miner_data[@miner_id][:version].first[:version].first rescue {}
 - summary = @miner_data[@miner_id][:summary].first[:summary].first rescue {}
-- config = @miner_data[@miner_id][:config].first[:config].first rescue {}
-- coin = @miner_data[@miner_id][:coin].first[:coin].first rescue {}
 
 #summary
-  %ul
-    %li= link_to "Overview", '#overview'
-    %li= link_to 'Config',    '#config'
-    %li= link_to "Coin", '#coin'
-
   #overview
     %table(cellpadding="0" cellspacing="0" id="host-summary")
       %thead
@@ -28,11 +20,6 @@
 
     %table(cellpadding="0" cellspacing="0" id="overview-table" class="table table-hover")
       %tbody
-        %tr
-          %td.text-left.bold Cgminer version
-          %td.text-right= version[:cgminer]
-          %td.text-left.bold API version
-          %td.text-right= version[:api]
         %tr
           %td.text-left.bold Found blocks
           %td.text-right= summary[:found_blocks]
@@ -73,21 +60,3 @@
           %td.text-right= summary[:best_share]
           %td.text-left.bold Last getwork
           %td.text-right= time_ago_in_words(Time.at(summary[:last_getwork])) + ' ago'
-
-  %table(cellpadding="0" cellspacing="0" id="config")
-    - config.to_a.in_groups_of(2) do |group|
-      %tr
-        - group.each do |key, value|
-          %td.text-left.bold= key
-          %td.text-right= value
-
-  %table(cellpadding="0" cellspacing="0" id="coin")
-    - coin.each_pair do |key, value|
-      %tr
-        %td= key
-        %td.text-right= value
-
-:javascript
-  $(function() {
-    $('#summary').tabs();
-  });
