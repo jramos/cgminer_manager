@@ -21,10 +21,10 @@
             %span= Time.zone.now.to_s
           #audio-notifications
             %span Audio notifications:
-            %a(onclick="toggleAudio();" id="audio-status")
+            %a(onclick="toggleAudioStatus();" id="audio-status")
 
           :javascript
-            initAudio();
+            initAudioStatus();
 
         %h1= content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
 

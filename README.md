@@ -5,6 +5,7 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 * Pool and miner summary pages
 * Hashrate, temperature and error rate graphs via [cgminer_monitor](https://github.com/jramos/cgminer_monitor)
 * Breakdown of miner performance and configuration
+* Audio notifications when things go awry
 * Quick updates to mining pool configuration
 * Allows sending raw API commands to one or more miners
 * Multi-command support; send API commands in bulk
@@ -94,7 +95,7 @@ The data on each page of the site will refresh every minute (60 seconds) by defa
 
 #### Disable audio notifications
 
-By default, audio is played when a warning is triggered, since as when a miner becomes unavailable or an ASC reports a bad chip. This can be disabled via the `enable_audio` configuration option. Set it to false if you don't want to hear audio notifications.
+By default, audio is played when a warning is triggered, such as when a miner becomes unavailable or an ASC reports a bad chip. This can be disabled via the `enable_audio` configuration option. Set it to false if you don't want to hear audio notifications. You can toggle this setting in the UI, as well.
 
     var config = {
       // data reload interval in seconds
