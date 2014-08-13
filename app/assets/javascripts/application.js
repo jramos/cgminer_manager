@@ -6,6 +6,7 @@
 var update = function() {
   $(document).trigger('update');
   updateCgminerMonitorStatus();
+  updatePoolSizeStatus();
 };
 
 var setWindowHash = function(event, ui) {
