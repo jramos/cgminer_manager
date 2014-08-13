@@ -1,4 +1,7 @@
 #miner-pool
+  .container
+    = render partial: 'shared/graphs/availability', locals: { target: 'local' }
+
   - @miner_pool.miners.each_with_index do |miner, miner_index|
     %hr
     .left.half-width=  render partial: 'shared/miner_hashrate_table', locals: { miner: miner, miner_index: miner_index }

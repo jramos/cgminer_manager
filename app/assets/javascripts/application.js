@@ -11,6 +11,7 @@ var update = function() {
 
 var setWindowHash = function(event, ui) {
   window.location.hash = ui.newPanel[0].id;
+  update();
 }
 
 $(document).ready(function() {
