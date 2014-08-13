@@ -89,6 +89,11 @@ label {
   cursor: pointer;
 }
 
+#content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
 #run-command input[type=text],
 #run-pool-command input[type=text] {
   width: 300px;

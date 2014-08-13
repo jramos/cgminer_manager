@@ -1,0 +1,20 @@
+@media screen and (min-width: 300px) {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  #ribbon {
+    display: none !important;
+  }
+
+  #summary {
+    padding-left: 2px;
+    padding-right: 2px;
+
+    #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale {
+      margin-right: 0px;
+      margin-left: 0px;
+    }
+  }
+}
