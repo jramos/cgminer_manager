@@ -120,7 +120,13 @@ label {
 
 #run-command input[type=text],
 #run-pool-command input[type=text] {
-  width: 300px;
+  width: 75%;
+}
+
+#manage-pools {
+  input[type=text] {
+    width: 75%;
+  }
 }
 
 #quick-links td {
