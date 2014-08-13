@@ -1,4 +1,3 @@
-- @miner_unavailable ||= []
 - @bad_chain_elements ||= []
 
 - if miner.available?
@@ -61,8 +60,6 @@
                     - else
                       %td= error_rate.round(2).to_s + '%'
 - else
-  = @miner_unavailable << miner
-
   %tr
     %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
     %td.text-center= format_hashrate(0)

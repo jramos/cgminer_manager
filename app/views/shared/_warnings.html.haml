@@ -13,15 +13,3 @@
 
     :javascript
       playWarningSound();
-
-  - if @miner_unavailable && !@miner_unavailable.empty?
-    - @miner_unavailable.uniq!
-
-    #miner-unavailable.warning
-      One or more miners is unavailable:
-      %ul
-        - @miner_unavailable.each do |miner|
-          %li= miner.host + ':' + miner.port.to_s
-
-    :javascript
-      playWarningSound();

@@ -20,9 +20,9 @@ $(document).ready(function() {
 
 var updateCgminerMonitorStatus = function() {
   $.getJSON('/cgminer_monitor/api/v1/ping.json', function(data) {
-    status = data['status'];
+    daemon_status = data['status'];
 
-    if (status == 'running') {
+    if (daemon_status == 'running') {
       $('#cgminer-monitor-status').addClass('green bold').text(data['status']);
     } else {
       $('#cgminer-monitor-status').addClass('red bold').text(data['status']);
@@ -35,4 +35,24 @@ var updateCgminerMonitorStatus = function() {
       playWarningSound();
     }
   });
+}
+
+var updatePoolSizeStatus = function() {
+  $.getJSON('/cgminer_monitor/api/v1/graph_data/local_availability.json', function(data) {
+    most_recent = data[data.length - 1];
+    str = most_recent[1].toString() + '/' + most_recent[2].toString() + ' miners';
+
+    if (most_recent[1] == most_recent[2]) {
+      $('#pool-size-status').addClass('green bold').text(str);
+    } else {
+      $('#pool-size-status').addClass('red bold').text(str);
+      div = $('<div/>').
+        attr('id', 'miner-unavailable').
+        addClass('warning').
+        text('One or more miners is unavailable');
+
+      $('#warnings').append(div);
+      playWarningSound();
+    }
+  });  
 }

@@ -1,7 +1,4 @@
 #footer
-  - miner_available = @miner_pool.miners.select{|miner| miner.available? }.count
-  - miner_total     = @miner_pool.miners.count
-
   .text-center
     %table
       %tr
@@ -9,11 +6,8 @@
         %td(id="cgminer-monitor-status")
       %tr
         %td pool size
-        %td
-          - if miner_available == miner_total
-            .green.bold= "#{miner_available}/#{miner_total} available"
-          - else
-            .red.bold= "#{miner_available}/#{miner_total} available"
+        %td(id="pool-size-status")
 
 :javascript
   updateCgminerMonitorStatus();
+  updatePoolSizeStatus();
