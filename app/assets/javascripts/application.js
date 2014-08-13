@@ -24,9 +24,9 @@ var updateCgminerMonitorStatus = function() {
     daemon_status = data['status'];
 
     if (daemon_status == 'running') {
-      $('#cgminer-monitor-status').addClass('green bold').text(data['status']);
+      $('#cgminer-monitor-status').attr('class', 'green bold').text(data['status']);
     } else {
-      $('#cgminer-monitor-status').addClass('red bold').text(data['status']);
+      $('#cgminer-monitor-status').attr('class', 'red bold').text(data['status']);
       div = $('<div/>').
         attr('id', 'cgminer-monitor-unavailable').
         addClass('warning').
