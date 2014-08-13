@@ -23,5 +23,12 @@
       $('#cgminer-monitor-status').addClass('green bold').text(data['status']);
     } else {
       $('#cgminer-monitor-status').addClass('red bold').text(data['status']);
+      div = $('<div/>').
+        attr('id', 'cgminer-monitor-unavailable').
+        addClass('warning').
+        text('cgminer_monitor is unavailable');
+
+      $('#warnings').append(div);
+      playWarningSound();
     }
   });

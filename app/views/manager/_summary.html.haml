@@ -1,8 +1,6 @@
 - @summary.each_pair{|key, values| values.compact!}
 
 #summary
-  = render partial: 'warnings'
-
   .container
     = render partial: 'shared/graphs/hashrate', locals: { target: 'local' }
 

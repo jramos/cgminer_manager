@@ -6,6 +6,8 @@
     - content_for(:miner_pool) do
       = render partial: 'miner_pool'
 
+    = render partial: 'shared/warnings'
+
     #manager-content
       %ul
         %li= link_to 'Summary', '#summary'

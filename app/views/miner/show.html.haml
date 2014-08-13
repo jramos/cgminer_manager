@@ -3,6 +3,8 @@
     - content_for(:page_title) do
       = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
 
+    = render partial: 'shared/warnings'
+
     #miner
       #tabs
         %ul
