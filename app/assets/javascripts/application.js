@@ -44,9 +44,9 @@ var updatePoolSizeStatus = function() {
     str = most_recent[1].toString() + '/' + most_recent[2].toString() + ' miners';
 
     if (most_recent[1] == most_recent[2]) {
-      $('#pool-size-status').addClass('green bold').text(str);
+      $('#pool-size-status').attr('class', 'green bold').text(str);
     } else {
-      $('#pool-size-status').addClass('red bold').text(str);
+      $('#pool-size-status').attr('class', 'red bold').text(str);
       div = $('<div/>').
         attr('id', 'miner-unavailable').
         addClass('warning').
