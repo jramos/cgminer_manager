@@ -1,0 +1,25 @@
+- @bad_chain_elements ||= []
+
+%table(cellpadding="0" cellspacing="0")
+  %thead
+    %th Host
+    %th Rate(5s)
+    %th Rate(avg)
+  %tbody
+    - if miner.available?
+      - summary = @miner_data[miner_index][:summary].first[:summary].try(:first) || {}
+      - @summary[:ghs_5s]         << summary[:ghs_5s]
+      - @summary[:ghs_avg]        << summary[:ghs_av]
+      - @summary[:pool_stale]     << summary[:'pool_stale%']
+      - @summary[:error_rate]     << summary[:'device_hardware%']
+      - @summary[:rejected_rate]  << summary[:'device_rejected%']
+
+      %tr(onclick="document.location='#{miner_url(miner_index)}';")
+        %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
+        %td.text-center= format_hashrate(summary[:ghs_5s].to_f * 1e9)
+        %td.text-center= format_hashrate(summary[:ghs_av].to_f * 1e9)
+    - else
+      %tr
+        %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
+        %td.text-center= format_hashrate(0)
+        %td.text-center= format_hashrate(0)

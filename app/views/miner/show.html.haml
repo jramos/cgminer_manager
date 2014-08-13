@@ -8,11 +8,11 @@
     #miner
       #tabs
         %ul
-          %li= link_to 'Summary',   '#summary'
-          %li= link_to 'Devices',   '#devices'
-          %li= link_to 'Pools',     '#pools'
-          %li= link_to 'Stats',     '#stats'
-          %li= link_to 'Admin',     '#admin', class: 'danger'
+          %li= link_to 'Host',  '#summary'
+          %li= link_to 'Devs',  '#devices'
+          %li= link_to 'Pools', '#pools'
+          %li= link_to 'Stats', '#stats'
+          %li= link_to 'Admin', '#admin', class: 'danger'
 
         = render partial: 'summary'
         = render partial: 'devices'

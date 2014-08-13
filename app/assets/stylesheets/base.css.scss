@@ -41,8 +41,32 @@ label {
   font-weight: bold;
 }
 
+.left {
+  float: left;
+}
+
+.right {
+  float: right;
+}
+
+.center {
+  margin: 0 auto;
+}
+
 .clear {
   clear: both;
+}
+
+.quarter-width {
+  width: 25%;
+}
+
+.half-width {
+  width: 50%;
+}
+
+.full-width {
+  width: 100%;
 }
 
 .ui-widget .ui-widget {

@@ -2,14 +2,12 @@
 
 #summary
   #overview
-    %table(cellpadding="0" cellspacing="0" id="host-summary")
-      %thead
-        %th Host
-        %th Rate(5s)
-        %th Rate(avg)
-        %th Devices
-      %tbody
-        = render partial: 'shared/miner_summary_row', locals: { miner: @miner, miner_index: @miner_id }
+    .left.half-width= render partial: 'shared/miner_hashrate_table', locals: { miner: @miner, miner_index: @miner_id }
+    .mobile-clear
+    .left.half-width= render partial: 'shared/miner_devices_table', locals: { miner: @miner, miner_index: @miner_id }
+    .clear
+
+    %hr
 
     = render partial: 'shared/graphs/hashrate', locals: { target: 'miner' }
     = render partial: 'shared/graphs/temperature', locals: { target: 'miner' }
@@ -18,45 +16,86 @@
     = render partial: 'shared/graphs/pool_stale_hashrate', locals: { target: 'miner' }
     = render partial: 'shared/graphs/availability', locals: { target: 'miner' }
 
-    %table(cellpadding="0" cellspacing="0" id="overview-table" class="table table-hover")
+    - classes = 'table table-hover half-width left'
+
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Found blocks
           %td.text-right= summary[:found_blocks]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Get works
           %td.text-right= summary[:getworks]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Accepted
           %td.text-right= summary[:accepted]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Rejected
           %td.text-right= summary[:rejected]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Hardware errors
           %td.text-right= summary[:hardware_errors]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Utility
           %td.text-right= summary[:utility]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Discarded
           %td.text-right= summary[:discarded]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Stale
           %td.text-right= summary[:stale]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Local work
           %td.text-right= summary[:local_work]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Network blocks
           %td.text-right= summary[:network_blocks]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Total processed
           %td.text-right= format_hashrate(summary[:total_mh] * 1e3).sub('/s','')
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Work utility
           %td.text-right= summary[:work_utility]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Difficulty accepted
           %td.text-right= summary[:difficulty_accepted]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Difficulty rejected
           %td.text-right= summary[:difficulty_rejected]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
         %tr
           %td.text-left.bold Best share
           %td.text-right= summary[:best_share]
+    %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
+      %tbody
+        %tr
           %td.text-left.bold Last getwork
           %td.text-right= time_ago_in_words(Time.at(summary[:last_getwork])) + ' ago'
+    .clear

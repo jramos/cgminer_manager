@@ -9,16 +9,10 @@
     margin-left: 10px;
     margin-bottom: 20px;
   }
-
-  table td:first-child {
-    font-weight: bold;
-    text-align: left;
-    width: 75px;
-  }
 }
 
 #miner-summary {
-  #overview-table {
+  .overview-table {
     display: table;
     width: 100%;
 

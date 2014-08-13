@@ -1,9 +1,38 @@
-@media screen and (min-width: 300px) {
+@media screen and (max-width: 700px) {
   body {
     margin: 0;
     padding: 0;
+    font-size: 10px;
   }
-  
+
+  h1 {
+    font-size: 1.75em;
+  }
+
+  td {
+    padding: 8px;
+  }
+
+  .mobile-hidden {
+    display: none;
+  }
+
+  .mobile-clear {
+    clear: both;
+  }
+
+  .quarter-width {
+    width: 50%;
+  }
+
+  .half-width {
+    width: 100%;
+  }
+
+  .ui-tabs {
+    padding: 0;
+  }
+
   #ribbon {
     display: none !important;
   }
@@ -12,9 +41,18 @@
     padding-left: 2px;
     padding-right: 2px;
 
-    #total-ghs, #error-rate, #rejected-rate, #temperature, #pool-stale {
+    #total-ghs,
+    #error-rate,
+    #rejected-rate,
+    #temperature,
+    #pool-stale {
       margin-right: 0px;
       margin-left: 0px;
     }
+  }
+
+  #miner-pool {
+    padding: 0;
+    margin: 0;
   }
 }

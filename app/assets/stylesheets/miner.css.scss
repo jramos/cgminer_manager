@@ -11,19 +11,6 @@
     padding: 20px;
   }
 
-  #summary #coin {
-    display: table;
-    width: 100%;
-
-    td {
-      width: 50%;
-    }
-
-    td:first-child {
-      font-weight: bold;
-    }
-  }
-    
   #summary #config,
   #devices .device,
   #pools .pool,
@@ -37,7 +24,7 @@
     }
   }
 
-  #host-summary {
+  #miner-summary {
     td:first-child {
       font-weight: normal;
       text-align: center;
@@ -63,7 +50,7 @@
   }
 }
 
-#overview-table {
+.overview-table {
   td {
     width: 25%;
   }

@@ -1,0 +1,53 @@
+- devices = @miner_data[miner_index][:devs].first[:devs] || []
+
+%table(cellpadding="0" cellspacing="0" class="device_summary")
+  %thead
+    %th Name
+    %th Status
+    %th Elapsed
+    %th Temp
+    %th Rejected
+    %th Error
+  %tbody
+    - if miner.available?
+      - devices.each_with_index do |device, device_index|
+        - @summary[:temperature]    << device[:temperature]
+        - @summary[:uptime]         << device[:device_elapsed]
+        - @summary[:total_mh]       << device[:total_mh]
+
+        %tr.text-center
+          %td= device[:name] + device_index.to_s
+
+          - if device[:status] == 'Alive'
+            %td.green.bold= device[:status]
+          - else
+            %td.red.bold= device[:status]
+
+          %td= time_ago_in_words(Time.now - device[:device_elapsed])
+          %td= raw(device[:temperature].to_s + '&deg; C')
+          %td= device[:'device_rejected%'].round(2).to_s + '%'
+          %td= device[:'device_hardware%'].round(2).to_s + '%'
+
+        - if chain_stats = get_stats_for(miner_index, device[:name]+device_index.to_s)
+          - [:acs, :pga].each do |type|
+            - 1.upto(4) do |i|
+              - status = chain_stats.send(:[], :"chain_#{type}#{i}") rescue nil
+              - next if status.nil? || status.try(:empty?)
+
+              %tr.text-center
+                %td= "#{type.to_s.upcase}#{(i - 1).to_s}"
+                %td(colspan="4")= raw(status.downcase.gsub('x', '<span class="red bold">x</span>'))
+                - error_rate = (1 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100
+                - if error_rate > 0
+                  %td.red.bold= error_rate.round(2).to_s + '%'
+                  - @bad_chain_elements << miner
+                - else
+                  %td= error_rate.round(2).to_s + '%'
+    - else
+      %tr
+        %td &dash;
+        %td.red.bold Unavailable
+        %td &dash;
+        %td &dash;
+        %td &dash;
+        %td &dash;
