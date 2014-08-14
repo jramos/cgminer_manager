@@ -30,9 +30,9 @@ GEM
     arel (5.0.1.20140414130214)
     bson (2.3.0)
     builder (3.2.2)
-    cgminer_api_client (0.1.13)
-    cgminer_monitor (0.1.8)
-      cgminer_api_client (~> 0.1.13)
+    cgminer_api_client (0.1.14)
+    cgminer_monitor (0.1.9)
+      cgminer_api_client (~> 0.1.14)
       mongoid (= 4.0.0)
       rails (= 4.1.4)
       rake (~> 10.0)
@@ -140,8 +140,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  cgminer_api_client (~> 0.1.13)
-  cgminer_monitor (~> 0.1.8)
+  cgminer_api_client (~> 0.1.14)
+  cgminer_monitor (~> 0.1.9)
   haml-rails (~> 0.5.3)
   jquery-rails (~> 3.1.1)
   jquery-ui-rails (~> 5.0.0)
