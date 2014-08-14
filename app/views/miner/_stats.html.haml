@@ -1,5 +1,5 @@
 #stats
-  - stats = @miner_data[@miner_id][:stats].first[:stats]
+  - stats = @miner_data[@miner_id][:stats].first[:stats] || []
   %ul
     - stats.each_with_index do |stat, index|
       - name = stat[:id]

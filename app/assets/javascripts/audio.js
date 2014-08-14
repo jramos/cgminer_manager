@@ -1,9 +1,11 @@
 var playWarningSound = function () {
+  if (config.enable_audio) {
     warning = $("#audio-warning")[0];
 
     if (warning && warning.play) {
         warning.play();
     }
+  }
 }
 
 var initAudioStatus = function () {

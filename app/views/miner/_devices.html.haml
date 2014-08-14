@@ -1,5 +1,5 @@
 #devices
-  - devices = @miner_data[@miner_id][:devs].first[:devs]
+  - devices = @miner_data[@miner_id][:devs].first[:devs] || []
   %ul
     - devices.each_with_index do |device, index|
       %li= link_to device[:name] + device[:id].to_s, "#device-#{index.to_s}"

@@ -1,5 +1,5 @@
 #pools
-  - pools = @miner_data[@miner_id][:pools].first[:pools]
+  - pools = @miner_data[@miner_id][:pools].first[:pools] || []
   %ul
     - pools.each_with_index do |pool, index|
       - if id = pool.delete('pool')

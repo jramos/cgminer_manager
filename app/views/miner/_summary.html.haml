@@ -74,7 +74,7 @@
       %tbody
         %tr
           %td.text-left.bold Total processed
-          %td.text-right= format_hashrate(summary[:total_mh] * 1e3).sub('/s','')
+          %td.text-right= format_hashrate(summary[:total_mh].to_f * 1e3).sub('/s','')
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
@@ -99,5 +99,8 @@
       %tbody
         %tr
           %td.text-left.bold Last getwork
-          %td.text-right= time_ago_in_words(Time.at(summary[:last_getwork])) + ' ago'
+          - if summary[:last_getwork]
+            %td.text-right= time_ago_in_words(Time.at(summary[:last_getwork])) + ' ago'
+          - else
+            %td.text-right &dash;
     .clear
