@@ -1,11 +1,11 @@
-#prev-next-miner
-  - if @miner_id > 0
-    .left= link_to raw("&laquo; Previous Miner"), miner_url(@miner_id - 1)
-  - if @miner_id < @miner_pool.miners.count - 1
-    .right= link_to raw("Next Miner &raquo;"), miner_url(@miner_id + 1)
-  .clear
-
 #miner-show
+  #prev-next-miner
+    - if @miner_id > 0
+      .left= link_to raw("&laquo; Previous Miner"), miner_url(@miner_id - 1)
+    - if @miner_id < @miner_pool.miners.count - 1
+      .right= link_to raw("Next Miner &raquo;"), miner_url(@miner_id + 1)
+    .clear
+
   - unless @miner.nil? || !@miner.available?
     - content_for(:page_title) do
       = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
