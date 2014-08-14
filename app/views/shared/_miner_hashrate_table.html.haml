@@ -14,12 +14,12 @@
       - @summary[:error_rate]     << summary[:'device_hardware%']
       - @summary[:rejected_rate]  << summary[:'device_rejected%']
 
-      %tr(onclick="document.location='#{miner_url(miner_index)}';")
-        %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
+      %tr
+        %td= miner.host + ':' + miner.port.to_s
         %td.text-center= format_hashrate(summary[:ghs_5s].to_f * 1e9)
         %td.text-center= format_hashrate(summary[:ghs_av].to_f * 1e9)
     - else
       %tr
-        %td= link_to miner.host + ':' + miner.port.to_s, miner_url(miner_index)
+        %td= miner.host + ':' + miner.port.to_s
         %td.text-center= format_hashrate(0)
         %td.text-center= format_hashrate(0)

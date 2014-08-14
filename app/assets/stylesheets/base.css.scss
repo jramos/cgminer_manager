@@ -30,6 +30,15 @@ table tr:hover {
   background: #efefef;
 }
 
+.clickable-container {
+  cursor: pointer;
+}
+
+.clickable-container:hover {
+  background: #efefef;
+}
+
+
 td {
   margin: 0;
   padding: 10px;

@@ -2,9 +2,22 @@
 
 #summary
   #overview
-    .left.half-width= render partial: 'shared/miner_hashrate_table', locals: { miner: @miner, miner_index: @miner_id }
-    .mobile-clear
-    .left.half-width= render partial: 'shared/miner_devices_table', locals: { miner: @miner, miner_index: @miner_id }
+    .container
+      - if @miner_id > 1
+        .left= link_to raw("&laquo; Previous Miner"), miner_url(@miner_id - 1)
+
+      - if @miner_id < @miner_pool.miners.count - 1
+        .right= link_to raw("Next Miner &raquo;"), miner_url(@miner_id + 1)
+
+    .clear
+
+    %br
+
+    .container
+      .left.half-width= render partial: 'shared/miner_hashrate_table', locals: { miner: @miner, miner_index: @miner_id }
+      .mobile-clear
+      .left.half-width= render partial: 'shared/miner_devices_table', locals: { miner: @miner, miner_index: @miner_id }
+
     .clear
 
     %hr
