@@ -29,7 +29,10 @@
         $('title').text('Updating...');
 
         $('#manager').load('#{root_url}', function() {
-          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>#{Time.zone.now.strftime("%H:%M:%S")}</span>");
+          now = new Date();
+          current_time = formatUpdatedAt(now);
+
+          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + current_time + "</span>");
           $('title').text('#{Rails.application.class.parent_name}');
         });
       });

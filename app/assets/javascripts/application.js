@@ -20,6 +20,19 @@ $(document).ready(function() {
   }
 });
 
+var formatUpdatedAt = function(d) {
+  var h = d.getHours();
+  if ( h < 10 ) h = '0' + h;
+
+  var m = d.getMinutes();
+  if ( m < 10 ) m = '0' + m;
+
+  var s = d.getSeconds();
+  if ( s < 10 ) s = '0' + s;
+
+  return h+':'+m+':'+s;
+}
+
 var updateCgminerMonitorStatus = function() {
   $.getJSON('/cgminer_monitor/api/v1/ping.json', function(data) {
     daemon_status = data['status'];
