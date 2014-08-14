@@ -45,6 +45,10 @@
 
           var ctx = $("#pool_rejected_hashrate").get(0).getContext("2d");
           var myLineChart = new Chart(ctx).Line(data, options);
+
+          if ("#{target}" == "miner") {
+            injectHashrateTable(hash_rates, '#pool-rejected-hashrate-graph');
+          }
         } else {
           $("#pool-rejected-hashrate-graph").remove();
         }

@@ -59,6 +59,10 @@
 
           var ctx = $("#local_temperature").get(0).getContext("2d");
           var myLineChart = new Chart(ctx).Line(data, options);
+
+          if ("#{target}" == "miner") {
+            injectTemperatureTable(min_temperatures, avg_temperatures, max_temperatures, '#temperature-graph');
+          }
         } else {
           $("#temperature-graph").remove();
         }
