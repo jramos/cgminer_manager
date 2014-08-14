@@ -5,8 +5,8 @@
       %li= link_to device[:name] + device[:id].to_s, "#device-#{index.to_s}"
 
   - devices.each_with_index do |device, index|
-    - device.delete(:name)
-    - device.delete(:id)
+    - device.delete('name')
+    - device.delete('id')
 
     %div(id="device-#{index.to_s}")
       - device.each_pair do |key, value|

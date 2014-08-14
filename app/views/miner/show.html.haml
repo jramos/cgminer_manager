@@ -1,3 +1,10 @@
+#prev-next-miner
+  - if @miner_id > 0
+    .left= link_to raw("&laquo; Previous Miner"), miner_url(@miner_id - 1)
+  - if @miner_id < @miner_pool.miners.count - 1
+    .right= link_to raw("Next Miner &raquo;"), miner_url(@miner_id + 1)
+  .clear
+
 #miner-show
   - unless @miner.nil? || !@miner.available?
     - content_for(:page_title) do
@@ -5,10 +12,12 @@
 
     = render partial: 'shared/warnings'
 
+    .clear
+
     #miner
       #tabs
         %ul
-          %li= link_to 'Host',  '#summary'
+          %li= link_to 'Miner',  '#summary'
           %li= link_to 'Devs',  '#devices'
           %li= link_to 'Pools', '#pools'
           %li= link_to 'Stats', '#stats'
