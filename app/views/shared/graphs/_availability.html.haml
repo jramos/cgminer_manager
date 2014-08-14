@@ -46,6 +46,7 @@
 
           var ctx = $("#local_availability").get(0).getContext("2d");
           var myLineChart = new Chart(ctx).Line(data, options);
+
           injectAvailabilityTable(availabilities, '#availability-graph');
         } else {
           $("#availability-graph").remove();
