@@ -60,9 +60,9 @@ var injectAvailabilityTable = function (availabilities, target) {
   var sum = 0;
   for(var i = 0; i < availabilities.length; i++){ sum += availabilities[i]; }
 
-  min   = Math.min.apply(Math, availabilities) * 100;
-  avg   = (sum / availabilities.length) * 100;
-  max   = Math.max.apply(Math, availabilities) * 100;
+  min   = Math.min.apply(Math, availabilities);
+  avg   = (sum / availabilities.length);
+  max   = Math.max.apply(Math, availabilities);
 
   table = $('<table/>');
   thead = $('<thead/>');

@@ -21,7 +21,7 @@
             } else {
               labels.push("");
             }
-            availabilities.push(response[1]);
+            availabilities.push(parseFloat(response[1] / parseFloat(response[2])) * 100);
           });
 
           var data = {
@@ -38,18 +38,15 @@
           var options = {
             pointHitDetectionRadius : 1,
             animation               : false,
-            tooltipTemplate         : "<%= value %> miners",
-            multiTooltipTemplate    : "<%= value %> miners",
+            tooltipTemplate         : "<%= value %> %",
+            multiTooltipTemplate    : "<%= value %> %",
             scaleBeginAtZero        : true,
             responsive              : true
           };
 
           var ctx = $("#local_availability").get(0).getContext("2d");
           var myLineChart = new Chart(ctx).Line(data, options);
-
-          if ("#{target}" == "miner") {
-            injectAvailabilityTable(availabilities, '#availability-graph');
-          }
+          injectAvailabilityTable(availabilities, '#availability-graph');
         } else {
           $("#availability-graph").remove();
         }
