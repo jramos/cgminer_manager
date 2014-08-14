@@ -19,7 +19,7 @@
         #updated-container
           #updated
             %b Updated:
-            %span= Time.zone.now.to_s
+            %span= Time.zone.now.strftime("%H:%M:%S")
           #audio-notifications
             %span Audio notifications:
             %a(onclick="toggleAudioStatus();" id="audio-status")
