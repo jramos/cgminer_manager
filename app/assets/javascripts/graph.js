@@ -1,11 +1,4 @@
-var injectHashrateTable = function(hash_rates, target) {
-  var sum = 0;
-  for (var i = 0; i < hash_rates.length; i++){ sum += hash_rates[i]; }
-
-  min   = 1e9 * Math.min.apply(Math, hash_rates);
-  avg   = 1e9 * sum / hash_rates.length;
-  max   = 1e9 * Math.max.apply(Math, hash_rates);
-
+var injectHashrateTable = function(hash_rates_5s, hash_rates_av, error_rates, target) {
   table = $('<table/>');
   thead = $('<thead/>');
   thead.append($('<th/>').text(''));
@@ -14,12 +7,53 @@ var injectHashrateTable = function(hash_rates, target) {
   thead.append($('<th/>').text('Max'));
   table.append(thead);
 
-  tr = $('<tr/>');
-  tr.append($('<td/>').text('5s'));
-  tr.append($('<td/>').text(formatHashrate(min)));
-  tr.append($('<td/>').text(formatHashrate(avg)));
-  tr.append($('<td/>').text(formatHashrate(max)));
-  table.append(tr);
+  if (hash_rates_5s.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < hash_rates_5s.length; i++){ sum += hash_rates_5s[i]; }
+
+    min   = 1e9 * Math.min.apply(Math, hash_rates_5s);
+    avg   = 1e9 * sum / hash_rates_5s.length;
+    max   = 1e9 * Math.max.apply(Math, hash_rates_5s);
+
+    tr = $('<tr/>');
+    tr.append($('<td/>').text('5s'));
+    tr.append($('<td/>').text(formatHashrate(min)));
+    tr.append($('<td/>').text(formatHashrate(avg)));
+    tr.append($('<td/>').text(formatHashrate(max)));
+    table.append(tr);
+  }
+
+  if (hash_rates_av.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < hash_rates_av.length; i++){ sum += hash_rates_av[i]; }
+
+    min   = 1e9 * Math.min.apply(Math, hash_rates_av);
+    avg   = 1e9 * sum / hash_rates_av.length;
+    max   = 1e9 * Math.max.apply(Math, hash_rates_av);
+
+    tr = $('<tr/>');
+    tr.append($('<td/>').text('Avg'));
+    tr.append($('<td/>').text(formatHashrate(min)));
+    tr.append($('<td/>').text(formatHashrate(avg)));
+    tr.append($('<td/>').text(formatHashrate(max)));
+    table.append(tr);
+  }
+
+  if (error_rates.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < error_rates.length; i++){ sum += error_rates[i]; }
+
+    min   = 100 * Math.min.apply(Math, error_rates);
+    avg   = 100 * sum / error_rates.length;
+    max   = 100 * Math.max.apply(Math, error_rates);
+
+    tr = $('<tr/>');
+    tr.append($('<td/>').text('%'));
+    tr.append($('<td/>').text(min.toFixed(3)).append('%'));
+    tr.append($('<td/>').text(avg.toFixed(3)).append('%'));
+    tr.append($('<td/>').text(max.toFixed(3)).append('%'));
+    table.append(tr);
+  }
 
   $(target).append(table);
 }
