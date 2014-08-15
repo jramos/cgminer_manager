@@ -1,0 +1,21 @@
+#ribbon(style="display:none;")
+  = link_to image_tag('/forkme.png', style: 'position: absolute; top: 0; right: 0; border: 0;', alt: 'Fork me on GitHub'), 'https://github.com/jramos/cgminer_manager'
+
+:javascript
+  if(config.show_github_ribbon) { $('#ribbon').fadeIn(1000); } else { $('#ribbon').remove(); }
+
+#header
+  #updated-container
+    #updated
+      %b Updated:
+      %span= Time.zone.now.strftime("%H:%M:%S")
+    #audio-notifications
+      %b Audio:
+      %a(onclick="toggleAudioStatus();" id="audio-status")
+
+    :javascript
+      initAudioStatus();
+
+  %h1= content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
+
+  .clear
