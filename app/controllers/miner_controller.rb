@@ -1,7 +1,6 @@
 class MinerController < ApplicationController
   include MinerHelper
 
-  before_filter :setup_summary, :only => [:show]
   before_filter :lookup_miner
 
   def show

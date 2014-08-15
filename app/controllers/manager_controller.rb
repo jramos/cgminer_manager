@@ -1,7 +1,6 @@
 class ManagerController < ApplicationController
   include MinerHelper
 
-  before_filter :setup_summary, :only => [:index]
   before_filter :retrieve_miner_data, :only => [:index]
 
   def index
