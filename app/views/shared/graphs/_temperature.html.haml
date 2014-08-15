@@ -1,68 +1,67 @@
-- if defined?(CgminerMonitor)
-  - width = target == 'miner' ? '850' : '864'
-  - url   = target == 'miner' ? 'miner_temperature.json?miner_id=' + @miner_id.to_s : 'local_temperature.json'
+- width = target == 'miner' ? '850' : '864'
+- url   = target == 'miner' ? 'miner_temperature.json?miner_id=' + @miner_id.to_s : 'local_temperature.json'
 
-  #temperature-graph
-    %h2 Temperature
-    %canvas(id="local_temperature" width="#{width}" height="400")
+#temperature-graph
+  %h2 Temperature
+  %canvas(id="local_temperature" width="#{width}" height="400")
 
-  :javascript
-    $(document).ready(function(){
-      $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(temperature_response){
-        if (temperature_response && temperature_response.length > 1) {
-          var labels = [];
-          var min_temperatures = [];
-          var avg_temperatures = [];
-          var max_temperatures = [];
+:javascript
+  $(document).ready(function(){
+    $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(temperature_response){
+      if (temperature_response && temperature_response.length > 1) {
+        var labels = [];
+        var min_temperatures = [];
+        var avg_temperatures = [];
+        var max_temperatures = [];
 
-          $.each(temperature_response, function(index, response) {
-            date = new Date(response[0] * 1000);
-            if (index % 5 == 0 || index == 0 ) {
-              minutes = "00" + date.getMinutes().toString();
-              labels.push(date.getHours() + ':' + minutes.slice(-2));
-            } else {
-              labels.push("");
-            }
-            min_temperatures.push(response[1]);
-            avg_temperatures.push(response[2]);
-            max_temperatures.push(response[3]);
-          });
-
-          var data = {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Max Temperature',
-                fillColor: "red",
-                data: max_temperatures
-              },
-              {
-                label: 'Avg Temperature',
-                fillColor: "orange",
-                data: avg_temperatures
-              },
-              {
-                label: 'Min Temperature',
-                fillColor: "yellow",
-                data: min_temperatures
-              }
-            ]
+        $.each(temperature_response, function(index, response) {
+          date = new Date(response[0] * 1000);
+          if (index % 5 == 0 || index == 0 ) {
+            minutes = "00" + date.getMinutes().toString();
+            labels.push(date.getHours() + ':' + minutes.slice(-2));
+          } else {
+            labels.push("");
           }
+          min_temperatures.push(response[1]);
+          avg_temperatures.push(response[2]);
+          max_temperatures.push(response[3]);
+        });
 
-          var options = {
-            pointHitDetectionRadius : 1,
-            animation               : false,
-            tooltipTemplate         : "<%= value.toFixed(2) %> C",
-            multiTooltipTemplate    : "<%= value.toFixed(2) %> C",
-            responsive              : true
-          };
-
-          var ctx = $("#local_temperature").get(0).getContext("2d");
-          var myLineChart = new Chart(ctx).Line(data, options);
-
-          injectTemperatureTable(min_temperatures, avg_temperatures, max_temperatures, '#temperature-graph');
-        } else {
-          $("#temperature-graph").remove();
+        var data = {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Max Temperature',
+              fillColor: "red",
+              data: max_temperatures
+            },
+            {
+              label: 'Avg Temperature',
+              fillColor: "orange",
+              data: avg_temperatures
+            },
+            {
+              label: 'Min Temperature',
+              fillColor: "yellow",
+              data: min_temperatures
+            }
+          ]
         }
-      });
+
+        var options = {
+          pointHitDetectionRadius : 1,
+          animation               : false,
+          tooltipTemplate         : "<%= value.toFixed(2) %> C",
+          multiTooltipTemplate    : "<%= value.toFixed(2) %> C",
+          responsive              : true
+        };
+
+        var ctx = $("#local_temperature").get(0).getContext("2d");
+        var myLineChart = new Chart(ctx).Line(data, options);
+
+        injectTemperatureTable(min_temperatures, avg_temperatures, max_temperatures, '#temperature-graph');
+      } else {
+        $("#temperature-graph").remove();
+      }
     });
+  });
