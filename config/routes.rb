@@ -9,5 +9,11 @@ Rails.application.routes.draw do
     match 'manage_pools', to: 'miner#manage_pools', via: [:post]
   end
 
+  namespace :api do
+    namespace :v1 do
+      get '/ping.(:format)' => 'ping#index'
+    end
+  end
+
   mount CgminerMonitor::Engine => '/'
 end
