@@ -10,9 +10,8 @@
     $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
       if (hash_rate_response && hash_rate_response.length > 1) {
         var labels = [];
-        var hash_rates_5s = [];
-        var hash_rates_av = [];
         var error_rates   = [];
+        var error_rates_raw = [];
 
         $.each(hash_rate_response, function(index, response) {
           date = new Date(response[0] * 1000);
@@ -22,18 +21,17 @@
           } else {
             labels.push("");
           }
-          hash_rates_5s.push(response[1] * response[5]);
-          hash_rates_av.push(response[2] * response[5]);
-          error_rates.push(response[5]);
+          error_rates.push(response[5] * 100);
+          error_rates_raw.push(response[5]);
         });
 
         var data = {
           labels: labels,
           datasets: [
             {
-              label: 'Pool Rejected Hashrate',
+              label: 'Pool Rejected',
               fillColor: "orange",
-              data: hash_rates_5s
+              data: error_rates
             }
           ]
         }
@@ -41,15 +39,15 @@
         var options = {
           pointHitDetectionRadius : 1,
           animation               : false,
-          tooltipTemplate         : "<%= value.toFixed(2) %> GH/s",
-          multiTooltipTemplate    : "<%= value.toFixed(2) %> GH/s",
+          tooltipTemplate         : "<%= value %>%",
+          multiTooltipTemplate    : "<%= value %>%",
           responsive              : true
         };
 
         var ctx = $("#pool_rejected_hashrate").get(0).getContext("2d");
         var myLineChart = new Chart(ctx).Line(data, options);
 
-        injectHashrateTable(hash_rates_5s, hash_rates_av, error_rates, '#pool-rejected-hashrate-graph');
+        injectHashrateTable([], [], error_rates_raw, '#pool-rejected-hashrate-graph');
       } else {
         $("#pool-rejected-hashrate-graph").remove();
       }
