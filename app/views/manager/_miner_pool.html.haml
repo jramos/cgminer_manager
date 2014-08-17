@@ -2,10 +2,20 @@
   .container
     = render partial: 'shared/graphs/availability', locals: { target: 'local' }
 
+  - @miner_pool.available_miners  # check the status of each in bulk
   - @miner_pool.miners.each_with_index do |miner, miner_index|
-    %hr
-    .clickable-container(onclick="goToMiner(#{miner_index});")
-      .left.half-width=  render partial: 'shared/miner_hashrate_table', locals: { miner: miner, miner_index: miner_index }
-      .mobile-clear
-      .left.half-width= render partial: 'shared/miner_devices_table', locals: { miner: miner, miner_index: miner_index }
-      .clear
+    - if miner.available?
+      %hr
+      .clickable-container(onclick="goToMiner(#{miner_index});")
+        .left.half-width=  render partial: 'shared/miner_hashrate_table', locals: { miner: miner, miner_index: miner_index }
+        .mobile-clear
+        .left.half-width= render partial: 'shared/miner_devices_table', locals: { miner: miner, miner_index: miner_index }
+        .clear
+
+    - else
+      %hr
+      .container
+        .left.red.bold
+          = miner.host + ':' + miner.port.to_s
+          is unavailable
+        .clear
