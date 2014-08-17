@@ -6,6 +6,8 @@
   .container
     = render partial: 'shared/graphs/hardware_error_hashrate', locals: { target: 'local' }
   .container
+    = render partial: 'shared/graphs/device_rejected_hashrate', locals: { target: 'local' }
+  .container
     = render partial: 'shared/graphs/pool_rejected_hashrate', locals: { target: 'local' }
   .container
     = render partial: 'shared/graphs/pool_stale_hashrate', locals: { target: 'local' }
