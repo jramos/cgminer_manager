@@ -6,14 +6,8 @@
     %th Rate(5s)
     %th Rate(avg)
   %tbody
-    - if miner.available?
-      - summary = @miner_data[miner_index][:summary].first[:summary].try(:first) || {}
-      %tr
-        %td= miner.host + ':' + miner.port.to_s
-        %td.text-center= format_hashrate(summary[:ghs_5s].to_f * 1e9)
-        %td.text-center= format_hashrate(summary[:ghs_av].to_f * 1e9)
-    - else
-      %tr
-        %td= miner.host + ':' + miner.port.to_s
-        %td.text-center= format_hashrate(0)
-        %td.text-center= format_hashrate(0)
+    - summary = @miner_data[miner_index][:summary].first[:summary].try(:first) || {}
+    %tr
+      %td= miner.host + ':' + miner.port.to_s
+      %td.text-center= format_hashrate((summary[:ghs_5s].to_f * 1e9 rescue 0))
+      %td.text-center= format_hashrate((summary[:ghs_av].to_f * 1e9 rescue 0))
