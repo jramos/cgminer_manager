@@ -11,7 +11,7 @@ gem 'jquery-ui-rails',    '~> 5.0.0'
 
 # core gems
 gem 'cgminer_api_client', '~> 0.2.1'
-gem 'cgminer_monitor',    '~> 0.2.5'
+gem 'cgminer_monitor',    '~> 0.2.6'
 
 # misc
 gem 'rake',               '~> 10.3.2'
