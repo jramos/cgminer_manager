@@ -2,7 +2,7 @@
 - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
 
 #pool-rejected-hashrate-graph
-  %h2 Pool Rejected
+  %h2 Pool Rejected %
   %canvas(id="pool_rejected_hashrate" width="#{width}" height="400")
 
 :javascript

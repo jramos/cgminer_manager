@@ -2,7 +2,7 @@
 - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
 
 #hardware-error-hashrate-graph
-  %h2 Hardware Error
+  %h2 Hardware Error %
   %canvas(id="hardware_error_hashrate" width="#{width}" height="400")
 
 :javascript

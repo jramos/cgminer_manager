@@ -2,7 +2,7 @@
 - url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
 
 #pool-stale-hashrate-graph
-  %h2 Pool Stale
+  %h2 Pool Stale %
   %canvas(id="pool_stale_hashrate" width="#{width}" height="400")
 
 :javascript
