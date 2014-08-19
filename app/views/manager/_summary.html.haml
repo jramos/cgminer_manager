@@ -4,10 +4,10 @@
   .container
     = render partial: 'shared/graphs/temperature', locals: { target: 'local' }
   .container
-    = render partial: 'shared/graphs/hardware_error_hashrate', locals: { target: 'local' }
+    = render partial: 'shared/graphs/hardware_error', locals: { target: 'local' }
   .container
-    = render partial: 'shared/graphs/device_rejected_hashrate', locals: { target: 'local' }
+    = render partial: 'shared/graphs/device_rejected', locals: { target: 'local' }
   .container
-    = render partial: 'shared/graphs/pool_rejected_hashrate', locals: { target: 'local' }
+    = render partial: 'shared/graphs/pool_rejected', locals: { target: 'local' }
   .container
-    = render partial: 'shared/graphs/pool_stale_hashrate', locals: { target: 'local' }
+    = render partial: 'shared/graphs/pool_stale', locals: { target: 'local' }
