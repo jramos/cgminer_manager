@@ -31,7 +31,7 @@ GEM
     bson (2.3.0)
     builder (3.2.2)
     cgminer_api_client (0.2.1)
-    cgminer_monitor (0.2.7)
+    cgminer_monitor (0.2.8)
       cgminer_api_client (~> 0.2.1)
       mongoid (= 4.0.0)
       rails (= 4.1.4)
@@ -141,7 +141,7 @@ PLATFORMS
 
 DEPENDENCIES
   cgminer_api_client (~> 0.2.1)
-  cgminer_monitor (~> 0.2.7)
+  cgminer_monitor (~> 0.2.8)
   haml-rails (~> 0.5.3)
   jquery-rails (~> 3.1.1)
   jquery-ui-rails (~> 5.0.0)
