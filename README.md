@@ -95,7 +95,7 @@ The data on each page of the site will refresh every minute (60 seconds) by defa
       show_github_ribbon: true
     }
 
-#### Disable audio notifications
+#### Disable Audio Notifications
 
 By default, audio is played when a warning is triggered, such as when a miner becomes unavailable or an ASC reports a bad chip. This can be disabled via the `enable_audio` configuration option. Set it to false if you don't want to hear audio notifications. You can toggle this setting in the UI, as well.
 
