@@ -46,7 +46,9 @@ class ManagerController < ApplicationController
 
       @miner_pool.miners.each_with_index do |miner, index|
         @miner_data[index] ||= {}
-        @miner_data[index][type] = [{type => last_entry[:results][index]}]
+        if last_entry && last_entry[:results]
+          @miner_data[index][type] = [{type => last_entry[:results][index]}]
+        end
       end
     end
   end
