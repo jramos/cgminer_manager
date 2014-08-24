@@ -30,47 +30,47 @@
       %tbody
         %tr
           %td.text-left.bold Get works
-          %td.text-right= summary[:getworks]
+          %td.text-right= number_with_delimiter(summary[:getworks])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Accepted
-          %td.text-right= summary[:accepted]
+          %td.text-right= number_with_delimiter(summary[:accepted])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Rejected
-          %td.text-right= summary[:rejected]
+          %td.text-right= number_with_delimiter(summary[:rejected])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Hardware errors
-          %td.text-right= summary[:hardware_errors]
+          %td.text-right= number_with_delimiter(summary[:hardware_errors])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Utility
-          %td.text-right= summary[:utility]
+          %td.text-right= number_with_delimiter(summary[:utility])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Discarded
-          %td.text-right= summary[:discarded]
+          %td.text-right= number_with_delimiter(summary[:discarded])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Stale
-          %td.text-right= summary[:stale]
+          %td.text-right= number_with_delimiter(summary[:stale])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Local work
-          %td.text-right= summary[:local_work]
+          %td.text-right= number_with_delimiter(summary[:local_work])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Network blocks
-          %td.text-right= summary[:network_blocks]
+          %td.text-right= number_with_delimiter(summary[:network_blocks])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
@@ -80,22 +80,22 @@
       %tbody
         %tr
           %td.text-left.bold Work utility
-          %td.text-right= summary[:work_utility]
+          %td.text-right= number_with_delimiter(summary[:work_utility])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Difficulty accepted
-          %td.text-right= summary[:difficulty_accepted]
+          %td.text-right= number_with_delimiter(summary[:difficulty_accepted])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Difficulty rejected
-          %td.text-right= summary[:difficulty_rejected]
+          %td.text-right= number_with_delimiter(summary[:difficulty_rejected])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
           %td.text-left.bold Best share
-          %td.text-right= summary[:best_share]
+          %td.text-right= number_with_delimiter(summary[:best_share])
     %table(cellpadding="0" cellspacing="0" class="overview-table" class="#{classes}")
       %tbody
         %tr
