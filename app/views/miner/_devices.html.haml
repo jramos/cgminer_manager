@@ -13,7 +13,7 @@
         %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}" class="table table-hover left half-width")
           %tr
             %td.text-left.bold= key
-            %td.text-right= value
+            %td.text-right= value.is_a?(Numeric) ? number_with_delimiter(value) : value
     .clear
 
 :javascript

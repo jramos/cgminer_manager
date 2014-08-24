@@ -15,7 +15,7 @@
           %tbody
             %tr
               %td.text-left.bold= key
-              %td.text-right= value
+              %td.text-right= value.is_a?(Numeric) ? number_with_delimiter(value) : value
   .clear
 
 :javascript
