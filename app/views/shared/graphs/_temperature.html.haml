@@ -16,7 +16,7 @@
 
         $.each(temperature_response, function(index, response) {
           date = new Date(response[0] * 1000);
-          if (index % 5 == 0 || index == 0 ) {
+          if (date.getMinutes() % 5 == 0) {
             minutes = "00" + date.getMinutes().toString();
             labels.push(date.getHours() + ':' + minutes.slice(-2));
           } else {
