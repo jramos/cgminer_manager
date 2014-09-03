@@ -12,8 +12,6 @@
         var labels = [];
         var hash_rates_5s = [];
         var hash_rates_av = [];
-        var raw_hash_rates_5s = [];
-        var raw_hash_rates_av = [];
 
 
         $.each(hash_rate_response, function(index, response) {
@@ -24,17 +22,8 @@
           } else {
             labels.push("");
           }
-          if (response[1] > 1000) {
-            hash_rates_5s.push(response[1] / 1000);
-            hash_rates_av.push(response[2] / 1000);
-          } else {
-            hash_rates_5s.push(response[1]);
-            hash_rates_av.push(response[2]);
-          }
-
-          raw_hash_rates_5s.push(response[1]);
-          raw_hash_rates_av.push(response[2]);
-
+          hash_rates_5s.push(response[1]);
+          hash_rates_av.push(response[2]);
         });
 
         var data = {
@@ -59,7 +48,7 @@
         var ctx = $("#local_hashrate").get(0).getContext("2d");
         var myLineChart = new Chart(ctx).Line(data, options);
 
-        injectHashrateTable(raw_hash_rates_5s, raw_hash_rates_av, [], '#hashrate-graph');
+        injectHashrateTable(hash_rates_5s, hash_rates_av, [], '#hashrate-graph');
       } else {
         $("#hashrate-graph").remove();
       }
