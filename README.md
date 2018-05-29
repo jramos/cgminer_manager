@@ -30,12 +30,12 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 
 ## Dependencies
 
-* [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.2.2)
-* [cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.2.17)
+* [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.2.5)
+* [cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.2.22)
 * haml-rails (~> 0.5.3)
 * jquery-rails (~> 3.1.1)
 * jquery-ui-rails (~> 5.0.0)
-* rails (= 4.1.4)
+* rails (= 4.2.7.1)
 * rake (~> 10.3.2)
 * sass-rails (~> 4.0.3)
 * therubyracer (~> 0.12.1)
