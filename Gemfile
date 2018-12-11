@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 # rails
-gem 'rails',              '4.2.7.1'
+gem 'rails',              '4.2.11'
 
 # rails extensions
 gem 'haml-rails',         '~> 0.5.3'
@@ -11,7 +11,7 @@ gem 'jquery-ui-rails',    '~> 5.0.0'
 
 # core gems
 gem 'cgminer_api_client', '~> 0.2.5'
-gem 'cgminer_monitor',    '~> 0.2.22'
+gem 'cgminer_monitor',    '~> 0.2.23'
 
 # misc
 gem 'rake',               '~> 10.3.2'
