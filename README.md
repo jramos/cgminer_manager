@@ -6,10 +6,16 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 * Hashrate, temperature and error rate graphs via [cgminer_monitor](https://github.com/jramos/cgminer_monitor)
 * Breakdown of miner performance and configuration
 * Audio notifications when things go awry
-* Mobile responsive UI
 * Quick updates to mining pool configuration
-* Allows sending raw API commands to one or more miners
-* Multi-command support; send API commands in bulk
+* Multi-command support; send API commands or raw payloads in bulk
+
+## Dependencies
+
+* [Ruby](https://www.ruby-lang.org) (~> 2.0.0, ~> 2.1.0)
+* [bundler](http://bundler.io/) (~> 1.6.0)
+* [mongodb](http://www.mongodb.org/) (~> 2.6)
+* [jramos/cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.2)
+* [jramos/cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.2)
 
 ## Screenshots
 
@@ -21,26 +27,6 @@ A web manager for cgminer written in Ruby on Rails. It allows for remote managem
 
 ### Miner Detail
 ![Miner](public/screenshots/miner.png)
-
-## Requirements
-
-* [Ruby](https://www.ruby-lang.org) (~> 2.0.0, ~> 2.1.0)
-* [bundler](http://bundler.io/) (~> 1.6.0)
-* [mongodb](http://www.mongodb.org/) (~> 2.6)
-
-## Dependencies
-
-* [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.2.5)
-* [cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.2.22)
-* haml-rails (~> 0.5.3)
-* jquery-rails (~> 3.1.1)
-* jquery-ui-rails (~> 5.0.0)
-* rails (= 4.2.7.1)
-* rake (~> 10.3.2)
-* sass-rails (~> 4.0.3)
-* therubyracer (~> 0.12.1)
-* thin (~> 1.6.2)
-* uglifier (~> 2.5.3)
 
 ## Installation
 
