@@ -5,6 +5,7 @@ AllCops:
     - 'vendor/**/*'
     - 'tmp/**/*'
     - 'app/**/*'        # legacy Rails tree (removed in follow-up PR)
+    - 'bin/**/*'
     - 'config/application.rb'
     - 'config/environment.rb'
     - 'config/environments/**/*'
@@ -13,7 +14,7 @@ AllCops:
     - 'lib/tasks/**/*'
     - 'test/**/*'
 
-require:
+plugins:
   - rubocop-rake
   - rubocop-rspec
 
