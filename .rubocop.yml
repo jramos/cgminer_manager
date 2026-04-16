@@ -59,6 +59,7 @@ RSpec/SpecFilePathFormat:
   Exclude:
     - 'spec/cgminer_manager/version_spec.rb'
     - 'spec/cgminer_manager/errors_spec.rb'
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
 
 RSpec/MultipleDescribes:
   Exclude:
