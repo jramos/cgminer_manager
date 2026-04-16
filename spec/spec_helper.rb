@@ -4,7 +4,7 @@ require 'simplecov'
 SimpleCov.start do
   add_filter '/spec/'
   add_filter '/vendor/'
-  add_filter '/app/'       # legacy Rails tree excluded from coverage math
+  add_filter '/app/' # legacy Rails tree excluded from coverage math
   minimum_coverage line: 80
 end
 

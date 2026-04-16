@@ -11,6 +11,8 @@ AllCops:
     - 'config/environments/**/*'
     - 'config/routes.rb'
     - 'config/boot.rb'
+    - 'config.ru'
+    - 'config/initializers/**/*'
     - 'lib/tasks/**/*'
     - 'test/**/*'
 
