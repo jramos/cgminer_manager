@@ -51,3 +51,7 @@ RSpec/NestedGroups:
 
 RSpec/MessageChain:
   Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Exclude:
+    - 'spec/cgminer_manager/version_spec.rb'
