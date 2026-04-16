@@ -1,0 +1,50 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'app/**/*'        # legacy Rails tree (removed in follow-up PR)
+    - 'config/application.rb'
+    - 'config/environment.rb'
+    - 'config/environments/**/*'
+    - 'config/routes.rb'
+    - 'config/boot.rb'
+    - 'lib/tasks/**/*'
+    - 'test/**/*'
+
+require:
+  - rubocop-rake
+  - rubocop-rspec
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  EnforcedStyle: always
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'lib/cgminer_manager/http_app.rb'
+
+Metrics/MethodLength:
+  Max: 25
+
+Metrics/ClassLength:
+  Max: 250
+
+Metrics/AbcSize:
+  Max: 25
+
+RSpec/ExampleLength:
+  Max: 20
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/NestedGroups:
+  Max: 4
+
+RSpec/MessageChain:
+  Enabled: false
