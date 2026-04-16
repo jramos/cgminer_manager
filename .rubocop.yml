@@ -59,3 +59,13 @@ RSpec/SpecFilePathFormat:
   Exclude:
     - 'spec/cgminer_manager/version_spec.rb'
     - 'spec/cgminer_manager/errors_spec.rb'
+
+RSpec/MultipleDescribes:
+  Exclude:
+    # Intentionally split: happy path vs. error/observability groups.
+    - 'spec/cgminer_manager/monitor_client_spec.rb'
+
+RSpec/RepeatedExampleGroupDescription:
+  Exclude:
+    # Two top-level describes on the same class (happy vs. error/observability) is intentional.
+    - 'spec/cgminer_manager/monitor_client_spec.rb'

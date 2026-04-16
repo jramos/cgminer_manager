@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'stringio'
+
 RSpec.describe CgminerManager::MonitorClient do
   let(:url)    { 'http://localhost:9292' }
   let(:client) { described_class.new(base_url: url, timeout_ms: 2000) }
@@ -58,5 +60,53 @@ RSpec.describe CgminerManager::MonitorClient do
       stub_monitor_healthz
       expect(client.healthz[:status]).to eq('healthy')
     end
+  end
+end
+
+RSpec.describe CgminerManager::MonitorClient do
+  let(:url)    { 'http://localhost:9292' }
+  let(:client) { described_class.new(base_url: url, timeout_ms: 2000) }
+
+  describe 'error handling' do
+    it 'raises MonitorError::ApiError on 5xx' do
+      stub_monitor_miners(status: 503)
+      expect { client.miners }.to raise_error(CgminerManager::MonitorError::ApiError)
+    end
+
+    it 'attaches status and body on ApiError' do
+      stub_monitor_miners(status: 500)
+      client.miners
+    rescue CgminerManager::MonitorError::ApiError => e
+      expect(e.status).to eq(500)
+      expect(e.body).not_to be_nil
+    end
+
+    it 'raises MonitorError::ConnectionError on connection refused' do
+      stub_request(:get, "#{url}/v2/miners").to_raise(Errno::ECONNREFUSED)
+      expect { client.miners }.to raise_error(CgminerManager::MonitorError::ConnectionError)
+    end
+
+    it 'raises MonitorError::ConnectionError on timeout' do
+      stub_request(:get, "#{url}/v2/miners").to_timeout
+      expect { client.miners }.to raise_error(CgminerManager::MonitorError::ConnectionError)
+    end
+  end
+
+  describe 'observability' do
+    it 'emits a monitor.call log line per request' do
+      stub_monitor_miners
+      logged = capture_logger_output { client.miners }
+      expect(logged).to include('monitor.call')
+    end
+  end
+
+  def capture_logger_output
+    io = StringIO.new
+    original = CgminerManager::Logger.output
+    CgminerManager::Logger.output = io
+    yield
+    io.string
+  ensure
+    CgminerManager::Logger.output = original
   end
 end
