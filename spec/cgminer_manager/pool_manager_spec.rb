@@ -42,3 +42,33 @@ RSpec.describe CgminerManager::PoolManager::PoolActionResult do
     end
   end
 end
+
+RSpec.describe CgminerManager::PoolManager do
+  let(:miner_id) { '10.0.0.1:4028' }
+  let(:miner) do
+    instance_double(CgminerApiClient::Miner, host: '10.0.0.1', port: 4028)
+  end
+
+  before do
+    allow(miner).to receive(:to_s).and_return(miner_id)
+  end
+
+  describe '#disable_pool' do
+    context 'when the command succeeds and pool flips to Disabled' do
+      it 'returns PoolActionResult with command_status :ok and save_status :ok' do
+        expect(miner).to receive(:disablepool).with(1)
+        expect(miner).to receive(:query).with(:pools).and_return(
+          [{ 'POOL' => 1, 'STATUS' => 'Disabled' }]
+        )
+        expect(miner).to receive(:query).with(:save)
+
+        pm = described_class.new([miner])
+        result = pm.disable_pool(pool_index: 1)
+
+        entry = result.entries.first
+        expect(entry.command_status).to eq(:ok)
+        expect(entry.save_status).to eq(:ok)
+      end
+    end
+  end
+end
