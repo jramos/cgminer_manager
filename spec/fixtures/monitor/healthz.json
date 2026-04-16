@@ -1,0 +1,4 @@
+{
+  "status": "ok",
+  "checks": {"mongo": "ok", "poller": "ok"}
+}
