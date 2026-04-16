@@ -4,6 +4,7 @@ require 'sinatra/base'
 require 'rack/protection'
 require 'json'
 require 'yaml'
+require 'cgminer_api_client'
 
 module CgminerManager
   class HttpApp < Sinatra::Base
@@ -70,6 +71,27 @@ module CgminerManager
         status 503
         JSON.generate(ok: false, reasons: reasons)
       end
+    end
+
+    get '/api/v1/ping.json' do
+      content_type :json
+
+      available = 0
+      unavailable = 0
+      self.class.configured_miners.each do |host, port|
+        miner = CgminerApiClient::Miner.new(host, port)
+        if miner.available?
+          available += 1
+        else
+          unavailable += 1
+        end
+      end
+
+      JSON.generate(
+        timestamp: Time.now.to_i,
+        available_miners: available,
+        unavailable_miners: unavailable
+      )
     end
 
     private
