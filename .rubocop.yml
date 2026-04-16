@@ -60,6 +60,12 @@ RSpec/SpecFilePathFormat:
     - 'spec/cgminer_manager/version_spec.rb'
     - 'spec/cgminer_manager/errors_spec.rb'
     - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/integration/**/*_spec.rb'
+
+RSpec/DescribeClass:
+  Exclude:
+    # Integration specs describe HTTP routes/behaviors, not Ruby classes.
+    - 'spec/integration/**/*_spec.rb'
 
 RSpec/MultipleDescribes:
   Exclude:
