@@ -45,6 +45,9 @@ RSpec/ExampleLength:
 
 RSpec/MultipleExpectations:
   Max: 5
+  Exclude:
+    # Happy-path config test asserts all 8 coerced fields in one shot — intentional.
+    - 'spec/cgminer_manager/config_spec.rb'
 
 RSpec/NestedGroups:
   Max: 4

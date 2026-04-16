@@ -1,0 +1,73 @@
+# frozen_string_literal: true
+
+require 'yaml'
+require 'securerandom'
+
+module CgminerManager
+  Config = Data.define(
+    :monitor_url,
+    :miners_file,
+    :port, :bind,
+    :log_format, :log_level,
+    :session_secret,
+    :stale_threshold_seconds,
+    :shutdown_timeout,
+    :monitor_timeout,
+    :pool_thread_cap,
+    :rack_env
+  ) do
+    def validate!
+      raise ConfigError, 'CGMINER_MONITOR_URL is required' if monitor_url.nil? || monitor_url.empty?
+      raise ConfigError, "miners_file not found: #{miners_file}" unless File.exist?(miners_file)
+      raise ConfigError, 'log_format must be json or text' unless %w[json text].include?(log_format)
+      raise ConfigError, 'invalid log_level' unless %w[debug info warn error].include?(log_level)
+
+      self
+    end
+
+    def load_miners
+      YAML.safe_load_file(miners_file).map { |m| [m['host'], m['port'] || 4028] }
+    end
+
+    def production?
+      rack_env == 'production'
+    end
+  end
+
+  class << Config
+    def from_env(env = ENV)
+      rack_env = env.fetch('RACK_ENV', 'development')
+      new(
+        monitor_url: env['CGMINER_MONITOR_URL'],
+        miners_file: env.fetch('MINERS_FILE', 'config/miners.yml'),
+        port: parse_int(env, 'PORT', '3000'),
+        bind: env.fetch('BIND', '127.0.0.1'),
+        log_format: env.fetch('LOG_FORMAT', rack_env == 'production' ? 'json' : 'text'),
+        log_level: env.fetch('LOG_LEVEL', 'info'),
+        session_secret: resolve_session_secret(env, rack_env),
+        stale_threshold_seconds: parse_int(env, 'STALE_THRESHOLD_SECONDS', '300'),
+        shutdown_timeout: parse_int(env, 'SHUTDOWN_TIMEOUT', '10'),
+        monitor_timeout: parse_int(env, 'MONITOR_TIMEOUT_MS', '2000'),
+        pool_thread_cap: parse_int(env, 'POOL_THREAD_CAP', '8'),
+        rack_env: rack_env
+      ).validate!
+    end
+
+    private
+
+    def parse_int(env, key, default)
+      Integer(env.fetch(key, default))
+    rescue ArgumentError
+      raise ConfigError, "#{key} must be an integer, got: #{env[key].inspect}"
+    end
+
+    def resolve_session_secret(env, rack_env)
+      secret = env['SESSION_SECRET']
+      return secret if secret && !secret.empty?
+      raise ConfigError, 'SESSION_SECRET is required in production' if rack_env == 'production'
+
+      warn '[cgminer_manager] SESSION_SECRET unset; generating ephemeral secret (dev only)'
+      SecureRandom.hex(32)
+    end
+  end
+end
