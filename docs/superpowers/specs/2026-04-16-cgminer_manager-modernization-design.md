@@ -133,13 +133,17 @@ Browser ──GET /──▶ Sinatra::HttpApp
 ### 6.2 Graph data path (per-miner graphs)
 
 ```
-Browser JS ──GET /miner/:id/graph_data/hashrate?since=…──▶ Sinatra
+Browser JS ──GET /miner/:id/graph_data/:metric?since=…──▶ Sinatra
                                                               │
-                                                              └─ MonitorClient#graph_data ──▶ monitor /v2/graph_data/hashrate?miner=:id&since=…
-                                                                                           ◀── JSON passes through
+                                                              └─ MonitorClient#graph_data ──▶ monitor /v2/graph_data/:metric?miner=:id&since=…
+                                                                                           ◀── {fields:[...], data:[[...]]}
+                                                              │
+                                                              └─ reshape to [[ts, v1, v2, ...], ...] for Chart.js
 ```
 
-Manager's `/miner/:id/graph_data/*` is a thin pass-through. Shape is reshaped only if needed for the existing Chart.js contract; default is literal pass-through. Preserves the browser-side `graph.js` behavior.
+Manager's `/miner/:id/graph_data/*` is **not** a literal pass-through. Monitor returns a structured `{fields:[...], data:[[...]]}` envelope (`cgminer_monitor/lib/cgminer_monitor/http_app.rb:108+`); the existing browser `graph.js` expects bare `[[ts, v1, v2, ...]]` arrays. Manager's endpoint reshapes: drops the `fields` header and yields the rows. The reshape is exercised by `graph_data_spec.rb` against real monitor fixtures (see § 15).
+
+**Metrics coverage is a judgment call open for round 2.** Monitor today exposes exactly three metrics — `hashrate`, `temperature`, `availability` (http_app.rb:108,127,145). The current UI renders additional graphs (hardware error, pool stale/rejected, device rejected) that have **no data source** on modernized monitor. Options: (a) drop those graph panels in v1.0 and document in MIGRATION.md; (b) file a monitor PR adding the missing metrics and gate v1.0 on it. Pending user decision.
 
 ### 6.3 Command path (pool management)
 
@@ -167,10 +171,16 @@ Browser ──POST /manager/manage_pools──▶ Sinatra
 ```
 Probe ──GET /api/v1/ping.json──▶ Sinatra
                                    │
-                                   └─ MonitorClient#miners → count where availability ok → { ok: N }
+                                   └─ CgminerApiClient::MinerPool
+                                        .available_miners.count / .unavailable_miners.count
+                                                │
+                                                ▼
+                                   { timestamp: <epoch_s>,
+                                     available_miners:   <int>,
+                                     unavailable_miners: <int> }
 ```
 
-Preserves the existing JSON shape for any external probe already hitting this path.
+Preserves the existing JSON shape and data source verbatim from `app/controllers/api/v1/ping_controller.rb`. **Computed from cgminers directly via `cgminer_api_client`**, not via monitor — a monitor outage must not cause the probe to go red, since that would violate the § 6.1 invariant that the command plane stays usable when the read plane is degraded.
 
 ## 7. Pool-management rewrite (PoolManager)
 
@@ -224,14 +234,18 @@ Three error domains, each with its own behavior.
 
 - **Library:** `http` gem. Small, modern, ergonomic for JSON + timeouts; no middleware machinery needed for a localhost call.
 - **Shape:** `CgminerMonitorClient` with methods returning plain hashes parsed from JSON:
-  - `#miners` → array of miner descriptors.
-  - `#summary(miner_id)`, `#devs(miner_id)`, `#pools(miner_id)`, `#stats(miner_id)` → latest per-miner document.
-  - `#graph_data(metric:, miner_id:, since:)` → time-series array.
+  - `#miners` → `GET /v2/miners` — array of miner descriptors.
+  - `#summary(miner_id)` → `GET /v2/miners/:miner/summary`.
+  - `#devices(miner_id)` → `GET /v2/miners/:miner/devices`. (Note: endpoint is `devices`, not `devs`; cgminer's raw JSON key `DEVS` is exposed as `devices` in monitor — see `cgminer_monitor/lib/cgminer_monitor/http_app.rb:90`.)
+  - `#pools(miner_id)` → `GET /v2/miners/:miner/pools`.
+  - `#stats(miner_id)` → `GET /v2/miners/:miner/stats`.
+  - `#graph_data(metric:, miner_id:, since:)` → `GET /v2/graph_data/:metric` — returns `{fields:[...], data:[[...]]}`; client returns as-is and the reshape happens in the Sinatra graph endpoint (§ 6.2).
 - **Config:** `CGMINER_MONITOR_URL` env var pointing at a running monitor (default host/port per monitor's README).
 - **Miners list:** `config/miners.yml` stays. It is the command-plane whitelist — the set of hosts this service is allowed to send cgminer commands to — and is independent of whatever monitor knows.
 - **No `mongoid.yml`.** Removed from the repo.
 - **Timeouts:** 2s per call. No retry.
 - **Typed value objects over the wire:** not for v1. Plain hashes. Add wrappers later if any call site gets messy.
+- **Thread safety.** `HTTP::Client` instances in the `http` gem are **not** thread-safe across threads (internal connection state mutates). Two acceptable patterns: (a) shorthand `HTTP.get(url, …)` per call — safe but no keep-alive, one TCP connect per call; (b) one persistent client per thread via a `ThreadLocal` / `Thread.current[:monitor_client]`, which retains keep-alive. Default to (a) for simplicity in v1; revisit if profiling shows the extra handshakes matter. Spec note so the implementer does not accidentally share a single `HTTP::Client` across the `MonitorClient` thread pool.
 
 ## 10. Configuration
 
@@ -241,6 +255,7 @@ Three error domains, each with its own behavior.
 - `BIND` — default `127.0.0.1` (preserves "local network only" posture).
 - `LOG_FORMAT` — `json` or `text`, default `text` in dev, `json` in prod.
 - `LOG_LEVEL` — default `info`.
+- `SESSION_SECRET` — required in production. Used to sign Sinatra's cookie-based sessions (which carry the CSRF token; see § 13). In development, falls back to a generated random value with a loud warning; in production, boot fails with `ConfigError` if unset.
 
 Loaded into a `Config` value object via `Data.define`, mirroring `cgminer_monitor/lib/cgminer_monitor/config.rb`.
 
@@ -264,7 +279,12 @@ No `migrate` verb (no schema).
 ## 13. Authentication and security posture
 
 - No auth added. Default bind stays at `127.0.0.1`. Operators who expose the service on a network do so via a reverse proxy they control.
-- CSRF: pool-management POST endpoints include a CSRF token on form render, verified on submit. Tokens are carried in Sinatra's cookie-based sessions (signed, client-side — no server-side state, consistent with § 4 "manager owns no state"). Rack-protection provides the enforcement middleware.
+- CSRF transport specified (the current Rails `authenticity_token` model does not survive the framework change, and the pool-management forms submit via jQuery XHR — `remote: true` in the Rails views — not full-page POSTs):
+  - Layout emits `<meta name="csrf-token" content="<%= csrf_token %>">`.
+  - `rack-protection`'s `AuthenticityToken` middleware enforces the token on state-changing methods (POST/PUT/PATCH/DELETE). Token read from either the `authenticity_token` form field (full-page fallback) or the `X-CSRF-Token` header (XHR path).
+  - `public/js/manager.js` and `public/js/miner.js` install a global jQuery `$.ajaxSetup` `beforeSend` that reads the meta tag and sets the `X-CSRF-Token` header on every XHR. This keeps the existing `remote: true`-style flows working without per-form plumbing.
+  - Tokens are carried in Sinatra's cookie-based sessions (signed, client-side — no server-side state, consistent with § 4 "manager owns no state"). Session secret per § 10.
+- Integration spec `pool_management_spec.rb` (§ 15.2) includes a case that POSTs without a token and asserts 403, so a regression can't silently disable CSRF protection.
 
 ## 14. UI preservation
 
@@ -274,6 +294,8 @@ No `migrate` verb (no schema).
 - Sprockets, therubyracer, jquery-rails, sass-rails, coffee-rails — all removed.
 - Layout references assets by explicit `<script src="/js/…">` / `<link href="/css/…">` tags.
 - No bundler, no transpile step.
+- **Chart.js version is pinned as-is.** The checked-in `chart.min.js` is a legacy 1.x whose API (`new Chart(ctx).Line(...)`) the existing `graph.js` depends on. No Chart.js upgrade in v1 — a "modernization" of this one file will break every graph. If upgrading, the graph JS needs to be rewritten in the same PR.
+- **Audio alert data source.** `audio.js` triggers thresholds off the same dashboard view model that the HAML layer receives (i.e., from `MonitorClient` responses). The Sinatra layout passes a minimal JSON payload (miners + availability) into a `<script>` tag on the dashboard, same pattern as the Rails version — no new endpoint needed.
 
 ## 15. Testing strategy
 
@@ -301,7 +323,8 @@ Three layers.
 
 - Port `FakeCgminer` and `cgminer_fixtures.rb` from `cgminer_api_client/spec/support/`.
 - Add `monitor_stubs.rb` with helpers (`stub_monitor_miners`, `stub_monitor_summary`, etc.) wrapping WebMock.
-- Monitor response fixture JSON under `spec/fixtures/monitor/`.
+- Monitor response fixture JSON under `spec/fixtures/monitor/`. **Generate once against a real running monitor** (a small `rake spec:refresh_monitor_fixtures` task captures current `/v2/*` responses) rather than hand-rolling JSON — hand-rolled fixtures drift from reality. Check the generator task and the captured JSON in; regenerate when monitor's response shape changes.
+- **FakeCgminer connection model.** `FakeCgminer` accepts one request per connection, then closes the socket (see `cgminer_api_client/spec/support/fake_cgminer.rb`). `PoolManager` opens three connections per miner per action (command → `:pools` re-query → `:save`), so the fixture map in `cgminer_fixtures.rb` must include all three response keys. Integration spec `pool_management_spec.rb` exercises this path; the failure mode to watch for is a test hang on a missing fixture key.
 
 ### 15.4 CI (GitHub Actions)
 
@@ -332,9 +355,11 @@ Three jobs:
   - Framework change: Rails → Sinatra.
   - Mongo config removed.
   - `CGMINER_MONITOR_URL` required.
-  - `miners.yml` still used; shape unchanged.
+  - `miners.yml` still used; shape unchanged. (Validated against `cgminer_monitor`'s example at repo-init time to avoid drift.)
   - `/api/v1/ping.json` unchanged.
   - Asset pipeline dropped; assets served as plain files.
+  - **Upgrade order.** Monitor must be upgraded to a version exposing `/v2/*` **before** manager 1.0.0 is deployed. Old (Rails-engine) monitor has no `/v2/*` surface; new manager against old monitor will fail startup. Recommended ritual: (1) upgrade monitor, (2) verify `GET $CGMINER_MONITOR_URL/v2/miners` returns 200, (3) `bin/cgminer_manager doctor` passes, (4) cut over manager. `doctor` (§ 11) asserts monitor responds on `/v2/miners` and fails the check loudly if not — equivalent to refusing to run against a pre-v2 monitor.
+  - Rollback: the prior Rails app remains available at the `v0-legacy` tag (§ 18) for at least one release cycle after 1.0.0 ships.
 - **CHANGELOG.md** — new, opens with `1.0.0` entry documenting the port.
 
 ## 18. Delivery plan
@@ -348,11 +373,14 @@ One big-bang port on a feature branch (`modernize/sinatra-port` off `develop`), 
 - **Phase 4 — HTTP app + views.** `http_app.rb` wired to `MonitorClient` + `PoolManager`. Port HAML views. Move JS/CSS to `public/`. Integration specs for dashboard, miner page, graph data, ping.
 - **Phase 5 — server + CLI.** `server.rb`, `cli.rb`, `bin/cgminer_manager`. `cli_spec`, `full_boot_spec`, `pool_management_spec`.
 - **Phase 6 — packaging & docs.** `Dockerfile`, `docker-compose.yml`, README rewrite, `MIGRATION.md`, `CHANGELOG.md`.
-- **Phase 7 — delete the old app.** Remove `app/`, Rails config (`config/application.rb`, `environments/`, `routes.rb`, `boot.rb`, `environment.rb`), `config.ru`, `lib/tasks/`, `test/`, Rails-specific initializers. Keep `config/miners.yml.example` and `config/puma.rb`.
+- **Phase 7 — unmount Rails, cut 1.0.0.** Delete `config.ru`'s Rails boot (replace with Sinatra's rackup) and remove the Rails `config/environment.rb` load chain, but **leave `app/`, `config/application.rb`, `config/environments/`, `config/routes.rb`, `config/boot.rb`, `lib/tasks/`, and `test/` in place**. Tag the commit just before this phase as `v0-legacy` — that commit is the last one where the old Rails app still boots, and is the documented rollback target. Cut 1.0.0 from the unmount commit.
+- **Phase 8 — delete the Rails tree.** After at least one release cycle of 1.0.0 soak (no critical regressions reported), open a separate PR deleting `app/`, `config/application.rb`, `config/environments/`, `config/routes.rb`, `config/boot.rb`, `lib/tasks/`, `test/`, and any Rails-specific initializers. Keep `config/miners.yml.example` and `config/puma.rb`. This ships as 1.1.0 or similar.
 
 **Versioning:** first modernized release is `1.0.0`, declared in a new `cgminer_manager.gemspec` (even though this is an app, not a gem — follows monitor's precedent for `required_ruby_version` gating + metadata). The 1.0 jump signals the Rails-era → Sinatra-era break.
 
-**Branching:** `modernize/sinatra-port` off `develop`. Each phase is one or a small group of commits. Merge to `develop` when all phases are green. Merge `develop` → `master` as the 1.0 release cut.
+**`Gemfile.lock` is committed** (this is an application, not a library). Matches `cgminer_monitor`'s precedent.
+
+**Branching:** `modernize/sinatra-port` off `develop`. Each phase is one or a small group of commits. Merge to `develop` when all phases are green. Merge `develop` → `master` as the 1.0 release cut. Tag `v0-legacy` on the last-Rails-bootable commit per Phase 7.
 
 ## 19. Out of scope
 
@@ -364,4 +392,13 @@ One big-bang port on a feature branch (`modernize/sinatra-port` off `develop`), 
 
 ## 20. Open questions
 
-None at spec time. All architectural decisions resolved with the user during brainstorming.
+These emerged from staff-level review and are deferred for a second round with the user before implementation starts. Each has implementation consequences the spec can't resolve without input.
+
+1. **Target miner count.** The current read-path fan-out budget (cap-8 pool × 2s × 4 calls) is feasible up to ~10 miners. If real deployments run dozens, the shape in § 6.1 needs rework — either a batch endpoint on monitor (`GET /v2/miners?include=summary,devs,pools,stats`), pagination, or render-on-demand per visible miner. If ≤10, the current shape stands.
+2. **Missing graph metrics (§ 6.2).** Monitor exposes only `hashrate`, `temperature`, `availability`. The current UI renders additional graphs (hardware error, pool stale/rejected, device rejected). Drop those panels in v1.0 and document in MIGRATION.md, or gate v1.0 on a monitor PR that adds them?
+3. **Miner-id scheme for URLs.** Integer index into `miners.yml` (current manager), `host:port` (monitor's scheme), or a new slug? Integer breaks when `miners.yml` is reordered. `host:port` is stable but needs URL encoding and a MIGRATION.md note ("bookmarks to `/miner/0` break").
+4. **Empty state on fresh boot.** When a miner is in `miners.yml` but monitor has not polled it yet, monitor returns a 200 with `{ok: nil, response: nil, fetched_at: nil}` (`cgminer_monitor/lib/cgminer_monitor/http_app.rb:269-278`). The spec's § 6.1 / § 8 treat reads as binary (success vs `MonitorError`). Decision needed: does `MonitorClient` return a tri-state (`:ok` / `:no_data` / `:error`), or does it return empty/nil and views render a "waiting for data" placeholder?
+5. **Staleness surfacing.** Monitor returns the latest snapshot regardless of age. If monitor's poller is stuck, the dashboard shows hour-old data as if live. Should manager surface `fetched_at` and render a "stale — last poll Xm ago" badge when the age exceeds some threshold (e.g., `N × poll_interval`)? Recommend yes; needs decision on threshold and whether manager also calls `/v2/healthz` per render.
+6. **`addpool` verification semantics (§ 7).** cgminer does not always reflect a freshly-added pool in `pools` within 2s. One bounded re-query will report most successful adds as "did not converge." Two paths: (a) skip verification for `addpool` entirely (trust `cgminer_api_client`'s STATUS=S → no `ApiError` raised); (b) give add a larger/retry verification budget (e.g., 2 attempts × 1s). Also: `PoolActionResult` currently has two states (`:ok` / `:failed`) and conflates ApiError, timeout, and not-converged. Promote to three states (`:ok` / `:failed` / `:indeterminate`)? Recommend (a) + three-state.
+7. **`manager#run` / `miner#run` arbitrary-command endpoints.** The Rails app lets users run arbitrary cgminer commands via `POST /manager/run` and `POST /miner/:id/run`, currently wrapped in `rescue StandardError`. Preserve with narrow rescues matching `PoolManager`, or cut entirely (dangerous surface)? Spec should call this explicitly one way or the other.
+8. **Observability beyond logs.** Per-monitor-call timing log (cheap, recommended) vs. Prometheus metrics (overkill for v1, skip). Also: should manager expose its own `/healthz` that aggregates `/v2/healthz` + miners.yml reachability, for uptime probes?
