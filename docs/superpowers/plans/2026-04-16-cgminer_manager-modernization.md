@@ -10,7 +10,15 @@
 
 **Reference spec:** `docs/superpowers/specs/2026-04-16-cgminer_manager-modernization-design.md`.
 
-**Assumed before this plan starts:** Phase -1 of the spec — the `cgminer_monitor` companion PR adding `/v2/graph_data/{hardware_error,pool_stale,pool_rejected,device_rejected}` and any additional metric endpoints — has landed and been released as a tagged version of `cgminer_monitor`. The version tag is referenced by this plan as `MIN_MONITOR_VERSION`.
+**Assumed before this plan starts:** Phase -1 of the spec — the `cgminer_monitor` companion PR adding `/v2/graph_data/{hardware_error,pool_stale,pool_rejected,device_rejected}` and any additional metric endpoints — has landed and been released as a tagged version of `cgminer_monitor`. The version tag is referenced by this plan as `MIN_MONITOR_VERSION`. Task 4.0 below explicitly preflight-checks this.
+
+**Judgment calls baked into this plan** (recorded for future auditability):
+- **Coverage floor: 80%** on `lib/`. Aggressive for a Sinatra+HAML app without a full UI test suite; can be raised later as more specs land.
+- **CI required matrix: Ruby 3.2 / 3.3 / 3.4.** Ruby 4.0 and `head` run in a separate optional nightly workflow, not blocking PRs.
+- **Rails-isms in views: rewritten, not shimmed.** The two embedded `Time.zone.now` + `Rails.application.class.parent_name` call sites are rewritten to plain Ruby. Cleaner than growing the shim surface.
+- **`/api/v1/ping.json` uses `Miner#available?` directly**, not `MinerPool`. The `MinerPool` constructor hardcodes `config/miners.yml` relative to CWD, which breaks test isolation; direct `Miner` iteration is simpler and testable.
+- **`v0-legacy` tag is placed on the current `develop` HEAD before this plan's Phase 0 runs** (so it points at a commit where `rails server` still actually works). Phase 7 pushes that tag to the remote; it does not create it mid-branch.
+- **`app/views/manager/_admin.haml`, `app/views/miner/_admin.haml`, `app/views/shared/_run.haml`, and `app/views/shared/run/` are dropped entirely** in the port. They are UI wrappers around `/manager/run` and `/miner/:id/run`, which the spec cuts (§ 7.1). MIGRATION.md documents this.
 
 ---
 
@@ -135,6 +143,37 @@ test/                                         # empty Rails test stubs
 
 ---
 
+## Pre-Phase 0 — Tag `v0-legacy`
+
+This MUST happen on `develop` before the modernization branch is cut, so that `v0-legacy` points at a commit where the old Rails app actually boots (`bundle install && rails server`). Tagging mid-branch would land on a commit where `Gemfile` has already dropped Rails.
+
+### Task -1.1: Create `v0-legacy` tag on current develop HEAD
+
+- [ ] **Step 1: Verify you're on develop with a clean tree**
+
+```bash
+cd /Users/justin/src/jramos/cgminer_manager
+git checkout develop
+git pull --ff-only
+git status
+```
+
+Expected: `On branch develop` / `nothing to commit, working tree clean`.
+
+- [ ] **Step 2: Create the annotated tag**
+
+```bash
+git tag -a v0-legacy -m "Last commit where the Rails-era app still boots (pre-Sinatra port)"
+```
+
+- [ ] **Step 3: Push the tag**
+
+```bash
+git push origin v0-legacy
+```
+
+Task 7.1 later references this tag; it does NOT re-create it.
+
 ## Phase 0 — Prep
 
 ### Task 0.1: Branch + CI scaffolding
@@ -142,14 +181,12 @@ test/                                         # empty Rails test stubs
 **Files:**
 - Modify: (git branch only)
 - Create: `.github/workflows/ci.yml`
+- Create: `.github/workflows/nightly.yml`
 - Create: `.ruby-version`
 
 - [ ] **Step 1: Create feature branch**
 
 ```bash
-cd /Users/justin/src/jramos/cgminer_manager
-git checkout develop
-git pull --ff-only
 git checkout -b modernize/sinatra-port
 ```
 
@@ -187,11 +224,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.2', '3.3', '3.4', '4.0']
-        include:
-          - ruby: 'head'
-            allow-failure: true
-    continue-on-error: ${{ matrix.allow-failure == true }}
+        ruby: ['3.2', '3.3', '3.4']
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -211,11 +244,38 @@ jobs:
       - run: bundle exec rspec --tag integration
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Write `.github/workflows/nightly.yml`** — optional Ruby 4.0 / head matrix, not required for PRs
+
+```yaml
+name: Nightly (optional)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['4.0', 'head']
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - run: bundle exec rspec
+```
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add .ruby-version .github/workflows/ci.yml
-git commit -m "chore: add Ruby version pin and CI scaffolding"
+git add .ruby-version .github/workflows/ci.yml .github/workflows/nightly.yml
+git commit -m "chore: add Ruby version pin and CI scaffolding (3.2-3.4 required, 4.0/head nightly)"
 ```
 
 ### Task 0.2: Gemfile + gemspec skeleton
@@ -414,7 +474,8 @@ require 'simplecov'
 SimpleCov.start do
   add_filter '/spec/'
   add_filter '/vendor/'
-  minimum_coverage line: 90
+  add_filter '/app/'       # legacy Rails tree excluded from coverage math
+  minimum_coverage line: 80
 end
 
 ENV['RACK_ENV'] ||= 'test'
@@ -1091,16 +1152,16 @@ These fixtures should be captured from a real running `cgminer_monitor`, not han
 }
 ```
 
-- [ ] **Step 6: Write `graph_data_hashrate.json`**
+- [ ] **Step 6: Write `graph_data_hashrate.json`** — 7-field shape matching `cgminer_monitor/lib/cgminer_monitor/http_app.rb:121-122`
 
 ```json
 {
   "metric": "hashrate",
   "miner": "127.0.0.1:4028",
-  "fields": ["timestamp", "ghs_5s", "ghs_av"],
+  "fields": ["ts", "ghs_5s", "ghs_av", "device_hardware_pct", "device_rejected_pct", "pool_rejected_pct", "pool_stale_pct"],
   "data": [
-    [1713262140, 5.12, 5.10],
-    [1713262200, 5.14, 5.11]
+    [1713262140, 5.12, 5.10, 0.0, 0.0, 0.99, 0.0],
+    [1713262200, 5.14, 5.11, 0.0, 0.0, 0.99, 0.0]
   ]
 }
 ```
@@ -1926,6 +1987,27 @@ git commit -am "test(pool_manager): indeterminate, failed, add_pool no-verify, p
 
 ## Phase 4 — HTTP app + views + assets
 
+### Task 4.0: Preflight — verify Phase -1 monitor PR is deployed
+
+**Files:** (none)
+
+- [ ] **Step 1: Against a running monitor that's been upgraded to `MIN_MONITOR_VERSION`, curl each graph endpoint**
+
+```bash
+for m in hashrate temperature availability hardware_error pool_stale pool_rejected device_rejected; do
+  echo "=== $m ==="
+  curl -sS -o /dev/null -w "%{http_code}\n" "$CGMINER_MONITOR_URL/v2/graph_data/$m?miner=127.0.0.1%3A4028"
+done
+```
+
+Expected: `200` for every metric. If any return `404`, Phase -1 is not merged/deployed — halt this plan and land the missing monitor endpoints first. The manager port depends on them.
+
+- [ ] **Step 2: Record the MIN_MONITOR_VERSION this plan is built against**
+
+Note the monitor tag you verified (e.g. `cgminer_monitor v0.3.0`) — this gets written into `README.md` (Task 6.2) and `MIGRATION.md` (Task 6.3) in place of the literal string `MIN_MONITOR_VERSION`.
+
+No commit for this preflight.
+
 ### Task 4.1: `HttpApp` skeleton + `/healthz`
 
 **Files:**
@@ -2022,6 +2104,7 @@ module CgminerManager
         self.miners_file             = miners_file
         self.stale_threshold_seconds = stale_threshold_seconds
         self.pool_thread_cap         = pool_thread_cap
+        reset_configured_miners! if respond_to?(:reset_configured_miners!)
       end
     end
 
@@ -2115,9 +2198,8 @@ RSpec.describe 'GET /api/v1/ping.json', type: :integration do
   end
 
   it 'returns the legacy shape {timestamp, available_miners, unavailable_miners}' do
-    pool  = instance_double(CgminerApiClient::MinerPool,
-                            available_miners: [:ok], unavailable_miners: [])
-    allow(CgminerApiClient::MinerPool).to receive(:new).and_return(pool)
+    fake = instance_double(CgminerApiClient::Miner, available?: true)
+    allow(CgminerApiClient::Miner).to receive(:new).and_return(fake)
 
     get '/api/v1/ping.json'
     body = JSON.parse(last_response.body, symbolize_names: true)
@@ -2129,11 +2211,20 @@ RSpec.describe 'GET /api/v1/ping.json', type: :integration do
     expect(body[:timestamp]).to be_a(Integer)
   end
 
+  it 'counts unavailable miners when Miner#available? returns false' do
+    fake = instance_double(CgminerApiClient::Miner, available?: false)
+    allow(CgminerApiClient::Miner).to receive(:new).and_return(fake)
+
+    get '/api/v1/ping.json'
+    body = JSON.parse(last_response.body, symbolize_names: true)
+    expect(body[:available_miners]).to eq(0)
+    expect(body[:unavailable_miners]).to eq(1)
+  end
+
   it 'does not depend on monitor being up' do
     stub_request(:get, /localhost:9292/).to_raise(Errno::ECONNREFUSED)
-    pool = instance_double(CgminerApiClient::MinerPool,
-                           available_miners: [], unavailable_miners: [:x, :y])
-    allow(CgminerApiClient::MinerPool).to receive(:new).and_return(pool)
+    fake = instance_double(CgminerApiClient::Miner, available?: true)
+    allow(CgminerApiClient::Miner).to receive(:new).and_return(fake)
 
     get '/api/v1/ping.json'
     expect(last_response.status).to eq(200)
@@ -2145,36 +2236,64 @@ end
 
 Expected: 404 on unknown route.
 
-- [ ] **Step 3: Add the route and `MinerPool` construction to `http_app.rb`**
+- [ ] **Step 3: Add the route and direct `Miner#available?` iteration**
 
 Add inside `HttpApp`:
 
 ```ruby
 get '/api/v1/ping.json' do
   content_type :json
-  pool = build_miner_pool
+
+  available, unavailable = 0, 0
+  configured_miners.each do |host, port|
+    miner = CgminerApiClient::Miner.new(host, port)
+    if miner.available?
+      available += 1
+    else
+      unavailable += 1
+    end
+  end
+
   JSON.generate(
     timestamp:          Time.now.to_i,
-    available_miners:   pool.available_miners.count,
-    unavailable_miners: pool.unavailable_miners.count
+    available_miners:   available,
+    unavailable_miners: unavailable
   )
 end
 ```
 
-and in the private section:
+and in the private section, a shared memoized miners reader:
 
 ```ruby
-def build_miner_pool
-  hosts = YAML.safe_load_file(self.class.miners_file).map { |m| [m['host'], m['port'] || 4028] }
-  CgminerApiClient::MinerPool.new(hosts.map { |h, p| CgminerApiClient::Miner.new(h, p) })
+def configured_miners
+  self.class.configured_miners
 end
 ```
 
-Also add at the top of the file:
+Add to `class << self`:
+
+```ruby
+def configured_miners
+  @configured_miners ||= begin
+    raw = YAML.safe_load_file(miners_file) || []
+    raw.map { |m| [m['host'], m['port'] || 4028] }.freeze
+  end
+end
+
+def reset_configured_miners!
+  @configured_miners = nil
+end
+```
+
+Also update `configure_for_test!` to call `reset_configured_miners!` at the end so reloads pick up per-spec tmpdir YAML files.
+
+Add at the top of `http_app.rb`:
 
 ```ruby
 require 'cgminer_api_client'
 ```
+
+**Rationale for not using `CgminerApiClient::MinerPool`:** `MinerPool.new` (no args) hardcodes `config/miners.yml` relative to CWD, which breaks test isolation with per-spec tmpdir miner files. Direct iteration over `configured_miners` is simpler, fully testable, and matches what the spec's § 6.4 describes ("Computed from cgminers directly via `cgminer_api_client`").
 
 - [ ] **Step 4: Run, confirm pass**
 
@@ -2190,76 +2309,225 @@ Expected: 2 examples, 0 failures.
 git commit -am "feat(http): /api/v1/ping.json preserves legacy shape (cgminer-direct)"
 ```
 
-### Task 4.3: Port HAML views as-is with helper shims
+### Task 4.3: Port HAML views + helper shims + Rails-ism rewrites
 
 **Files:**
-- Create: `views/layouts/application.haml` (ported from `app/views/layouts/application.html.haml`)
-- Create: `views/layouts/_header.haml`, `_footer.haml`
-- Create: `views/manager/*.haml` (ported)
-- Create: `views/miner/*.haml` (ported)
-- Create: `views/shared/**/*.haml` (ported; drop the 4 graphs that don't have monitor endpoints if Phase -1 hasn't landed — but per spec Phase -1 IS landed, so keep all seven graphs)
+- Create: `views/layouts/application.haml`, `_header.haml`, `_footer.haml` (ported + rewritten)
+- Create: `views/manager/*.haml` (ported, minus `_admin.haml` — dropped)
+- Create: `views/miner/*.haml` (ported, minus `_admin.haml` — dropped)
+- Create: `views/shared/**/*.haml` (ported, minus `_run.haml` and the `run/` subtree — dropped)
+- Modify: `lib/cgminer_manager/http_app.rb` (big helper block)
 
-- [ ] **Step 1: Copy all views** (uses `find` so recursion works in plain `sh`/`bash` without `shopt -s globstar`)
+- [ ] **Step 1: Copy views, dropping the ones that support cut `/run` endpoints**
 
 ```bash
 find app/views -type f -name '*.haml' | while read -r src; do
   rel="${src#app/views/}"
+  # Drop anything under shared/run/, the _run partial, and the _admin partials
+  # (all of which were UI wrappers for POST /manager/run or POST /miner/:id/run).
+  case "$rel" in
+    shared/_run.html.haml) continue ;;
+    shared/run/*)          continue ;;
+    manager/_admin.html.haml) continue ;;
+    miner/_admin.html.haml)   continue ;;
+  esac
   dst="views/${rel%.html.haml}.haml"
   mkdir -p "$(dirname "$dst")"
   cp "$src" "$dst"
 done
 ```
 
-Verify the file list matches the File Structure section above; any `*.html.haml` files are now `*.haml` under `views/`.
+- [ ] **Step 2: Write the full helper shim set + render_partial in `http_app.rb`**
 
-- [ ] **Step 2: Add helper shims to `http_app.rb`**
-
-The Rails views use `link_to`, `form_tag`, `button_to`, `image_tag`, and `render partial:`. Sinatra's HAML has `haml` (for render), but for these Rails helpers we write minimal local helpers. Add to `HttpApp`:
+The current views (per `grep -r` against `app/views`) depend on these Rails helpers: `link_to`, `image_tag`, `stylesheet_link_tag`, `javascript_include_tag`, `csrf_meta_tags` (plural), `content_for` / `content_for?` / `yield(:name)`, `hidden_field_tag`, `text_field_tag`, `label_tag`, `submit_tag`, `raw`, `root_url`, `miner_url`. Add all of them:
 
 ```ruby
 helpers do
+  def h(text)  = Rack::Utils.escape_html(text.to_s)
+  def raw(str) = str.to_s.html_safe? ? str : str.to_s # Sinatra HAML honors `!=` for raw output; this shim lets views that use `raw "..."` keep compiling.
+
+  def root_url                  = '/'
+  def miner_url(miner_id)       = "/miner/#{CGI.escape(miner_id.to_s)}"
+  def manager_manage_pools_path = '/manager/manage_pools'
+  def miner_manage_pools_path(miner_id) = "#{miner_url(miner_id)}/manage_pools"
+
   def link_to(text, href, **opts)
-    attrs = opts.merge(href: href).map { |k, v| %(#{k}="#{Rack::Utils.escape_html(v)}") }.join(' ')
-    "<a #{attrs}>#{Rack::Utils.escape_html(text)}</a>"
+    attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
+    %(<a href="#{h(href)}" #{attrs}>#{text.is_a?(String) ? h(text) : text}</a>)
   end
 
-  def render_partial(name, locals: {})
-    # Rails-style 'shared/_foo' or 'shared/graphs/_hashrate' → we pass 'shared/foo' to Sinatra HAML partials
-    partial_path = name.sub(%r{(^|/)_}, '\1')
-    haml "#{partial_path}".to_sym, layout: false, locals: locals
+  def image_tag(src, **opts)
+    attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
+    %(<img src="#{h(src)}" #{attrs}>)
   end
 
-  def csrf_token
-    Rack::Protection::AuthenticityToken.token(env['rack.session'])
+  def stylesheet_link_tag(name)
+    %(<link rel="stylesheet" href="/css/#{h(name)}.css">)
+  end
+
+  def javascript_include_tag(name)
+    %(<script src="/js/#{h(name)}.js"></script>)
   end
 
   def csrf_meta_tag
-    %(<meta name="csrf-token" content="#{csrf_token}">)
+    %(<meta name="csrf-token" content="#{h(csrf_token)}">)
+  end
+  # Alias so the layout's existing `= csrf_meta_tags` call site compiles:
+  def csrf_meta_tags = csrf_meta_tag
+
+  def csrf_token
+    Rack::Protection::AuthenticityToken.token(env['rack.session'] || {})
   end
 
-  def form_tag(action, method: 'POST', **opts)
-    method_field = method.to_s.upcase == 'GET' ? '' :
-                   %(<input type="hidden" name="_method" value="#{method.downcase}">)
-    token_field = %(<input type="hidden" name="authenticity_token" value="#{csrf_token}">)
-    %(<form action="#{action}" method="post" #{opts.map { |k, v| %(#{k}="#{v}") }.join(' ')}>#{method_field}#{token_field})
+  def hidden_field_tag(name, value = nil)
+    %(<input type="hidden" name="#{h(name)}" value="#{h(value)}">)
+  end
+
+  def text_field_tag(name, value = nil, placeholder: nil)
+    ph = placeholder ? %( placeholder="#{h(placeholder)}") : ''
+    %(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>)
+  end
+
+  def label_tag(name, text)
+    %(<label for="#{h(name)}">#{h(text)}</label>)
+  end
+
+  def submit_tag(text)
+    %(<input type="submit" value="#{h(text)}">)
+  end
+
+  # content_for / yield: simple per-request buffer
+  def content_for(name, &block)
+    @content_blocks ||= {}
+    @content_blocks[name] = capture_haml(&block) if block_given?
+  end
+
+  def content_for?(name)
+    @content_blocks ||= {}
+    @content_blocks.key?(name)
+  end
+
+  def yield_content(name)
+    @content_blocks ||= {}
+    @content_blocks[name]
+  end
+
+  # Render a partial. Rails-style 'shared/foo' or 'shared/graphs/hashrate'
+  # maps to views/shared/_foo.haml / views/shared/graphs/_hashrate.haml.
+  def render_partial(name, locals: {})
+    parts = name.split('/')
+    parts[-1] = "_#{parts[-1]}"
+    haml parts.join('/').to_sym, layout: false, locals: locals
   end
 end
 ```
 
-Then edit each ported view that calls these helpers, changing `render partial: 'shared/X', locals: {...}` to `render_partial 'shared/X', locals: {...}`. (This is a find-and-replace operation per view; no code shown since exact patterns depend on each view.)
+- [ ] **Step 3: Rewrite Rails-isms in the two ported views that embed them**
 
-- [ ] **Step 3: Commit**
+`views/layouts/_header.haml` — replace `Time.zone.now` with `Time.now`:
+
+```
+%span= Time.now.strftime("%H:%M:%S")
+```
+
+`views/manager/index.haml` — in the embedded JS block, replace `Rails.application.class.parent_name` with the literal string `"CgminerManager"` and change `'#{root_url}'` to `'/'`:
+
+```haml
+:javascript
+  // ...
+  $('#manager').load('/', function() {
+    // ...
+    $('title').text('CgminerManager');
+  });
+```
+
+`views/miner/show.haml` — same pattern, plus replace `miner_url(@miner_id)` with the value computed by the controller (pass it as a view var `@miner_url`):
+
+```haml
+:javascript
+  $('#miner-show').load('#{@miner_url}', function() {
+    $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + new Date().toLocaleTimeString() + "</span>");
+    $('title').text('CgminerManager');
+  });
+```
+
+And the previous/next-miner links in `miner/show.haml` (currently `miner_url(@miner_id - 1)`, which assumed integer ids) — since miner ids are now `host:port` strings with no natural arithmetic, compute prev/next in the controller and pass as `@prev_miner_url` / `@next_miner_url`, each nil-safe. Update the `.left` / `.right` blocks:
+
+```haml
+- if @prev_miner_url
+  .left= link_to raw("&laquo; Previous Miner"), @prev_miner_url
+- if @next_miner_url
+  .right= link_to raw("Next Miner &raquo;"), @next_miner_url
+```
+
+The controller (Task 4.7) computes these from `configured_miners` list — the miner before/after the current one, nil if at either end.
+
+- [ ] **Step 4: Update the layout's asset paths**
+
+`views/layouts/application.haml` currently has `= stylesheet_link_tag "application"` and `= javascript_include_tag "application"`. With Sprockets gone, we serve static files directly. Replace with explicit tags for each file:
+
+```haml
+!!! 5
+%html
+  %head
+    %title CgminerManager
+    %meta{ charset: 'utf-8' }
+    != csrf_meta_tag
+    %link{ rel: 'stylesheet', href: '/css/application.css' }
+    %link{ rel: 'stylesheet', href: '/css/base.css' }
+    %link{ rel: 'stylesheet', href: '/css/manager.css' }
+    %link{ rel: 'stylesheet', href: '/css/miner.css' }
+    %link{ rel: 'stylesheet', href: '/css/mobile.css' }
+    %script{ src: '/js/jquery-3.6.0.min.js' }
+    %script{ src: '/js/jquery.cookie.js' }
+    %script{ src: '/js/chart.min.js' }
+    %script{ src: '/js/config.js' }
+    %script{ src: '/js/graph.js' }
+    %script{ src: '/js/audio.js' }
+    %script{ src: '/js/manager.js' }
+    %script{ src: '/js/miner.js' }
+  %body
+    = haml :'layouts/_header', layout: false
+    = yield
+    = haml :'layouts/_footer', layout: false
+```
+
+- [ ] **Step 5: Find-and-replace `render partial: 'X', locals: ...` in every ported view**
+
+Sinatra HAML doesn't have Rails's `render partial:` helper. Replace every Rails-style call:
+
+```bash
+find views -name '*.haml' -exec sed -i '' \
+  -E "s/render partial: *'([^']+)', *locals: *(\{[^}]*\})/render_partial '\1', locals: \2/g" {} +
+find views -name '*.haml' -exec sed -i '' \
+  -E "s/render 'shared\/([^']+)'/render_partial 'shared\/\1'/g" {} +
+```
+
+Manually audit the output — any `render partial:` still in `grep` output is a missed pattern that needs a targeted edit.
+
+- [ ] **Step 6: Also drop references to the cut `_admin` / `_run` partials in views that still mention them**
+
+```bash
+grep -rn "render_partial.*'manager/admin'" views/ || true
+grep -rn "render_partial.*'miner/admin'"   views/ || true
+grep -rn "render_partial.*'shared/run'"    views/ || true
+```
+
+For each hit, delete that line from the containing view (the admin/run UI is gone per the spec).
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add views/ lib/cgminer_manager/http_app.rb
-git commit -m "feat(views): port HAML templates with Sinatra helper shims"
+git commit -m "feat(views): port HAML with shims; rewrite Rails-isms; drop /run UI"
 ```
 
-### Task 4.4: Move JS + CSS to `public/`
+### Task 4.4: Move JS + CSS to `public/` (preserving existing `public/` contents)
 
 **Files:**
 - Create: `public/js/*` (from `app/assets/javascripts/*`)
 - Create: `public/css/*` (from `app/assets/stylesheets/*`)
+- Keep as-is: `public/favicon.ico`, `public/forkme.png`, `public/robots.txt`, `public/audio/`, `public/screenshots/` — the existing tree is preserved; we only ADD `js/` and `css/` subdirectories.
 
 - [ ] **Step 1: Move JS, renaming for Sinatra static serving**
 
@@ -2424,10 +2692,17 @@ And in helpers:
 
 ```ruby
 def build_dashboard_view_model
-  miners = monitor_client.miners[:miners]
-rescue MonitorError => e
-  return { miners: [], banner: "data source unavailable (#{e.message})" }
-else
+  begin
+    miners = monitor_client.miners[:miners]
+  rescue MonitorError => e
+    # Fall back to miners.yml (local whitelist) so the page still renders
+    # with tile shells even when monitor is unreachable.
+    fallback_miners = configured_miners.map { |host, port| { id: "#{host}:#{port}", host: host, port: port } }
+    return { miners: fallback_miners, snapshots: {},
+             banner: "data source unavailable (#{e.message})",
+             stale_threshold: self.class.stale_threshold_seconds || 300 }
+  end
+
   snapshots = fetch_snapshots_for(miners)
   { miners: miners, snapshots: snapshots, banner: nil,
     stale_threshold: self.class.stale_threshold_seconds || 300 }
@@ -2555,6 +2830,9 @@ get '/miner/:miner_id' do
   miner_id = CGI.unescape(params[:miner_id])
   halt 404 unless miner_configured?(miner_id)
 
+  @miner_id = miner_id
+  @miner_url = miner_url(miner_id)
+  @prev_miner_url, @next_miner_url = neighbor_urls(miner_id)
   @view = build_miner_view_model(miner_id)
   haml :'miner/show'
 end
@@ -2564,11 +2842,15 @@ Helpers:
 
 ```ruby
 def miner_configured?(miner_id)
-  host, port = miner_id.split(':', 2)
-  port = port.to_i
-  YAML.safe_load_file(self.class.miners_file).any? do |m|
-    m['host'] == host && (m['port'] || 4028) == port
-  end
+  configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
+end
+
+def neighbor_urls(miner_id)
+  ids = configured_miners.map { |host, port| "#{host}:#{port}" }
+  idx = ids.index(miner_id)
+  prev = idx && idx.positive?           ? miner_url(ids[idx - 1]) : nil
+  nxt  = idx && idx < ids.size - 1      ? miner_url(ids[idx + 1]) : nil
+  [prev, nxt]
 end
 
 def build_miner_view_model(miner_id)
@@ -2629,14 +2911,17 @@ RSpec.describe 'GET /miner/:miner_id/graph_data/:metric', type: :integration do
                        fixture: 'graph_data_hashrate.json')
   end
 
-  it 'reshapes {fields, data} to [[ts, v1, v2], ...] for Chart.js' do
+  it 'projects {fields, data} to [[ts, ghs_5s, ghs_av], ...] for legacy Chart.js' do
     get "/miner/#{CGI.escape(miner_id)}/graph_data/hashrate"
     expect(last_response.status).to eq(200)
 
     body = JSON.parse(last_response.body)
     expect(body).to be_an(Array)
     expect(body.first).to be_an(Array)
-    expect(body.first.size).to eq(3) # [timestamp, ghs_5s, ghs_av]
+    expect(body.first.size).to eq(3) # legacy graph.js expects exactly [ts, ghs_5s, ghs_av]
+    expect(body.first[0]).to eq(1713262140)
+    expect(body.first[1]).to eq(5.12)
+    expect(body.first[2]).to eq(5.10)
   end
 end
 ```
@@ -2645,23 +2930,40 @@ end
 
 Expected: 404 — route not defined.
 
-- [ ] **Step 3: Implement the reshape route**
+- [ ] **Step 3: Implement the reshape route with per-metric column projection**
 
-Inside `HttpApp`:
+Monitor returns a 7-field hashrate envelope but legacy `graph.js` only reads `[ts, ghs_5s, ghs_av]`. Project each metric down to the columns the legacy JS actually uses. Inside `HttpApp`:
 
 ```ruby
+GRAPH_METRIC_PROJECTIONS = {
+  'hashrate'         => %w[ts ghs_5s ghs_av],
+  'temperature'      => %w[ts min avg max],
+  'availability'     => %w[ts available],
+  'hardware_error'   => %w[ts device_hardware_pct],
+  'device_rejected'  => %w[ts device_rejected_pct],
+  'pool_rejected'    => %w[ts pool_rejected_pct],
+  'pool_stale'       => %w[ts pool_stale_pct]
+}.freeze
+
 get '/miner/:miner_id/graph_data/:metric' do
   miner_id = CGI.unescape(params[:miner_id])
   halt 404 unless miner_configured?(miner_id)
 
-  envelope = monitor_client.graph_data(
-    metric:   params[:metric],
-    miner_id: miner_id,
-    since:    params[:since]
-  )
+  projection = GRAPH_METRIC_PROJECTIONS[params[:metric]]
+  halt 404 unless projection
+
+  envelope = monitor_client.graph_data(metric: params[:metric],
+                                       miner_id: miner_id,
+                                       since: params[:since])
+
+  fields = envelope[:fields] || []
+  rows   = envelope[:data]   || []
+  indices = projection.map { |f| fields.index(f) }
+
+  projected = rows.map { |row| indices.map { |i| i ? row[i] : nil } }
 
   content_type :json
-  JSON.generate(envelope[:data] || [])
+  JSON.generate(projected)
 end
 ```
 
@@ -2799,7 +3101,7 @@ git commit -am "feat(ui): staleness badge + waiting-for-first-poll placeholder"
 
 - [ ] **Step 1: Write failing test using FakeCgminer**
 
-`FakeCgminer` takes a `responses:` hash mapping a command key (e.g. `'disablepool|1'` where `|` separates command from comma-joined args, or just `'pools'` for the no-arg case — see `spec/support/fake_cgminer.rb` for the exact key format) to a JSON string. Construct small JSON fixtures inline for clarity; use `CgminerFixtures::POOLS` as the "one pool, disabled" base when it simplifies things.
+`FakeCgminer` takes a `responses:` hash mapping the **bare command name** to a JSON string (see `cgminer_api_client/spec/support/fake_cgminer.rb:133-135`). Arguments are NOT part of the key — the server reads the `command` field out of the parsed request JSON and looks it up directly. If you need to assert that the request carried specific parameters, use the `on_request:` callback to capture the raw request bytes. Construct small JSON fixtures inline for clarity; `CgminerFixtures::POOLS` can seed a "one pool, Disabled status" base when it simplifies things.
 
 `spec/integration/pool_management_spec.rb`:
 
@@ -2815,9 +3117,9 @@ RSpec.describe 'pool management', type: :integration do
 
   let(:fake_responses) do
     {
-      'disablepool|1' => %({"STATUS":[{"STATUS":"S","When":1,"Code":47,"Msg":"Pool 1:'...' disabled","Description":"cgminer 4.11.1"}],"id":1}),
-      'pools'         => %({"STATUS":[{"STATUS":"S","When":1,"Code":7,"Msg":"1 Pool(s)","Description":"cgminer 4.11.1"}],"POOLS":[{"POOL":1,"URL":"x","Status":"Disabled"}],"id":1}),
-      'save'          => %({"STATUS":[{"STATUS":"S","When":1,"Code":20,"Msg":"Configuration saved","Description":"cgminer 4.11.1"}],"id":1})
+      'disablepool' => %({"STATUS":[{"STATUS":"S","When":1,"Code":47,"Msg":"Pool 1 disabled","Description":"cgminer 4.11.1"}],"id":1}),
+      'pools'       => %({"STATUS":[{"STATUS":"S","When":1,"Code":7,"Msg":"1 Pool(s)","Description":"cgminer 4.11.1"}],"POOLS":[{"POOL":1,"URL":"x","Status":"Disabled"}],"id":1}),
+      'save'        => %({"STATUS":[{"STATUS":"S","When":1,"Code":20,"Msg":"Configuration saved","Description":"cgminer 4.11.1"}],"id":1})
     }
   end
 
@@ -2842,6 +3144,29 @@ RSpec.describe 'pool management', type: :integration do
 
       expect(last_response.status).to eq(200)
       expect(last_response.body).to match(/127\.0\.0\.1:#{fake.port}/)
+    end
+  end
+
+  describe 'POST /manager/manage_pools (add_pool)' do
+    let(:fake_responses) do
+      {
+        'addpool' => %({"STATUS":[{"STATUS":"S","When":1,"Code":55,"Msg":"Added pool 'x'","Description":"cgminer 4.11.1"}],"id":1})
+      }
+    end
+
+    it 'returns 200 with an :ok entry and :skipped save (no verification step)' do
+      token = fetch_csrf_token
+      post '/manager/manage_pools',
+           { action_name: 'add', url: 'stratum+tcp://x:3333', user: 'u', pass: 'p',
+             authenticity_token: token },
+           'HTTP_X_CSRF_TOKEN' => token
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to match(/127\.0\.0\.1:#{fake.port}/)
+      # :add_pool does not re-query :pools (verification skipped per spec § 7.3)
+      # and does not trigger a :save. The assertion here is that the test
+      # ran to completion (no hang, no 500) — the explicit 'save' key is
+      # deliberately absent from fake_responses.
     end
   end
 
@@ -2904,8 +3229,8 @@ Helpers:
 
 ```ruby
 def build_pool_manager_for_all
-  miners = YAML.safe_load_file(self.class.miners_file).map do |m|
-    CgminerApiClient::Miner.new(m['host'], m['port'] || 4028)
+  miners = configured_miners.map do |host, port|
+    CgminerApiClient::Miner.new(host, port)
   end
   PoolManager.new(miners, thread_cap: self.class.pool_thread_cap || 8)
 end
@@ -3318,6 +3643,7 @@ git commit -m "test(cli): version/doctor/unknown-verb"
 # frozen_string_literal: true
 
 require 'net/http'
+require 'socket'
 
 RSpec.describe 'full boot', type: :integration do
   it 'starts the Server, serves /healthz, and stops gracefully' do
@@ -3335,16 +3661,20 @@ RSpec.describe 'full boot', type: :integration do
     pid = spawn(env, 'bundle', 'exec', 'bin/cgminer_manager', 'run',
                 chdir: File.expand_path('../..', __dir__))
 
-    # wait for server to be up
-    10.times do
-      sleep 0.3
+    # Wait for the server to accept a TCP connection on the bind address,
+    # up to a hard deadline. We use a tight connect probe (50ms connect
+    # timeout) so we can retry quickly without sleeping much.
+    deadline = Time.now + 15
+    until Time.now >= deadline
       begin
-        Net::HTTP.get_response(URI('http://127.0.0.1:6123/healthz'))
+        TCPSocket.new('127.0.0.1', 6123).close
         break
       rescue Errno::ECONNREFUSED
-        next
+        # Not yet bound; retry on next loop iteration.
+        Thread.pass
       end
     end
+    raise 'server did not bind within deadline' if Time.now >= deadline
 
     response = Net::HTTP.get_response(URI('http://127.0.0.1:6123/healthz'))
     expect([200, 503]).to include(response.code.to_i)
@@ -3680,17 +4010,24 @@ git commit -m "docs: CHANGELOG.md 1.0.0 entry"
 
 ## Phase 7 — Unmount Rails, tag v0-legacy, cut 1.0.0
 
-### Task 7.1: Tag the last-Rails-bootable commit
+### Task 7.1: Confirm `v0-legacy` tag exists on develop (created in Pre-Phase 0)
 
 **Files:**
 - (git only)
 
-- [ ] **Step 1: Confirm the current HEAD is the last commit where the Rails app still boots (it still does — we haven't touched `config.ru` or the Rails boot chain yet).**
-
-- [ ] **Step 2: Tag**
+- [ ] **Step 1: Verify the tag is present on `develop`'s pre-modernization commit**
 
 ```bash
-git tag -a v0-legacy -m "Last commit where the Rails-era app still boots"
+git show-ref --tags v0-legacy
+```
+
+Expected: a SHA matching the develop commit from before this branch was created. If missing (e.g. plan started with Phase 0), return to Pre-Phase 0 and create it.
+
+- [ ] **Step 2: Delete `config/mongoid.yml.example`** (explicitly; MIGRATION.md tells operators to remove their copy)
+
+```bash
+git rm config/mongoid.yml.example
+git commit -m "chore: remove mongoid.yml.example (manager no longer uses Mongo)"
 ```
 
 ### Task 7.2: Unmount Rails from `config.ru`
