@@ -1,20 +1,20 @@
 AllCops:
   TargetRubyVersion: 3.2
   NewCops: enable
+  Include:
+    - '**/*.rb'
+    - '**/*.gemspec'
+    - 'bin/cgminer_manager'
+    - 'Gemfile'
+    - 'Rakefile'
   Exclude:
     - 'vendor/**/*'
     - 'tmp/**/*'
-    - 'app/**/*'        # legacy Rails tree (removed in follow-up PR)
+    - 'app/**/*'
     - 'bin/**/*'
-    - 'config/application.rb'
-    - 'config/environment.rb'
-    - 'config/environments/**/*'
-    - 'config/routes.rb'
-    - 'config/boot.rb'
-    - 'config.ru'
-    - 'config/initializers/**/*'
-    - 'lib/tasks/**/*'
+    - 'config/**/*'
     - 'test/**/*'
+    - 'lib/tasks/**/*'
 
 plugins:
   - rubocop-rake

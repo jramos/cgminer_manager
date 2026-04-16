@@ -5,6 +5,7 @@ source 'https://rubygems.org'
 gemspec
 
 group :development, :test do
+  gem 'rack-test', '>= 2.1'
   gem 'rake', '>= 13.2'
   gem 'rspec', '>= 3.13'
   gem 'rubocop', '>= 1.60'
@@ -12,5 +13,4 @@ group :development, :test do
   gem 'rubocop-rspec', '>= 2.27'
   gem 'simplecov', '>= 0.22'
   gem 'webmock', '>= 3.23'
-  gem 'rack-test', '>= 2.1'
 end
