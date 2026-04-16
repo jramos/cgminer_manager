@@ -55,3 +55,4 @@ RSpec/MessageChain:
 RSpec/SpecFilePathFormat:
   Exclude:
     - 'spec/cgminer_manager/version_spec.rb'
+    - 'spec/cgminer_manager/errors_spec.rb'
