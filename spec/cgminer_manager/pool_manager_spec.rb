@@ -71,4 +71,90 @@ RSpec.describe CgminerManager::PoolManager do
       end
     end
   end
+
+  describe '#disable_pool (verification did not converge)' do
+    it 'marks command_status :indeterminate and still attempts save' do
+      expect(miner).to receive(:disablepool).with(1)
+      expect(miner).to receive(:query).with(:pools).and_return(
+        [{ 'POOL' => 1, 'STATUS' => 'Alive' }]
+      )
+      expect(miner).to receive(:query).with(:save)
+
+      pm = described_class.new([miner])
+      result = pm.disable_pool(pool_index: 1)
+
+      entry = result.entries.first
+      expect(entry.command_status).to eq(:indeterminate)
+      expect(entry.save_status).to eq(:ok)
+    end
+  end
+
+  describe '#disable_pool (ApiError)' do
+    it 'marks command_status :failed and skips save' do
+      allow(miner).to receive(:disablepool)
+        .and_raise(CgminerApiClient::ApiError, 'rejected')
+
+      pm = described_class.new([miner])
+      result = pm.disable_pool(pool_index: 1)
+
+      entry = result.entries.first
+      expect(entry.command_status).to eq(:failed)
+      expect(entry.save_status).to eq(:skipped)
+    end
+  end
+
+  describe '#disable_pool (ConnectionError)' do
+    it 'marks command_status :failed and skips save' do
+      allow(miner).to receive(:disablepool)
+        .and_raise(CgminerApiClient::ConnectionError, 'refused')
+
+      pm = described_class.new([miner])
+      result = pm.disable_pool(pool_index: 1)
+
+      entry = result.entries.first
+      expect(entry.command_status).to eq(:failed)
+      expect(entry.save_status).to eq(:skipped)
+    end
+  end
+
+  describe '#add_pool (no verification)' do
+    it 'returns :ok when addpool succeeds without any :pools re-query' do
+      expect(miner).to receive(:addpool).with('stratum+tcp://p.example.com', 'u', 'p')
+      expect(miner).not_to receive(:query).with(:pools)
+
+      pm = described_class.new([miner])
+      result = pm.add_pool(url: 'stratum+tcp://p.example.com', user: 'u', pass: 'p')
+
+      expect(result.entries.first.command_status).to eq(:ok)
+      expect(result.entries.first.save_status).to eq(:skipped)
+    end
+
+    it 'returns :failed when addpool raises ApiError' do
+      allow(miner).to receive(:addpool).and_raise(CgminerApiClient::ApiError, 'bad url')
+
+      pm = described_class.new([miner])
+      result = pm.add_pool(url: 'x', user: 'u', pass: 'p')
+
+      expect(result.entries.first.command_status).to eq(:failed)
+    end
+  end
+
+  describe 'partial success across miners' do
+    it 'records each miner independently' do
+      good = instance_double(CgminerApiClient::Miner, host: '1', port: 2)
+      bad  = instance_double(CgminerApiClient::Miner, host: '3', port: 4)
+      allow(good).to receive(:to_s).and_return('1:2')
+      allow(bad).to receive(:to_s).and_return('3:4')
+
+      allow(good).to receive(:disablepool).with(1)
+      allow(good).to receive(:query).with(:pools).and_return([{ 'POOL' => 1, 'STATUS' => 'Disabled' }])
+      allow(good).to receive(:query).with(:save)
+
+      allow(bad).to receive(:disablepool).with(1).and_raise(CgminerApiClient::ConnectionError)
+
+      result = described_class.new([good, bad]).disable_pool(pool_index: 1)
+      expect(result.successful.map(&:miner)).to eq(['1:2'])
+      expect(result.failed.map(&:miner)).to eq(['3:4'])
+    end
+  end
 end
