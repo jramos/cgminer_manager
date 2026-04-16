@@ -40,7 +40,7 @@ module CgminerManager
         level = entry.delete(:level)
         event = entry.delete(:event)
         kvs = entry.map { |k, v| "#{k}=#{v}" }.join(' ')
-        [ts, level.upcase, event, kvs].compact.reject(&:empty?).join(' ')
+        [ts, level.upcase, event, kvs].reject { |s| s.nil? || s.empty? }.join(' ')
       end
     end
   end

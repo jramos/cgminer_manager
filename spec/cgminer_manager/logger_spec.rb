@@ -51,7 +51,7 @@ RSpec.describe CgminerManager::Logger do
   end
 
   describe 'thread safety' do
-    it 'does not interleave lines under concurrent writers' do
+    it 'emits one parseable JSON object per line under concurrent writers' do
       described_class.format = 'json'
       threads = 20.times.map do |i|
         Thread.new { 50.times { described_class.info(event: 'tick', i: i) } }
@@ -63,6 +63,15 @@ RSpec.describe CgminerManager::Logger do
       lines.each do |line|
         expect { JSON.parse(line) }.not_to raise_error
       end
+    end
+
+    it 'holds the mutex around each @output.puts' do
+      # Prove the mutex-synchronize is actually invoked per call, not skipped.
+      mutex = described_class.instance_variable_get(:@mutex)
+      observed = []
+      allow(io).to receive(:puts) { |_line| observed << mutex.owned? }
+      described_class.info(event: 'tick')
+      expect(observed).to eq([true])
     end
   end
 end
