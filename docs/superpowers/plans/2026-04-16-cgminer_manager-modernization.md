@@ -326,6 +326,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'puma', '~> 6.4'
   spec.add_dependency 'rack-protection', '~> 4.0'
   spec.add_dependency 'sinatra', '~> 4.0'
+  spec.add_dependency 'sinatra-contrib', '~> 4.0' # content_for, namespace, etc.
 end
 ```
 
@@ -1791,11 +1792,34 @@ module CgminerManager
 
     private
 
-    def run_each
-      entries = @miners.map do |miner|
-        Thread.new { yield(miner) }
-      end.map(&:value)
-      PoolActionResult.new(entries: entries)
+    def run_each(&block)
+      queue = Queue.new
+      @miners.each { |m| queue << m }
+
+      results = Array.new(@miners.size)
+      index_of = @miners.each_with_index.to_h
+      mutex = Mutex.new
+
+      worker_count = [@thread_cap, @miners.size].min
+      worker_count = 1 if worker_count < 1
+
+      workers = worker_count.times.map do
+        Thread.new do
+          loop do
+            miner =
+              begin
+                queue.pop(true)
+              rescue ThreadError
+                break
+              end
+            entry = block.call(miner)
+            mutex.synchronize { results[index_of[miner]] = entry }
+          end
+        end
+      end
+      workers.each(&:join)
+
+      PoolActionResult.new(entries: results)
     end
 
     def run_verified(miner)
@@ -2275,8 +2299,12 @@ Add to `class << self`:
 ```ruby
 def configured_miners
   @configured_miners ||= begin
-    raw = YAML.safe_load_file(miners_file) || []
-    raw.map { |m| [m['host'], m['port'] || 4028] }.freeze
+    raw = YAML.safe_load_file(miners_file)
+    raw = [] if raw.nil?
+    unless raw.is_a?(Array) && raw.all? { |m| m.is_a?(Hash) && m['host'] }
+      raise ConfigError, "#{miners_file} must be a YAML list of {host, port} entries"
+    end
+    raw.map { |m| [m['host'], m['port'] || 4028].freeze }.freeze
   end
 end
 
@@ -2396,22 +2424,6 @@ helpers do
     %(<input type="submit" value="#{h(text)}">)
   end
 
-  # content_for / yield: simple per-request buffer
-  def content_for(name, &block)
-    @content_blocks ||= {}
-    @content_blocks[name] = capture_haml(&block) if block_given?
-  end
-
-  def content_for?(name)
-    @content_blocks ||= {}
-    @content_blocks.key?(name)
-  end
-
-  def yield_content(name)
-    @content_blocks ||= {}
-    @content_blocks[name]
-  end
-
   # Render a partial. Rails-style 'shared/foo' or 'shared/graphs/hashrate'
   # maps to views/shared/_foo.haml / views/shared/graphs/_hashrate.haml.
   def render_partial(name, locals: {})
@@ -2421,6 +2433,20 @@ helpers do
   end
 end
 ```
+
+**Content helpers (`content_for` / `yield_content`) come from `sinatra-contrib`** — the DIY `capture_haml` approach doesn't work with Haml 6 (that method was removed). At the top of `http_app.rb`, add:
+
+```ruby
+require 'sinatra/content_for'
+```
+
+and inside the class body:
+
+```ruby
+helpers Sinatra::ContentFor
+```
+
+This gives you a working `content_for :name do ... end` and `yield_content :name`, both tested on Sinatra + Haml 6.
 
 - [ ] **Step 3: Rewrite Rails-isms in the two ported views that embed them**
 
@@ -2462,6 +2488,29 @@ And the previous/next-miner links in `miner/show.haml` (currently `miner_url(@mi
 
 The controller (Task 4.7) computes these from `configured_miners` list — the miner before/after the current one, nil if at either end.
 
+**Also rewrite `= yield :sym` to `= yield_content :sym`** — Rails's `yield :name` looks up a named content buffer. Sinatra+Haml's bare `yield` yields to the layout's implicit content block, not a named buffer; `sinatra-contrib`'s `yield_content :name` is the named-buffer equivalent.
+
+```bash
+# manager/index.haml and any other surviving view with `yield :<name>`
+find views -name '*.haml' -exec sed -i '' -E 's/= yield :([A-Za-z_][A-Za-z0-9_]*)/= yield_content :\1/g' {} +
+```
+
+Verify with:
+
+```bash
+grep -n 'yield :' views/ -r
+```
+
+Expected: empty output (all `yield :sym` converted).
+
+**Final Rails-ism sanity scan:**
+
+```bash
+grep -rn "Time\.zone\|Rails\.application\|root_url\|\.parent_name" views/ || true
+```
+
+Expected: empty. Any straggler hits should be rewritten to plain Ruby / literal strings before moving on.
+
 - [ ] **Step 4: Update the layout's asset paths**
 
 `views/layouts/application.haml` currently has `= stylesheet_link_tag "application"` and `= javascript_include_tag "application"`. With Sprockets gone, we serve static files directly. Replace with explicit tags for each file:
@@ -2492,28 +2541,61 @@ The controller (Task 4.7) computes these from `configured_miners` list — the m
     = haml :'layouts/_footer', layout: false
 ```
 
-- [ ] **Step 5: Find-and-replace `render partial: 'X', locals: ...` in every ported view**
+- [ ] **Step 5: Find-and-replace `render partial: …` in every ported view**
 
-Sinatra HAML doesn't have Rails's `render partial:` helper. Replace every Rails-style call:
+Sinatra HAML doesn't have Rails's `render partial:` helper. The current views use several shapes — all of them need to become `render_partial`:
+
+- `render partial: 'shared/manage_pools', locals: { miner: m }` — namespaced, with locals
+- `render partial: 'shared/graphs/hashrate'` — namespaced, no locals
+- `render partial: 'admin'` — bare, relative to current view's directory (e.g. `manager/_admin.haml`)
+- `render 'shared/foo'` — shorthand, no `partial:` keyword
+
+Run each transformation in order:
 
 ```bash
+# 1. Namespaced WITH locals:  render partial: 'X/Y', locals: {...}
 find views -name '*.haml' -exec sed -i '' \
   -E "s/render partial: *'([^']+)', *locals: *(\{[^}]*\})/render_partial '\1', locals: \2/g" {} +
+
+# 2. Namespaced WITHOUT locals:  render partial: 'X/Y'  (must NOT match the relative form)
+find views -name '*.haml' -exec sed -i '' \
+  -E "s/render partial: *'([^']+\/[^']+)'([^,]|$)/render_partial '\1'\2/g" {} +
+
+# 3. Relative (no slash) WITHOUT locals:  render partial: 'admin'
+find views -name '*.haml' -exec sed -i '' \
+  -E "s/render partial: *'([^'\/]+)'([^,]|$)/render_partial '\1'\2/g" {} +
+
+# 4. Shorthand no-keyword form:  render 'X/Y'
 find views -name '*.haml' -exec sed -i '' \
   -E "s/render 'shared\/([^']+)'/render_partial 'shared\/\1'/g" {} +
 ```
 
-Manually audit the output — any `render partial:` still in `grep` output is a missed pattern that needs a targeted edit.
-
-- [ ] **Step 6: Also drop references to the cut `_admin` / `_run` partials in views that still mention them**
+Audit the result:
 
 ```bash
-grep -rn "render_partial.*'manager/admin'" views/ || true
-grep -rn "render_partial.*'miner/admin'"   views/ || true
-grep -rn "render_partial.*'shared/run'"    views/ || true
+grep -n "render partial:" views/ -r || true
+grep -n "render '" views/ -r         || true
 ```
 
-For each hit, delete that line from the containing view (the admin/run UI is gone per the spec).
+Both expected empty. Any remaining hit needs a targeted manual edit.
+
+- [ ] **Step 6: Drop references to cut `_admin` / `_run` partials**
+
+The partials themselves were not copied (Step 1's exclusions), but surviving views may still reference them. Catch **all** shapes:
+
+```bash
+grep -En "render_partial *['\"](manager/)?admin['\"]"  views/ -r || true
+grep -En "render_partial *['\"](miner/)?admin['\"]"    views/ -r || true
+grep -En "render_partial *['\"](shared/)?run['\"]"     views/ -r || true
+grep -En "render_partial *['\"]shared/run/"            views/ -r || true
+```
+
+For every hit, delete that line. Spec-mandated hits are:
+
+- `views/manager/index.haml` around line 19 (was `render partial: 'admin'`) — delete.
+- `views/miner/show.haml` around line 30 (was `render partial: 'admin'`) — delete.
+
+Re-run the greps until empty. This is the last UI-surface change; anything still referencing the cut `/run` verbs must be pruned.
 
 - [ ] **Step 7: Commit**
 
@@ -3193,7 +3275,7 @@ RSpec.describe 'pool management', type: :integration do
 end
 ```
 
-> **Implementation note:** `FakeCgminer`'s `responses:` key format is `'<command>|<comma-joined-args>'` or `'<command>'` for no-arg calls. Inspect `spec/support/fake_cgminer.rb` for the exact parsing if a test mysteriously hangs — a missing key causes the server to close without writing, and the `cgminer_api_client` read blocks until the socket closes anyway (so it's usually visible as an ApiError rather than a hang, but confirm).
+> **Implementation note:** `FakeCgminer`'s `responses:` hash is keyed by the **bare command name** (`'disablepool'`, `'pools'`, `'save'`) — arguments are read from a separate `parameter` field in the request JSON and are NOT part of the lookup key. See `cgminer_api_client/spec/support/fake_cgminer.rb:133-135`. If you need to assert specific parameters were sent, pass `on_request: ->(bytes) { recorded << bytes }` when constructing the server. A missing key falls through to `CgminerFixtures.invalid_command`, producing a STATUS=E response that `cgminer_api_client` surfaces as `ApiError`.
 
 - [ ] **Step 2: Run, confirm failure**
 
