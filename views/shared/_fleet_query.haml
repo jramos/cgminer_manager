@@ -1,0 +1,21 @@
+.fleet-query-result
+  %table.results
+    %thead
+      %tr
+        %th Miner
+        %th Status
+        %th Response
+    %tbody
+      - @query_result.entries.each do |entry|
+        %tr
+          %td= miner_display(entry.miner)
+          %td
+            - if entry.ok?
+              %span.ok &#10003;
+            - else
+              %span.failed &#10007;
+          %td
+            - if entry.ok?
+              %pre= JSON.pretty_generate(entry.response)
+            - else
+              %span.reason= entry.error&.message

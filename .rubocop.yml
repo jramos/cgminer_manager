@@ -1,0 +1,94 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Include:
+    - '**/*.rb'
+    - '**/*.gemspec'
+    - 'bin/cgminer_manager'
+    - 'Gemfile'
+    - 'Rakefile'
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'dev/**/*'
+
+plugins:
+  - rubocop-rake
+  - rubocop-rspec
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  EnforcedStyle: always
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'lib/cgminer_manager/http_app.rb'
+
+Metrics/MethodLength:
+  Max: 25
+
+Metrics/ClassLength:
+  Max: 550
+
+Metrics/AbcSize:
+  Max: 25
+
+RSpec/ExampleLength:
+  Max: 20
+
+RSpec/MultipleExpectations:
+  Max: 5
+  Exclude:
+    # Happy-path config test asserts all 8 coerced fields in one shot — intentional.
+    - 'spec/cgminer_manager/config_spec.rb'
+
+RSpec/NestedGroups:
+  Max: 4
+
+RSpec/MessageChain:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Exclude:
+    - 'spec/cgminer_manager/version_spec.rb'
+    - 'spec/cgminer_manager/errors_spec.rb'
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/integration/**/*_spec.rb'
+
+RSpec/DescribeClass:
+  Exclude:
+    # Integration specs describe HTTP routes/behaviors, not Ruby classes.
+    - 'spec/integration/**/*_spec.rb'
+
+RSpec/MultipleDescribes:
+  Exclude:
+    # Intentionally split: happy path vs. error/observability groups.
+    - 'spec/cgminer_manager/monitor_client_spec.rb'
+    # Split: PoolActionResult value type vs. PoolManager service.
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
+    # Split: ViewMiner value type vs. ViewMinerPool partitioning.
+    - 'spec/cgminer_manager/view_miner_spec.rb'
+    # Split: FleetQueryResult + FleetWriteResult value types vs. CgminerCommander service.
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'
+    # Split: AdminAuth middleware vs. ConditionalAuthenticityToken middleware (separate classes).
+    - 'spec/cgminer_manager/admin_auth_spec.rb'
+
+RSpec/RepeatedExampleGroupDescription:
+  Exclude:
+    # Two top-level describes on the same class (happy vs. error/observability) is intentional.
+    - 'spec/cgminer_manager/monitor_client_spec.rb'
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
+
+RSpec/MessageSpies:
+  Exclude:
+    # Command-path tests assert precise call sequence to cgminer; expect-receive is clearer than spies.
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'
+
+RSpec/StubbedMock:
+  Exclude:
+    - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'

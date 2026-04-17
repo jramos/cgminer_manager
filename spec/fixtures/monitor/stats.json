@@ -1,0 +1,8 @@
+{
+  "miner": "127.0.0.1:4028",
+  "command": "stats",
+  "ok": true,
+  "fetched_at": "2026-04-16T10:30:00Z",
+  "response": {"STATS": [{"Elapsed": 3600}]},
+  "error": null
+}

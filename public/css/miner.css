@@ -1,0 +1,49 @@
+/* Styles for the Miner views. */
+
+#miner {
+  background: white;
+}
+
+#miner #unknown-unavailable {
+  color: red;
+  font-weight: bold;
+  padding: 20px;
+}
+
+#miner #summary #config,
+#miner #devices .device,
+#miner #pools .pool,
+#miner #stats .stat,
+#miner #usbstats .usbstat {
+  display: table;
+  width: 100%;
+}
+
+#miner #summary #config td,
+#miner #devices .device td,
+#miner #pools .pool td,
+#miner #stats .stat td,
+#miner #usbstats .usbstat td {
+  width: 25%;
+}
+
+#miner #miner-summary td:first-child {
+  font-weight: normal;
+  text-align: center;
+}
+
+#miner_results table td {
+  width: 50%;
+}
+
+#miner_results table td:first-child {
+  font-weight: bold;
+}
+
+.overview-table td {
+  width: 25%;
+}
+
+#prev-next-miner {
+  padding: 0 8px 8px;
+}

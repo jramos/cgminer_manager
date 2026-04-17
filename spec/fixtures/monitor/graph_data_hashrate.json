@@ -1,0 +1,11 @@
+{
+  "metric": "hashrate",
+  "miner": "127.0.0.1:4028",
+  "since": "2026-04-16T09:30:00Z",
+  "until": "2026-04-16T10:30:00Z",
+  "fields": ["ts", "ghs_5s", "ghs_av", "device_hardware_pct", "device_rejected_pct", "pool_rejected_pct", "pool_stale_pct"],
+  "data": [
+    [1713262140, 5.12, 5.10, 0.0, 0.0, 0.99, 0.0],
+    [1713262200, 5.14, 5.11, 0.0, 0.0, 0.99, 0.0]
+  ]
+}

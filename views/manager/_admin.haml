@@ -1,0 +1,48 @@
+- configured_scopes = @miner_pool&.miners&.map { |m| "#{m.host}:#{m.port}" } || []
+
+#admin
+  %h3 Status queries
+  .admin-button-row
+    - %w[version stats devs].each do |cmd|
+      %form.admin-form(action="/manager/admin/#{cmd}" method="post" data-target="#admin-response")
+        %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+        %button(type="submit")= cmd.capitalize
+
+  %h3 Fleet operations
+  .admin-button-row
+    - fleet_ops = { 'zero' => 'Zero statistics on ALL miners?', 'save' => 'Save config on ALL miners?', 'restart' => 'Restart cgminer on ALL miners? Mining will pause.', 'quit' => 'Quit cgminer on ALL miners? You will need to restart them manually.' }
+    - fleet_ops.each do |cmd, msg|
+      %form.admin-form(action="/manager/admin/#{cmd}" method="post" data-target="#admin-response" onsubmit="return confirm('#{msg}');")
+        %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+        %button.danger(type="submit")= cmd.capitalize
+
+  .admin-raw
+    %h3.danger Raw cgminer RPC
+    %p.warning
+      %strong WARNING:
+      this executes a raw cgminer RPC against the selected scope. Device-tuning
+      commands like
+      %code pgaset
+      and
+      %code ascset
+      can permanently damage hardware if misused. Logs every invocation to the
+      audit trail.
+
+    %form.admin-form(action="/manager/admin/run" method="post" data-target="#admin-response" onsubmit="return confirmRawCommand(this);")
+      %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+      %label
+        Command
+        %input(type="text" name="command" required pattern="[a-z][a-z0-9_+]*" placeholder="e.g. pgaset")
+      %label
+        Args (comma-separated, optional)
+        %input(type="text" name="args" placeholder="e.g. 0,clock,690")
+      %label
+        Scope
+        %select(name="scope")
+          %option(value="all") All miners
+          - configured_scopes.each do |s|
+            %option(value="#{s}")= s
+      %button.danger(type="submit") Run
+
+  #admin-response
+    %p.muted No command run yet.

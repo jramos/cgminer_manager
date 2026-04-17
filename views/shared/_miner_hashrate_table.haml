@@ -1,0 +1,13 @@
+- @bad_chain_elements ||= []
+
+%table(cellpadding="0" cellspacing="0")
+  %thead
+    %th Host
+    %th Rate(5s)
+    %th Rate(avg)
+  %tbody
+    - summary = @miner_data.dig(miner_index, :summary)&.first&.dig(:summary)&.first || {}
+    %tr
+      %td= miner.to_s
+      %td.text-center= format_hashrate(summary[:ghs_5s].to_f * 1e9)
+      %td.text-center= format_hashrate(summary[:ghs_av].to_f * 1e9)

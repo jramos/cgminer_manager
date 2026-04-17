@@ -19,3 +19,4 @@ public/assets
 config/miners.yml
 config/mongoid.yml
 ._*
+/coverage

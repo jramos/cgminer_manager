@@ -1,0 +1,34 @@
+.pool-management-result
+  %h3 Pool management results
+  %table.results
+    %thead
+      %tr
+        %th Miner
+        %th Command
+        %th Save
+        %th Reason
+    %tbody
+      - @result.entries.each do |entry|
+        %tr
+          %td= entry.miner
+          %td
+            - case entry.command_status
+            - when :ok
+              %span.ok &#10003;
+            - when :failed
+              %span.failed &#10007;
+            - when :indeterminate
+              %span.indeterminate &#9888;
+          %td
+            - case entry.save_status
+            - when :ok
+              %span.ok &#10003;
+            - when :failed
+              %span.failed &#10007;
+            - when :indeterminate
+              %span.indeterminate &#9888;
+            - when :skipped
+              %span.skipped &mdash;
+          %td
+            - if entry.command_reason
+              %span.reason= entry.command_reason.message
