@@ -18,14 +18,16 @@ module CgminerManager
       Logger.info(event: 'server.start', pid: Process.pid,
                   bind: @config.bind, port: @config.port)
 
+      @booted = Queue.new
       launcher = build_puma_launcher
       puma_thread = start_puma_thread(launcher)
 
       # Puma's setup_signals runs on its thread during launcher.run and
-      # overwrites any SIGTERM/SIGINT traps we installed earlier. Wait briefly
-      # for that to complete, then reinstall ours so signals land back in our
-      # @stop queue.
-      sleep 0.2
+      # overwrites any SIGTERM/SIGINT traps we installed earlier. Wait for
+      # Puma to finish booting (signals already installed, listener already
+      # bound) before reinstalling ours so signals land back in our @stop
+      # queue.
+      @booted.pop
       install_signal_handlers
 
       signal = @stop.pop
@@ -52,6 +54,7 @@ module CgminerManager
         launcher.run
       rescue Exception => e # rubocop:disable Lint/RescueException
         Logger.error(event: 'puma.crash', error: e.class.to_s, message: e.message)
+        @booted << true # unblock main if we died before booting
         @stop << 'puma_crash'
       end
     end
@@ -68,7 +71,10 @@ module CgminerManager
         user_config.raise_exception_on_sigterm(false)
         user_config.app(Rack::Builder.new { run HttpApp.new }.to_app)
       end
-      Puma::Launcher.new(puma_config, log_writer: Puma::LogWriter.null)
+      launcher = Puma::Launcher.new(puma_config, log_writer: Puma::LogWriter.null)
+      booted = @booted
+      launcher.events.on_booted { booted << true }
+      launcher
     end
   end
 end
