@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-04-17
 
 ### Added
 - Sinatra + Puma service replaces the previous Rails 4.2 app.
