@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require 'sinatra/base'
+require 'sinatra/content_for'
 require 'rack/protection'
 require 'json'
 require 'yaml'
+require 'cgi'
+require 'securerandom'
 require 'cgminer_api_client'
 
 module CgminerManager
@@ -44,9 +47,82 @@ module CgminerManager
       end
     end
 
+    helpers Sinatra::ContentFor
+
     set :show_exceptions, false
     set :dump_errors, false
     set :host_authorization, { permitted_hosts: [] }
+    set :views, File.expand_path('../../views', __dir__)
+
+    configure do
+      use Rack::Session::Cookie,
+          key: 'cgminer_manager.session',
+          secret: ENV.fetch('SESSION_SECRET') { SecureRandom.hex(32) },
+          same_site: :lax
+      use Rack::Protection::AuthenticityToken
+    end
+
+    helpers do
+      def h(text) = Rack::Utils.escape_html(text.to_s)
+      def raw(str) = str.to_s
+
+      def root_url = '/'
+      def miner_url(miner_id) = "/miner/#{CGI.escape(miner_id.to_s)}"
+      def manager_manage_pools_path = '/manager/manage_pools'
+      def miner_manage_pools_path(miner_id) = "#{miner_url(miner_id)}/manage_pools"
+
+      def link_to(text, href, **opts)
+        attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
+        body  = text.is_a?(String) ? h(text) : text
+        %(<a href="#{h(href)}" #{attrs}>#{body}</a>)
+      end
+
+      def image_tag(src, **opts)
+        attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
+        %(<img src="#{h(src)}" #{attrs}>)
+      end
+
+      def stylesheet_link_tag(name)
+        %(<link rel="stylesheet" href="/css/#{h(name)}.css">)
+      end
+
+      def javascript_include_tag(name)
+        %(<script src="/js/#{h(name)}.js"></script>)
+      end
+
+      def csrf_meta_tag
+        %(<meta name="csrf-token" content="#{h(csrf_token)}">)
+      end
+
+      def csrf_meta_tags = csrf_meta_tag
+
+      def csrf_token
+        Rack::Protection::AuthenticityToken.token(env['rack.session'] || {})
+      end
+
+      def hidden_field_tag(name, value = nil)
+        %(<input type="hidden" name="#{h(name)}" value="#{h(value)}">)
+      end
+
+      def text_field_tag(name, value = nil, placeholder: nil)
+        ph = placeholder ? %( placeholder="#{h(placeholder)}") : ''
+        %(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>)
+      end
+
+      def label_tag(name, text)
+        %(<label for="#{h(name)}">#{h(text)}</label>)
+      end
+
+      def submit_tag(text)
+        %(<input type="submit" value="#{h(text)}">)
+      end
+
+      def render_partial(name, locals: {})
+        parts = name.split('/')
+        parts[-1] = "_#{parts[-1]}"
+        haml parts.join('/').to_sym, layout: false, locals: locals
+      end
+    end
 
     get '/healthz' do
       reasons = []

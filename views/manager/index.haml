@@ -1,0 +1,35 @@
+#manager
+  - unless @miner_pool.miners.empty?
+    - @miner = @miner_pool.miners.first
+    - @miner_id = 0
+
+    - content_for(:miner_pool) do
+      = render_partial 'miner_pool'
+
+    = render_partial 'shared/warnings'
+
+    #manager-content
+      %ul
+        %li= link_to 'Summary', '#summary'
+        %li= link_to 'Miner Pool', '#miner-pool'
+
+      = render_partial 'summary'
+      = yield_content :miner_pool
+
+    :javascript
+      $('#manager-content').tabs({activate: setWindowHash});
+
+    :javascript
+      $(document).unbind('update');
+      $(document).on('update', function() {
+        $('#updated').addClass('updating').text('Updating...');
+        $('title').text('Updating...');
+
+        $('#manager').load('/', function() {
+          now = new Date();
+          current_time = formatUpdatedAt(now);
+
+          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + current_time + "</span>");
+          $('title').text('CgminerManager');
+        });
+      });
