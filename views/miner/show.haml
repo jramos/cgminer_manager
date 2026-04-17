@@ -21,11 +21,13 @@
           %li!= link_to('Devs',  '#devices')
           %li!= link_to('Pools', '#pools')
           %li!= link_to('Stats', '#stats')
+          %li!= link_to('Admin', '#admin', class: 'danger')
 
         != render_partial 'miner/summary'
         != render_partial 'miner/devices'
         != render_partial 'miner/pools'
         != render_partial 'miner/stats'
+        != render_partial 'miner/admin'
 
     :javascript
       $(document).unbind('update');

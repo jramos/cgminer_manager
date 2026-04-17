@@ -6,9 +6,11 @@
     %ul
       %li!= link_to('Summary', '#summary')
       %li!= link_to('Miner Pool', '#miner-pool')
+      %li!= link_to('Admin', '#admin', class: 'danger')
 
     != render_partial 'manager/summary'
     != render_partial 'manager/miner_pool'
+    != render_partial 'manager/admin'
 
   :javascript
     (function() {

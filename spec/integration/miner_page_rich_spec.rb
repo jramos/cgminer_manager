@@ -22,13 +22,13 @@ RSpec.describe 'rich per-miner page rendering', type: :integration do
     stub_monitor_stats(miner_id: miner_id)
   end
 
-  it 'renders all 4 tab anchors (no admin tab)' do
+  it 'renders all 5 tab anchors (Miner/Devs/Pools/Stats/Admin)' do
     get "/miner/#{CGI.escape(miner_id)}"
     expect(last_response.body).to include('href="#summary"')
     expect(last_response.body).to include('href="#devices"')
     expect(last_response.body).to include('href="#pools"')
     expect(last_response.body).to include('href="#stats"')
-    expect(last_response.body).not_to include('href="#admin"')
+    expect(last_response.body).to include('href="#admin"')
   end
 
   it 'renders the per-miner hashrate graph canvas' do
