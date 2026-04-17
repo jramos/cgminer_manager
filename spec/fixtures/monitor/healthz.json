@@ -1,0 +1,9 @@
+{
+  "status": "healthy",
+  "mongo": true,
+  "last_poll_at": "2026-04-16T10:30:00Z",
+  "last_poll_age_s": 15,
+  "miners_configured": 1,
+  "miners_available": 1,
+  "uptime_s": 3600
+}

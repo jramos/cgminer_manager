@@ -1,0 +1,21 @@
+- if @prev_miner_url
+  .left= link_to raw("&laquo; Previous Miner"), @prev_miner_url
+- if @next_miner_url
+  .right= link_to raw("Next Miner &raquo;"), @next_miner_url
+
+%h1!= link_to("CgminerManager", root_url) + " > " + @miner_id
+
+#miner-show
+  %h2= @miner_id
+  %p!= link_to('Back to dashboard', root_url)
+
+  - snapshots = @view[:snapshots]
+  - summary = snapshots[:summary]
+  - if summary && !summary.is_a?(Hash) || (summary.is_a?(Hash) && !summary[:error])
+    .section
+      %h3 Summary
+      %pre= summary.inspect
+  - else
+    .section
+      %h3 Summary
+      %p.unavailable Data unavailable.

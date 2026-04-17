@@ -1,0 +1,10 @@
+{
+  "miner": "127.0.0.1:4028",
+  "command": "devs",
+  "ok": true,
+  "fetched_at": "2026-04-16T10:30:00Z",
+  "response": {
+    "DEVS": [{"GPU": 0, "MHS 5s": 2561.7, "Temperature": 62.0, "Status": "Alive"}]
+  },
+  "error": null
+}

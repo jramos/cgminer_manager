@@ -1,0 +1,34 @@
+- if @view[:banner]
+  .alert.alert-warning= @view[:banner]
+
+#manager
+  %h2 cgminer_manager dashboard
+
+  %table.miners
+    %thead
+      %tr
+        %th Miner
+        %th Status
+        %th Updated
+    %tbody
+      - @view[:miners].each do |miner|
+        - miner_id = miner.is_a?(Hash) ? (miner[:id] || miner['id']) : miner.to_s
+        - snapshot = @view[:snapshots][miner_id]
+        %tr
+          %td!= link_to(miner_id, miner_url(miner_id))
+          %td
+            - if snapshot.nil? || (snapshot[:summary].is_a?(Hash) && snapshot[:summary][:error])
+              %span.offline offline
+            - else
+              %span.online online
+          %td
+            - summary = snapshot && snapshot[:summary]
+            - fetched = summary.is_a?(Hash) ? summary[:fetched_at] : nil
+            - threshold = @view[:stale_threshold] || 300
+            - badge = staleness_badge(fetched, threshold)
+            - if badge
+              %span.staleness-badge= badge
+            - elsif fetched
+              %span.updated= fetched
+            - else
+              %span.waiting waiting for first poll

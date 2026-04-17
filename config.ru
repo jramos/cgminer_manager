@@ -1,4 +1,6 @@
-# This file is used by Rack-based servers to start the application.
+# frozen_string_literal: true
 
-require ::File.expand_path('../config/environment',  __FILE__)
-run Rails.application
+$LOAD_PATH.unshift File.expand_path('lib', __dir__)
+require 'cgminer_manager'
+
+run CgminerManager::HttpApp

@@ -1,0 +1,9 @@
+/*
+ * Application stylesheet. Imports the per-view stylesheets so a single
+ * <link rel="stylesheet" href="/css/application.css"> picks up everything.
+ */
+
+@import url("base.css");
+@import url("manager.css");
+@import url("miner.css");
+@import url("mobile.css");

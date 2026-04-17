@@ -1,0 +1,55 @@
+- width = target == 'miner' ? '850' : '864'
+- url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
+
+#pool-stale-hashrate-graph
+  %h2 Pool Stale %
+  %canvas(id="pool_stale_hashrate" width="#{width}" height="400")
+
+:javascript
+  $(document).ready(function(){
+    $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
+      if (hash_rate_response && hash_rate_response.length > 1) {
+        var labels = [];
+        var error_rates   = [];
+        var error_rates_raw = [];
+
+        $.each(hash_rate_response, function(index, response) {
+          date = new Date(response[0] * 1000);
+          if (date.getMinutes() % 5 == 0) {
+            minutes = "00" + date.getMinutes().toString();
+            labels.push(date.getHours() + ':' + minutes.slice(-2));
+          } else {
+            labels.push("");
+          }
+          error_rates.push(response[6] * 100);
+          error_rates_raw.push(response[6])
+        });
+
+        var data = {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Pool Stale',
+              fillColor: "yellow",
+              data: error_rates
+            }
+          ]
+        }
+
+        var options = {
+          pointHitDetectionRadius : 1,
+          animation               : false,
+          tooltipTemplate         : "<%= value %>%",
+          multiTooltipTemplate    : "<%= value %>%",
+          responsive              : true
+        };
+
+        var ctx = $("#pool_stale_hashrate").get(0).getContext("2d");
+        var myLineChart = new Chart(ctx).Line(data, options);
+
+        injectHashrateTable([], [], error_rates_raw, '#pool-stale-hashrate-graph');
+      } else {
+        $("#pool-stale-hashrate-graph").remove();
+      }
+    });
+  });

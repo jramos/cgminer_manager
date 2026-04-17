@@ -1,0 +1,173 @@
+body {
+  font-size: 0.7em;
+  background: #efefef;
+}
+
+a {
+  color: blue !important;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}
+
+table {
+  width: 100%;
+  padding-top: 10px;
+}
+
+table tr:hover {
+  background: #efefef;
+}
+
+.clickable-container {
+  cursor: pointer;
+}
+
+.clickable-container:hover {
+  background: #efefef;
+}
+
+td {
+  margin: 0;
+  padding: 10px;
+  text-align: center;
+}
+
+label {
+  font-weight: bold;
+}
+
+.left {
+  float: left;
+}
+
+.right {
+  float: right;
+}
+
+.center {
+  margin: 0 auto;
+}
+
+.clear {
+  clear: both;
+}
+
+.quarter-width {
+  width: 25%;
+}
+
+.half-width {
+  width: 50%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.ui-widget .ui-widget {
+  font-size: 0.9em;
+}
+
+.green {
+  color: green;
+}
+
+.red {
+  color: red;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.danger {
+  color: red !important;
+  font-weight: bold !important;
+}
+
+.warning {
+  padding: 20px;
+  margin: 10px 0;
+  color: white;
+  font-weight: bold;
+  border: 1px solid black;
+  background: red;
+}
+
+#updated-container {
+  float: right;
+  text-align: right;
+}
+
+#updated.updating {
+  font-weight: bold;
+  color: green;
+}
+
+#update-now {
+  color: blue;
+  cursor: pointer;
+}
+
+#content {
+  max-width: 1024px;
+  margin: 0 auto;
+}
+
+#run-command input[type=text],
+#run-pool-command input[type=text] {
+  width: 75%;
+}
+
+#manage-pools input[type=text] {
+  width: 75%;
+}
+
+#quick-links td {
+  width: 33%;
+}
+
+#quick-links-response {
+  margin-top: 20px;
+}
+
+#footer {
+  margin: 10px;
+}
+
+#footer table {
+  width: 300px;
+  margin: 0 auto;
+}
+
+#footer table td {
+  border: 0;
+  padding: 0;
+  width: 50%;
+}
+
+#footer table td:first-child {
+  text-align: right;
+}
+
+#footer table td:last-child {
+  padding-left: 10px;
+  text-align: left;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #ccc;
+}

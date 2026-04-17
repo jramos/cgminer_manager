@@ -1,0 +1,25 @@
+!!! 5
+%html
+  %head
+    %title CgminerManager
+    %meta{ charset: 'utf-8' }
+    %meta{ name: 'viewport', content: 'width=device-width, initial-scale=1' }
+    != csrf_meta_tag
+    %link{ rel: 'stylesheet', href: '/css/application.css' }
+    %link{ rel: 'stylesheet', href: '/css/base.css' }
+    %link{ rel: 'stylesheet', href: '/css/manager.css' }
+    %link{ rel: 'stylesheet', href: '/css/miner.css' }
+    %link{ rel: 'stylesheet', href: '/css/mobile.css' }
+    %script{ src: '/js/jquery-3.6.0.min.js' }
+    %script{ src: '/js/jquery.cookie.js' }
+    %script{ src: '/js/chart.min.js' }
+    %script{ src: '/js/config.js' }
+    %script{ src: '/js/graph.js' }
+    %script{ src: '/js/audio.js' }
+    %script{ src: '/js/manager.js' }
+    %script{ src: '/js/miner.js' }
+  %body
+    #content
+      = haml :_header, layout: false
+      = yield
+    = haml :_footer, layout: false
