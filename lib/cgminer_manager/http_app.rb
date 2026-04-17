@@ -193,6 +193,8 @@ module CgminerManager
       end
 
       def number_with_delimiter(num)
+        return '' if num.nil?
+
         whole, dec = num.to_s.split('.', 2)
         whole = whole.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
         dec ? "#{whole}.#{dec}" : whole
@@ -383,13 +385,27 @@ module CgminerManager
     end
 
     get '/miner/:miner_id' do
-      miner_id = CGI.unescape(params[:miner_id])
-      halt 404 unless miner_configured?(miner_id)
+      miner_host_port = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_host_port)
 
-      @miner_id = miner_id
-      @miner_url = miner_url(miner_id)
-      @prev_miner_url, @next_miner_url = neighbor_urls(miner_id)
-      @view = build_miner_view_model(miner_id)
+      miner_index = self.class.configured_miners
+                        .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
+      host, port  = self.class.configured_miners[miner_index]
+
+      @view        = build_miner_view_model(miner_host_port)
+      snap_summary = @view[:snapshots][:summary]
+      snap_ok      = snap_summary.is_a?(Hash) && !snap_summary[:error] && snap_summary[:response]
+
+      @miner_id           = miner_index
+      @miner_host_port    = miner_host_port
+      @miner_url          = miner_url(miner_host_port)
+      @prev_miner_url, @next_miner_url = neighbor_urls(miner_host_port)
+      @miner              = ViewMiner.build(host, port, snap_ok ? true : false)
+      @miner_pool         = build_view_miner_pool_from_yml
+      @miner_data         = SnapshotAdapter.build_miner_data(
+        self.class.configured_miners, miner_host_port => @view[:snapshots]
+      )
+      @bad_chain_elements = []
       haml :'miner/show'
     end
 

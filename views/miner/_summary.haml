@@ -1,4 +1,4 @@
-- summary = @miner_data[@miner_id][:summary].first[:summary].first rescue {}
+- summary = @miner_data.dig(@miner_id, :summary)&.first&.dig(:summary)&.first || {}
 
 #summary
   #overview

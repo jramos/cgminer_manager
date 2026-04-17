@@ -1,17 +1,17 @@
 #stats
-  - stats = @miner_data[@miner_id][:stats].first[:stats] || []
+  - stats = @miner_data.dig(@miner_id, :stats)&.first&.dig(:stats) || []
   %ul
     - stats.each_with_index do |stat, index|
       - name = stat[:id]
-      %li= link_to name, '#stat-' + index.to_s
+      %li!= link_to(name.to_s, "#stat-#{index}")
 
   - stats.each_with_index do |stat, index|
-    - stat.delete('id')
-    - stat.delete('stats')
+    - stat.delete(:id)
+    - stat.delete(:stats)
 
-    %div(id="stat-#{index.to_s}")
+    %div(id="stat-#{index}")
       - stat.each_pair do |key, value|
-        %table(cellpadding="0" cellspacing="0" id="stat-#{index.to_s}-#{key.to_s}" class="table table-hover half-width left")
+        %table(cellpadding="0" cellspacing="0" id="stat-#{index}-#{key}" class="table table-hover half-width left")
           %tbody
             %tr
               %td.text-left.bold= key

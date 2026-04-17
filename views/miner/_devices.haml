@@ -1,16 +1,16 @@
 #devices
-  - devices = @miner_data[@miner_id][:devs].first[:devs] || []
+  - devices = @miner_data.dig(@miner_id, :devs)&.first&.dig(:devs) || []
   %ul
     - devices.each_with_index do |device, index|
-      %li= link_to device[:name] + device[:id].to_s, "#device-#{index.to_s}"
+      %li!= link_to(device[:name].to_s + device[:id].to_s, "#device-#{index}")
 
   - devices.each_with_index do |device, index|
-    - device.delete('name')
-    - device.delete('id')
+    - device.delete(:name)
+    - device.delete(:id)
 
-    %div(id="device-#{index.to_s}")
+    %div(id="device-#{index}")
       - device.each_pair do |key, value|
-        %table(cellpadding="0" cellspacing="0" id="device-#{index.to_s}" class="table table-hover left half-width")
+        %table(cellpadding="0" cellspacing="0" id="device-#{index}" class="table table-hover left half-width")
           %tr
             %td.text-left.bold= key
             %td.text-right= value.is_a?(Numeric) ? number_with_delimiter(value) : value
