@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  BUNDLE_JOBS: '1'
+
 jobs:
   test:
     runs-on: ubuntu-latest
