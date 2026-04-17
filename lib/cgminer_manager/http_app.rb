@@ -165,6 +165,51 @@ module CgminerManager
         "updated #{minutes}m ago"
       end
 
+      def format_hashrate(rate)
+        rate = rate.to_f
+        unit = 'H/s'
+        %w[KH/s MH/s GH/s TH/s PH/s EH/s ZH/s YH/s].each do |next_unit|
+          break if rate < 1000
+
+          rate /= 1000
+          unit = next_unit
+        end
+        "#{rate.round(2)} #{unit}"
+      end
+
+      def number_with_delimiter(num)
+        whole, dec = num.to_s.split('.', 2)
+        whole = whole.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+        dec ? "#{whole}.#{dec}" : whole
+      end
+
+      # NOTE: the legacy view call sites use this (mis)spelling verbatim.
+      def to_ferinheight(centigrade)
+        ((1.8 * centigrade.to_f) + 32).round(1)
+      end
+
+      def time_ago_in_words(input)
+        seconds = case input
+                  when Numeric then input
+                  when Time    then Time.now - input
+                  when String  then Time.now - Time.parse(input)
+                  else 0
+                  end.to_i.abs
+
+        return "#{seconds}s" if seconds < 60
+        return "#{seconds / 60}m" if seconds < 3600
+        return "#{seconds / 3600}h" if seconds < 86_400
+
+        "#{seconds / 86_400}d"
+      end
+
+      def get_stats_for(miner_index, stat_name)
+        slice = @miner_data&.dig(miner_index, :stats)
+        stats = slice&.first&.dig(:stats) || []
+        prefix = stat_name.to_s
+        stats.select { |entry| entry[:id].to_s.start_with?(prefix) }
+      end
+
       def build_dashboard_view_model
         begin
           miners = monitor_client.miners[:miners]
