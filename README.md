@@ -16,6 +16,10 @@ Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`
 
 ![Miner detail](public/screenshots/miner.png)
 
+### Admin
+
+![Admin](public/screenshots/admin.png)
+
 Screenshots are generated from a scripted harness in `dev/screenshots/` — see that directory's README for how to regenerate.
 
 ## Requirements
@@ -32,7 +36,21 @@ cp config/miners.yml.example config/miners.yml
 docker compose up
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. The Admin tab at the top of the dashboard exposes
+fleet operations (version / stats / devs / zero / save / restart / quit) and a
+raw cgminer RPC form.
+
+To additionally require HTTP Basic Auth on Admin routes (strongly recommended
+if the UI is reachable beyond loopback), set both:
+
+```bash
+export CGMINER_MANAGER_ADMIN_USER=admin
+export CGMINER_MANAGER_ADMIN_PASSWORD=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(24)')
+docker compose up
+```
+
+`docker-compose.yml` passes these through verbatim. Unset / empty strings = no
+Basic Auth gate (CSRF-only, same posture as the rest of the UI).
 
 ## Manual install
 
@@ -55,10 +73,12 @@ All settings come from environment variables.
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `CGMINER_MONITOR_URL` | yes | — | Base URL for `cgminer_monitor` (e.g., `http://localhost:9292`) |
-| `MINERS_FILE` | | `config/miners.yml` | YAML list of `{host, port}` entries |
+| `MINERS_FILE` | | `config/miners.yml` | YAML list of `{host, port}` entries (optional `label` for display) |
 | `PORT` | | `3000` | Listening port |
 | `BIND` | | `127.0.0.1` | Listening interface |
 | `SESSION_SECRET` | yes in production | generated in dev | Signs session cookies (CSRF) |
+| `CGMINER_MANAGER_ADMIN_USER` | | — | HTTP Basic Auth username for `/admin/*` routes; pair with `CGMINER_MANAGER_ADMIN_PASSWORD`. Empty strings = unset. |
+| `CGMINER_MANAGER_ADMIN_PASSWORD` | | — | HTTP Basic Auth password. When both this and `CGMINER_MANAGER_ADMIN_USER` are set, Admin POSTs require Basic Auth; valid credentials also bypass CSRF (intended for scripts / curl). |
 | `LOG_FORMAT` | | `text` (dev), `json` (prod) | |
 | `LOG_LEVEL` | | `info` | `debug`, `info`, `warn`, `error` |
 | `STALE_THRESHOLD_SECONDS` | | `300` | Tile "updated Xm ago" warning threshold |
@@ -72,15 +92,23 @@ All settings come from environment variables.
 
 ## HTTP surface
 
-- `GET /` — dashboard (miner rows + 6 summary graphs).
-- `GET /miner/:miner_id` — per-miner page (4 tabs: Miner/Devs/Pools/Stats). `:miner_id` is URL-encoded `host:port`.
+- `GET /` — dashboard (Summary / Miner Pool / Admin tabs).
+- `GET /miner/:miner_id` — per-miner page (Miner / Devs / Pools / Stats / Admin tabs). `:miner_id` is URL-encoded `host:port`.
 - `GET /graph_data/:metric` — aggregate graph data across all miners. Returns a JSON array of rows.
 - `GET /miner/:miner_id/graph_data/:metric` — per-miner graph data, same shape.
 - `POST /manager/manage_pools`, `POST /miner/:miner_id/manage_pools` — pool management commands (CSRF-protected).
+- `POST /manager/admin/:command` — typed fleet admin (`version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`). CSRF-protected; Basic Auth when configured.
+- `POST /miner/:miner_id/admin/:command` — per-miner variant of the above.
+- `POST /manager/admin/run` — raw cgminer RPC with `command` + `args` + `scope` params; `scope` is `all` or a configured `host:port`. Server-side rejects hardware-tuning verbs (`pgaset`, `ascset`, `pgarestart`, `ascrestart`, `pga{enable,disable}`, `asc{enable,disable}`) with `scope=all`.
+- `POST /miner/:miner_id/admin/run` — raw RPC against a single miner (no scope=all restriction).
 - `GET /api/v1/ping.json` — legacy probe, returns `{timestamp, available_miners, unavailable_miners}` computed directly from cgminers.
 - `GET /healthz` — service health (manager + monitor reachability).
 
 Supported graph metrics: `hashrate` (7 columns), `temperature` (4 columns), `availability` (2-3 columns).
+
+### Raw RPC arg escaping caveat
+
+`POST /manager/admin/run` passes `args` to `cgminer_api_client`'s `Miner#query` after `split(',')` on the raw string. **Commas inside argument values are not escapable through this form** — the split happens before the gem's own escape pass. This is not a practical limitation for any cgminer verb in common use (`pgaset`/`ascset` take numeric or option-name args without commas), and the typed `manage_pools` endpoints handle pool-related commands with credentials that may contain commas.
 
 ## Development
 
@@ -92,6 +120,16 @@ bundle exec rake  # rubocop + rspec
 ## Security posture
 
 Default bind is `127.0.0.1`. The service is designed for secure local networks; to expose it beyond localhost, put it behind a reverse proxy that provides authentication.
+
+The Admin surface (`/manager/admin/*`, `/miner/:id/admin/*`) is CSRF-protected for the browser path and additionally gated by HTTP Basic Auth when `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are set. Valid Basic Auth bypasses CSRF — a static credential is strictly stronger proof than a session cookie + CSRF token, and this lets operators curl admin routes during incidents.
+
+The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`quit`) is **ergonomic, not defensive**: anyone who can reach `/manager/admin/run` can execute any cgminer verb. The defensive layers are:
+
+1. Basic Auth via the env vars above.
+2. Scope restrictions on hardware-tuning verbs (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) — the server refuses `scope=all` for these and the UI disables the `all` option when the command input matches.
+3. Per-command audit logging (`admin.command`, `admin.raw_command`, `admin.result`, `admin.auth_failed`, `admin.scope_rejected`) with a `request_id` UUID threading entry and exit events for any given POST.
+
+Strongly recommend setting `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` in any deployment where the UI is reachable beyond localhost. Basic Auth transmits credentials base64-encoded (reversible), so also terminate TLS at a reverse proxy in that case.
 
 ## License
 

@@ -8,7 +8,7 @@
 
   - unless @miner.nil? || !@miner.available?
     - content_for(:page_title) do
-      != link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
+      != link_to("CgminerManager", root_url) + ' > ' + @miner.to_s
 
     != render_partial 'shared/warnings'
 
@@ -21,11 +21,13 @@
           %li!= link_to('Devs',  '#devices')
           %li!= link_to('Pools', '#pools')
           %li!= link_to('Stats', '#stats')
+          %li!= link_to('Admin', '#admin', class: 'danger')
 
         != render_partial 'miner/summary'
         != render_partial 'miner/devices'
         != render_partial 'miner/pools'
         != render_partial 'miner/stats'
+        != render_partial 'miner/admin'
 
     :javascript
       $(document).unbind('update');

@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.2.0] — 2026-04-17
+
+### Restored (opt-in, hardened)
+- **Admin surface on the dashboard + per-miner page**, rolling back the 1.1.0 removal of `POST /manager/run` and `POST /miner/:id/run`. The new surface is:
+  - Typed allowlist routes `POST /manager/admin/:command` and `POST /miner/:miner_id/admin/:command` for `version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`. One click each, typed confirm copy on writes.
+  - Raw RPC forms `POST /manager/admin/run` and `POST /miner/:miner_id/admin/run` with `command` + `args` + `scope` params for any cgminer verb not covered by the typed list (device tuning — `pgaset`/`ascset`/`pgarestart`/`ascrestart` — goes through here).
+  - Server-side regex constrains `command` to `/\A[a-z][a-z0-9_+]*\z/` (no whitespace, null bytes, or path traversal).
+  - Scope-restricted verbs (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) refuse `scope=all` with 422 + `admin.scope_rejected`; UI disables the "all" option when the command matches.
+  - Every admin POST emits five structured events (`admin.command`/`admin.raw_command`/`admin.result`/`admin.auth_failed`/`admin.scope_rejected`) threaded by a `request_id` UUID so entry and exit join cleanly.
+
+### Added
+- Optional HTTP Basic Auth gate via `CGMINER_MANAGER_ADMIN_USER` + `CGMINER_MANAGER_ADMIN_PASSWORD`. Empty strings treated as unset. When set, admin POSTs require matching Basic Auth credentials; valid creds also bypass CSRF (scripts can curl admin routes).
+- `CgminerCommander` service class — thread-cap bounded fan-out for fleet RPC (reads return `FleetQueryResult`, writes return `FleetWriteResult`).
+- Optional `label` key on `miners.yml` entries — when present, UI renders the label in place of `host:port` for display. Routing still uses `host:port`.
+- Real FakeCgminer fleet in the screenshot harness (`dev/screenshots/fake_cgminer_fleet.rb`) — six TCP listeners on `127.0.0.1:40281-40286` — replaces the previous `CGMINER_MANAGER_FAKE_PING` env hook so admin commands exercise real RPC round-trips end-to-end.
+- `public/screenshots/admin.png` — new screenshot showing the Admin tab.
+
+### Changed
+- `HttpApp.configured_miners` returns `[host, port, label]` tuples (label defaults to `nil`). Existing `|host, port|` destructuring still works.
+- `ViewMiner` gains `.label`, `.host_port`, `.display_label`; `.to_s` returns the label when present.
+- Dashboard HAML gains a third tab (Admin, styled danger-red). Miner page HAML gains a fifth tab (Admin).
+- `.rubocop.yml`: `Metrics/ClassLength` max raised to 550 to accommodate the admin routes on `HttpApp` without premature extraction.
+
+### Removed
+- `CGMINER_MANAGER_FAKE_PING` dev/harness env hook. Real FakeCgminer listeners supersede it.
+
 ## [1.1.0] — 2026-04-17
 
 ### Added

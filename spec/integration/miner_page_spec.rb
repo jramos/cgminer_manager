@@ -31,13 +31,13 @@ RSpec.describe 'GET /miner/:miner_id', type: :integration do
     expect(last_response.status).to eq(404)
   end
 
-  it 'renders the 4 miner tabs (Miner/Devs/Pools/Stats, no Admin)' do
+  it 'renders all 5 miner tabs (Miner/Devs/Pools/Stats/Admin)' do
     get "/miner/#{CGI.escape('127.0.0.1:4028')}"
     expect(last_response.body).to include('href="#summary"')
     expect(last_response.body).to include('href="#devices"')
     expect(last_response.body).to include('href="#pools"')
     expect(last_response.body).to include('href="#stats"')
-    expect(last_response.body).not_to include('href="#admin"')
+    expect(last_response.body).to include('href="#admin"')
   end
 
   it 'renders per-miner graph canvases' do

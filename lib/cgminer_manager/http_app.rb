@@ -3,6 +3,7 @@
 require 'sinatra/base'
 require 'sinatra/content_for'
 require 'rack/protection'
+require 'digest'
 require 'json'
 require 'yaml'
 require 'cgi'
@@ -53,7 +54,7 @@ module CgminerManager
       def parse_miners_file
         raw = YAML.safe_load_file(miners_file) || []
         validate_miners_shape!(raw)
-        raw.map { |m| [m['host'], m['port'] || 4028].freeze }.freeze
+        raw.map { |m| [m['host'], m['port'] || 4028, m['label']].freeze }.freeze
       end
 
       def validate_miners_shape!(raw)
@@ -71,6 +72,24 @@ module CgminerManager
       'availability' => %w[ts available configured]
     }.freeze
 
+    # Typed admin verbs — stable URLs, typed confirm copy in the UI.
+    # Not a security boundary: anyone with access to /admin/run can
+    # execute any cgminer verb. Defense lives in Basic Auth + scope
+    # restrictions + audit logging.
+    ALLOWED_ADMIN_QUERIES = %w[version stats devs].freeze
+    ALLOWED_ADMIN_WRITES  = %w[zero save restart quit].freeze
+
+    # Device-tuning verbs that must target a single miner: broadcasting
+    # clock/voltage tuning to heterogeneous hardware can damage ASICs.
+    SCOPE_RESTRICTED_VERBS = %w[
+      pgaset ascset pgarestart ascrestart
+      pgaenable pgadisable ascenable ascdisable
+    ].freeze
+
+    # Raw RPC command param shape — no whitespace, no path traversal, no
+    # null bytes. Still permits every cgminer verb.
+    ADMIN_RAW_COMMAND_PATTERN = /\A[a-z][a-z0-9_+]*\z/
+
     set :show_exceptions, false
     set :dump_errors, false
     set :host_authorization, { permitted_hosts: [] }
@@ -78,6 +97,7 @@ module CgminerManager
 
     before do
       @request_started_at = Time.now
+      @request_id         = SecureRandom.uuid if admin_path?(request.path_info)
     end
 
     after do
@@ -93,7 +113,8 @@ module CgminerManager
           key: 'cgminer_manager.session',
           secret: ENV.fetch('SESSION_SECRET') { SecureRandom.hex(32) },
           same_site: :lax
-      use Rack::Protection::AuthenticityToken
+      use CgminerManager::AdminAuth
+      use CgminerManager::ConditionalAuthenticityToken
     end
 
     helpers do
@@ -113,6 +134,18 @@ module CgminerManager
       def miner_url(miner_id) = "/miner/#{CGI.escape(miner_id.to_s)}"
       def manager_manage_pools_path = '/manager/manage_pools'
       def miner_manage_pools_path(miner_id) = "#{miner_url(miner_id)}/manage_pools"
+      def manager_admin_path(command) = "/manager/admin/#{command}"
+      def miner_admin_path(miner_id, command) = "#{miner_url(miner_id)}/admin/#{command}"
+      def admin_path?(path) = path.match?(%r{\A/(?:manager|miner/[^/]+)/admin(?:/|\z)})
+
+      # Translates a raw "host:port" miner identifier into its display
+      # label when miners.yml specifies one, otherwise returns the
+      # identifier verbatim. Used by the admin result partials so rows
+      # show "192.168.1.151:4028" (the label) instead of
+      # "127.0.0.1:40281" (the routed host).
+      def miner_display(host_port)
+        configured_labels_by_id[host_port] || host_port
+      end
 
       def link_to(text, href, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
@@ -236,21 +269,32 @@ module CgminerManager
       # either the live Hash list (with :available flag) or the fallback
       # array built when monitor is down (all :available=false).
       def build_view_miner_pool(monitor_miners)
+        labels_by_id = configured_labels_by_id
         view_miners = (monitor_miners || []).map do |m|
-          host  = m[:host] || m['host']
-          port  = m[:port] || m['port']
-          avail = m.fetch(:available) { m['available'] || false }
-          ViewMiner.build(host, port, avail)
+          build_view_miner_from_monitor(m, labels_by_id)
         end
         ViewMinerPool.new(miners: view_miners)
+      end
+
+      def configured_labels_by_id
+        self.class.configured_miners.each_with_object({}) do |(host, port, label), acc|
+          acc["#{host}:#{port}"] = label
+        end
+      end
+
+      def build_view_miner_from_monitor(raw, labels_by_id)
+        host  = raw[:host] || raw['host']
+        port  = raw[:port] || raw['port']
+        avail = raw.fetch(:available) { raw['available'] || false }
+        ViewMiner.build(host, port, avail, labels_by_id["#{host}:#{port}"])
       end
 
       # Variant for the per-miner page, where we only need to thread the
       # configured miner list into @miner_pool for any partial that reaches
       # for it. Monitor availability isn't fetched separately here.
       def build_view_miner_pool_from_yml
-        view_miners = self.class.configured_miners.map do |host, port|
-          ViewMiner.build(host, port, false)
+        view_miners = self.class.configured_miners.map do |host, port, label|
+          ViewMiner.build(host, port, false, label)
         end
         ViewMinerPool.new(miners: view_miners)
       end
@@ -356,6 +400,58 @@ module CgminerManager
         PoolManager.new(miners)
       end
 
+      def build_commander_for_all
+        miners = self.class.configured_miners.map do |host, port|
+          CgminerApiClient::Miner.new(host, port)
+        end
+        CgminerCommander.new(miners: miners, thread_cap: self.class.pool_thread_cap || 8)
+      end
+
+      def build_commander_for(miner_ids)
+        miners = miner_ids.map do |id|
+          host, port = id.split(':', 2)
+          CgminerApiClient::Miner.new(host, port.to_i)
+        end
+        CgminerCommander.new(miners: miners, thread_cap: self.class.pool_thread_cap || 8)
+      end
+
+      def admin_session_id_hash
+        sid = request.env['rack.session']&.id || ''
+        Digest::SHA256.hexdigest(sid.to_s)[0..11]
+      end
+
+      def log_admin_command(event, **extra)
+        Logger.info(event: event,
+                    request_id: @request_id,
+                    user: request.env['cgminer_manager.admin_user'],
+                    remote_ip: request.ip,
+                    user_agent: request.user_agent,
+                    session_id_hash: admin_session_id_hash,
+                    **extra)
+      end
+
+      def log_admin_result(command, scope, result, started_at)
+        Logger.info(
+          event: 'admin.result',
+          request_id: @request_id,
+          command: command,
+          scope: scope,
+          ok_count: result.ok_count,
+          failed_count: result.failed_count,
+          elapsed_ms: ((Time.now - started_at) * 1000).round
+        )
+      end
+
+      def render_admin_result(result)
+        if result.is_a?(FleetQueryResult)
+          @query_result = result
+          render_partial('shared/fleet_query')
+        else
+          @write_result = result
+          render_partial('shared/fleet_write')
+        end
+      end
+
       def dispatch_pool_action(pool_manager, action_name, pool_index)
         case action_name.to_s
         when 'disable' then pool_manager.disable_pool(pool_index: pool_index)
@@ -396,7 +492,7 @@ module CgminerManager
 
       miner_index = self.class.configured_miners
                         .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
-      host, port  = self.class.configured_miners[miner_index]
+      host, port, label = self.class.configured_miners[miner_index]
 
       @view        = build_miner_view_model(miner_host_port)
       snap_summary = @view[:snapshots][:summary]
@@ -406,7 +502,7 @@ module CgminerManager
       @miner_host_port    = miner_host_port
       @miner_url          = miner_url(miner_host_port)
       @prev_miner_url, @next_miner_url = neighbor_urls(miner_host_port)
-      @miner              = ViewMiner.build(host, port, snap_ok ? true : false)
+      @miner              = ViewMiner.build(host, port, snap_ok ? true : false, label)
       @miner_pool         = build_view_miner_pool_from_yml
       @miner_data         = SnapshotAdapter.build_miner_data(
         self.class.configured_miners, miner_host_port => @view[:snapshots]
@@ -431,6 +527,78 @@ module CgminerManager
       pm = build_pool_manager_for([miner_id])
       @result = dispatch_pool_action(pm, params[:action_name], params[:pool_index].to_i)
       render_partial('shared/manage_pools')
+    end
+
+    post '/manager/admin/run' do
+      command = params[:command].to_s
+      halt 422, "invalid command: #{command}" unless ADMIN_RAW_COMMAND_PATTERN.match?(command)
+
+      scope = params[:scope].to_s
+      if scope == 'all' && SCOPE_RESTRICTED_VERBS.include?(command)
+        log_admin_command('admin.scope_rejected', command: command, scope: scope)
+        halt 422, "command '#{command}' cannot target scope=all"
+      end
+
+      halt 422, "unknown scope: #{scope}" if scope != 'all' && !miner_configured?(scope)
+
+      commander = scope == 'all' ? build_commander_for_all : build_commander_for([scope])
+
+      log_admin_command('admin.raw_command', command: command, args: params[:args].to_s, scope: scope)
+      started = Time.now
+      result  = commander.raw!(command: command, args: params[:args])
+      log_admin_result("raw:#{command}", scope, result, started)
+      render_admin_result(result)
+    end
+
+    post '/manager/admin/:command' do
+      command = params[:command].to_s
+      halt 404 unless ALLOWED_ADMIN_QUERIES.include?(command) || ALLOWED_ADMIN_WRITES.include?(command)
+
+      log_admin_command('admin.command', command: command, scope: 'all')
+      started   = Time.now
+      commander = build_commander_for_all
+      result =
+        if ALLOWED_ADMIN_QUERIES.include?(command)
+          commander.public_send(command)
+        else
+          commander.public_send("#{command}!")
+        end
+      log_admin_result(command, 'all', result, started)
+      render_admin_result(result)
+    end
+
+    post '/miner/:miner_id/admin/run' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+
+      command = params[:command].to_s
+      halt 422, "invalid command: #{command}" unless ADMIN_RAW_COMMAND_PATTERN.match?(command)
+
+      log_admin_command('admin.raw_command', command: command, args: params[:args].to_s, scope: miner_id)
+      started = Time.now
+      result  = build_commander_for([miner_id]).raw!(command: command, args: params[:args])
+      log_admin_result("raw:#{command}", miner_id, result, started)
+      render_admin_result(result)
+    end
+
+    post '/miner/:miner_id/admin/:command' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+
+      command = params[:command].to_s
+      halt 404 unless ALLOWED_ADMIN_QUERIES.include?(command) || ALLOWED_ADMIN_WRITES.include?(command)
+
+      log_admin_command('admin.command', command: command, scope: miner_id)
+      started   = Time.now
+      commander = build_commander_for([miner_id])
+      result =
+        if ALLOWED_ADMIN_QUERIES.include?(command)
+          commander.public_send(command)
+        else
+          commander.public_send("#{command}!")
+        end
+      log_admin_result(command, miner_id, result, started)
+      render_admin_result(result)
     end
 
     get '/miner/:miner_id/graph_data/:metric' do
@@ -498,15 +666,9 @@ module CgminerManager
     get '/api/v1/ping.json' do
       content_type :json
 
-      # Dev/screenshot harness bypass: avoid 5s-per-miner TCP timeouts against
-      # phantom IPs. Payload is a literal JSON string the caller controls.
-      if (fake = ENV.fetch('CGMINER_MANAGER_FAKE_PING', nil))
-        return fake
-      end
-
       available = 0
       unavailable = 0
-      self.class.configured_miners.each do |host, port|
+      self.class.configured_miners.each do |host, port, _label|
         miner = CgminerApiClient::Miner.new(host, port)
         if miner.available?
           available += 1
