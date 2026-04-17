@@ -73,6 +73,8 @@ RSpec/MultipleDescribes:
     - 'spec/cgminer_manager/monitor_client_spec.rb'
     # Split: PoolActionResult value type vs. PoolManager service.
     - 'spec/cgminer_manager/pool_manager_spec.rb'
+    # Split: ViewMiner value type vs. ViewMinerPool partitioning.
+    - 'spec/cgminer_manager/view_miner_spec.rb'
 
 RSpec/RepeatedExampleGroupDescription:
   Exclude:
