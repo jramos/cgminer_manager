@@ -2,5 +2,23 @@
   .alert.alert-warning= @view[:banner]
 
 #manager
-  != render_partial 'manager/summary'
-  != render_partial 'manager/miner_pool'
+  #manager-content
+    %ul
+      %li!= link_to('Summary', '#summary')
+      %li!= link_to('Miner Pool', '#miner-pool')
+
+    != render_partial 'manager/summary'
+    != render_partial 'manager/miner_pool'
+
+  :javascript
+    (function() {
+      // Defer tabs() until after each graph partial's $.getJSON has landed
+      // and Chart.js has drawn, so the availability canvas on the Miner Pool
+      // panel gets laid out at full width before jQuery UI hides that panel.
+      var poll = setInterval(function() {
+        if (window.jQuery && jQuery.active === 0) {
+          clearInterval(poll);
+          $('#manager-content').tabs({ activate: setWindowHash });
+        }
+      }, 100);
+    })();
