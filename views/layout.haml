@@ -5,23 +5,23 @@
     %meta{ charset: 'utf-8' }
     %meta{ name: 'viewport', content: 'width=device-width, initial-scale=1' }
     != csrf_meta_tag
-    %link{ rel: 'stylesheet', href: '/css/jquery-ui-1.13.2.min.css' }
-    %link{ rel: 'stylesheet', href: '/css/application.css' }
-    %link{ rel: 'stylesheet', href: '/css/base.css' }
-    %link{ rel: 'stylesheet', href: '/css/manager.css' }
-    %link{ rel: 'stylesheet', href: '/css/miner.css' }
-    %link{ rel: 'stylesheet', href: '/css/mobile.css' }
-    %script{ src: '/js/jquery-3.6.0.min.js' }
-    %script{ src: '/js/jquery-ui-1.13.2.min.js' }
-    %script{ src: '/js/jquery.cookie.js' }
-    %script{ src: '/js/chart.min.js' }
-    %script{ src: '/js/config.js' }
-    %script{ src: '/js/application.js' }
-    %script{ src: '/js/graph.js' }
-    %script{ src: '/js/audio.js' }
-    %script{ src: '/js/manager.js' }
-    %script{ src: '/js/miner.js' }
-    %script{ src: '/js/admin.js' }
+    %link{ rel: 'stylesheet', href: asset_url('/css/jquery-ui-1.13.2.min.css') }
+    %link{ rel: 'stylesheet', href: asset_url('/css/application.css') }
+    %link{ rel: 'stylesheet', href: asset_url('/css/base.css') }
+    %link{ rel: 'stylesheet', href: asset_url('/css/manager.css') }
+    %link{ rel: 'stylesheet', href: asset_url('/css/miner.css') }
+    %link{ rel: 'stylesheet', href: asset_url('/css/mobile.css') }
+    %script{ src: asset_url('/js/jquery-3.6.0.min.js') }
+    %script{ src: asset_url('/js/jquery-ui-1.13.2.min.js') }
+    %script{ src: asset_url('/js/jquery.cookie.js') }
+    %script{ src: asset_url('/js/chart.min.js') }
+    %script{ src: asset_url('/js/config.js') }
+    %script{ src: asset_url('/js/application.js') }
+    %script{ src: asset_url('/js/graph.js') }
+    %script{ src: asset_url('/js/audio.js') }
+    %script{ src: asset_url('/js/manager.js') }
+    %script{ src: asset_url('/js/miner.js') }
+    %script{ src: asset_url('/js/admin.js') }
   %body
     #content
       != haml(:_header, layout: false)

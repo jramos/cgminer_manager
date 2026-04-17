@@ -159,12 +159,18 @@ module CgminerManager
       end
 
       def stylesheet_link_tag(name)
-        raw(%(<link rel="stylesheet" href="/css/#{h(name)}.css">))
+        raw(%(<link rel="stylesheet" href="/css/#{h(name)}.css?v=#{VERSION}">))
       end
 
       def javascript_include_tag(name)
-        raw(%(<script src="/js/#{h(name)}.js"></script>))
+        raw(%(<script src="/js/#{h(name)}.js?v=#{VERSION}"></script>))
       end
+
+      # Version-stamped static asset URL. Append ?v=VERSION so each
+      # release busts the browser cache for CSS/JS without relying on
+      # HTTP cache headers (which Sinatra's static-file server doesn't
+      # set by default).
+      def asset_url(path) = "#{path}?v=#{VERSION}"
 
       def csrf_meta_tag
         raw(%(<meta name="csrf-token" content="#{h(csrf_token)}">))
