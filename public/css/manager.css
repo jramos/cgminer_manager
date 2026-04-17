@@ -1,0 +1,33 @@
+/* Styles for the Manager views. */
+
+#summary #total-ghs,
+#summary #error-rate,
+#summary #rejected-rate,
+#summary #temperature,
+#summary #pool-stale {
+  width: 100%;
+  margin-right: 10px;
+  margin-left: 10px;
+  margin-bottom: 20px;
+}
+
+#miner-summary .overview-table {
+  display: table;
+  width: 100%;
+}
+
+#miner-summary .overview-table td {
+  width: 25%;
+}
+
+#miner-pool tbody tr:hover {
+  cursor: pointer;
+}
+
+#manager_results table td {
+  width: 50%;
+}
+
+#manager_results table td:first-child {
+  font-weight: bold;
+}

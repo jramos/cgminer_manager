@@ -1,0 +1,13 @@
+{
+  "miner": "127.0.0.1:4028",
+  "command": "pools",
+  "ok": true,
+  "fetched_at": "2026-04-16T10:30:00Z",
+  "response": {
+    "POOLS": [
+      {"POOL": 0, "URL": "stratum+tcp://pool.example.com:3333", "Status": "Alive", "Priority": 0},
+      {"POOL": 1, "URL": "stratum+tcp://backup.example.com:3333", "Status": "Alive", "Priority": 1}
+    ]
+  },
+  "error": null
+}

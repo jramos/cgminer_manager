@@ -1,0 +1,40 @@
+- devices = @miner_data.dig(miner_index, :devs)&.first&.dig(:devs) || []
+
+%table(cellpadding="0" cellspacing="0" class="device_summary")
+  %thead
+    %th Name
+    %th Status
+    %th Elapsed
+    %th Temp
+    %th Rejected
+    %th Error
+  %tbody
+    - devices.each_with_index do |device, device_index|
+      %tr.text-center
+        %td= device[:name].to_s + device_index.to_s
+
+        - if device[:status] == 'Alive'
+          %td.green.bold= device[:status]
+        - else
+          %td.red.bold= device[:status]
+
+        %td= time_ago_in_words(Time.now - device[:device_elapsed].to_f)
+        %td!= "#{device[:temperature]}&deg; C"
+        %td= device[:'device_rejected%']&.round(2).to_s + '%'
+        %td= device[:'device_hardware%']&.round(2).to_s + '%'
+
+      - if chain_stats = get_stats_for(miner_index, device[:name].to_s + device_index.to_s)
+        - [:acs, :pga].each do |type|
+          - 1.upto(4) do |i|
+            - status = chain_stats[:"chain_#{type}#{i}"]
+            - next if status.nil? || status.empty?
+
+            %tr.text-center
+              %td= "#{type.to_s.upcase}#{i - 1}"
+              %td(colspan="4")!= status.downcase.gsub('x', '<span class="red bold">x</span>')
+              - error_rate = (1 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100
+              - if error_rate.positive?
+                %td.red.bold= error_rate.round(2).to_s + '%'
+                - @bad_chain_elements << miner
+              - else
+                %td= error_rate.round(2).to_s + '%'

@@ -1,0 +1,9 @@
+.git
+.github
+spec
+tmp
+log
+docs
+config/miners.yml
+.worktrees
+coverage

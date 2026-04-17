@@ -1,0 +1,34 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+
+  monitor:
+    image: ghcr.io/jramos/cgminer_monitor:latest
+    depends_on: [mongo]
+    environment:
+      CGMINER_MONITOR_MONGO_URL: mongodb://mongo:27017/cgminer_monitor
+      CGMINER_MONITOR_HTTP_HOST: 0.0.0.0
+    volumes:
+      - ./config/miners.yml:/app/config/miners.yml:ro
+
+  manager:
+    build: .
+    depends_on: [monitor]
+    ports: ['3000:3000']
+    environment:
+      CGMINER_MONITOR_URL: http://monitor:9292
+      BIND: 0.0.0.0
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in your environment}
+      # Admin surface (/manager/admin/*, /miner/:id/admin/*) is always mounted
+      # and CSRF-protected. Set BOTH env vars below (non-empty) to additionally
+      # require HTTP Basic Auth; valid credentials also bypass CSRF so scripts
+      # can curl admin routes. Leave unset to keep CSRF-only posture.
+      CGMINER_MANAGER_ADMIN_USER: ${CGMINER_MANAGER_ADMIN_USER:-}
+      CGMINER_MANAGER_ADMIN_PASSWORD: ${CGMINER_MANAGER_ADMIN_PASSWORD:-}
+    volumes:
+      - ./config/miners.yml:/app/config/miners.yml:ro
+
+volumes:
+  mongo_data:

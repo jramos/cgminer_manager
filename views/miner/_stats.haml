@@ -1,0 +1,24 @@
+#stats
+  - stats = @miner_data.dig(@miner_id, :stats)&.first&.dig(:stats) || []
+  %ul
+    - stats.each_with_index do |stat, index|
+      - name = stat[:id]
+      %li!= link_to(name.to_s, "#stat-#{index}")
+
+  - stats.each_with_index do |stat, index|
+    - stat.delete(:id)
+    - stat.delete(:stats)
+
+    %div(id="stat-#{index}")
+      - stat.each_pair do |key, value|
+        %table(cellpadding="0" cellspacing="0" id="stat-#{index}-#{key}" class="table table-hover half-width left")
+          %tbody
+            %tr
+              %td.text-left.bold= key
+              %td.text-right= value.is_a?(Numeric) ? number_with_delimiter(value) : value
+  .clear
+
+:javascript
+  $(function() {
+    $('#stats').tabs();
+  });

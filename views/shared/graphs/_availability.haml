@@ -1,0 +1,56 @@
+- width  = target == 'miner' ? '850' : '864'
+- metric = 'availability'
+- url    = target == 'miner' ? "#{miner_url(@miner_host_port)}/graph_data/#{metric}" : "/graph_data/#{metric}"
+
+#availability-graph
+  %h2 Availability
+  %canvas(id="local_availability" width="#{width}" height="400")
+
+:javascript
+  $(document).ready(function(){
+    var isMiner = #{target == 'miner' ? 'true' : 'false'};
+    $.getJSON('#{url}', function(hash_rate_response){
+      if (hash_rate_response && hash_rate_response.length > 1) {
+        var labels = [];
+        var availabilities = [];
+
+        $.each(hash_rate_response, function(index, response) {
+          date = new Date(response[0] * 1000);
+          if (date.getMinutes() % 5 == 0) {
+            minutes = "00" + date.getMinutes().toString();
+            labels.push(date.getHours() + ':' + minutes.slice(-2));
+          } else {
+            labels.push("");
+          }
+          availabilities.push(isMiner ? response[1] * 100 : response[1] / parseFloat(response[2]) * 100);
+        });
+
+        var data = {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Local Availability',
+              fillColor: "#5bb75b",
+              data: availabilities
+            }
+          ]
+        }
+
+        var options = {
+          pointHitDetectionRadius : 1,
+          animation               : false,
+          tooltipTemplate         : "<%= value.toFixed(2) %> %",
+          multiTooltipTemplate    : "<%= value.toFixed(2) %> %",
+          scaleBeginAtZero        : true,
+          responsive              : true
+        };
+
+        var ctx = $("#local_availability").get(0).getContext("2d");
+        var myLineChart = new Chart(ctx).Line(data, options);
+
+        injectAvailabilityTable(availabilities, '#availability-graph');
+      } else {
+        $("#availability-graph").remove();
+      }
+    });
+  });

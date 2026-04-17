@@ -1,146 +1,135 @@
-# CgminerManager
+# cgminer_manager
 
-A web manager for cgminer written in Ruby on Rails. It allows for remote management and monitoring of a multiple cgminer instances. Features include:
-
-* Pool and miner summary pages
-* Hashrate, temperature and error rate graphs via [cgminer_monitor](https://github.com/jramos/cgminer_monitor)
-* Breakdown of miner performance and configuration
-* Audio notifications when things go awry
-* Quick updates to mining pool configuration
-* Multi-command support; send API commands or raw payloads in bulk
-
-## Dependencies
-
-* [Ruby](https://www.ruby-lang.org) (~> 2.0.0, ~> 2.1.0)
-* [bundler](http://bundler.io/) (~> 1.6.0)
-* [mongodb](http://www.mongodb.org/) (~> 2.6)
-* [jramos/cgminer\_api\_client](https://github.com/jramos/cgminer_api_client) (~> 0.2)
-* [jramos/cgminer\_monitor](https://github.com/jramos/cgminer_monitor) (~> 0.2)
+Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`](https://github.com/jramos/cgminer_monitor) and issues pool-management commands to miners via [`cgminer_api_client`](https://github.com/jramos/cgminer_api_client).
 
 ## Screenshots
 
-### Pool Summary
+### Pool summary
+
 ![Summary](public/screenshots/summary.png)
 
-### Pool Detail
-![Miner Pool](public/screenshots/miner-pool.png)
+### Miner pool
 
-### Miner Detail
-![Miner](public/screenshots/miner.png)
+![Miner pool](public/screenshots/miner-pool.png)
 
-## Installation
+### Miner detail
 
-    git clone git@github.com:jramos/cgminer_manager.git
-    cd cgminer_manager
-    bundle install
+![Miner detail](public/screenshots/miner.png)
+
+### Admin
+
+![Admin](public/screenshots/admin.png)
+
+Screenshots are generated from a scripted harness in `dev/screenshots/` — see that directory's README for how to regenerate.
+
+## Requirements
+
+- Ruby 3.2+ (4.0.2 recommended; see `.ruby-version`)
+- A running `cgminer_monitor` instance exposing `/v2/*`
+- MongoDB (used by `cgminer_monitor`, not directly by this service)
+
+## Quick start (Docker)
+
+```bash
+export SESSION_SECRET=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(32)')
+cp config/miners.yml.example config/miners.yml
+docker compose up
+```
+
+Open http://localhost:3000. The Admin tab at the top of the dashboard exposes
+fleet operations (version / stats / devs / zero / save / restart / quit) and a
+raw cgminer RPC form.
+
+To additionally require HTTP Basic Auth on Admin routes (strongly recommended
+if the UI is reachable beyond loopback), set both:
+
+```bash
+export CGMINER_MANAGER_ADMIN_USER=admin
+export CGMINER_MANAGER_ADMIN_PASSWORD=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(24)')
+docker compose up
+```
+
+`docker-compose.yml` passes these through verbatim. Unset / empty strings = no
+Basic Auth gate (CSRF-only, same posture as the rest of the UI).
+
+## Manual install
+
+```bash
+git clone https://github.com/jramos/cgminer_manager.git
+cd cgminer_manager
+bundle install
+cp config/miners.yml.example config/miners.yml
+# point at a running cgminer_monitor:
+export CGMINER_MONITOR_URL=http://localhost:9292
+export SESSION_SECRET=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(32)')
+bin/cgminer_manager doctor
+bin/cgminer_manager run
+```
 
 ## Configuration
 
-### cgminer\_api\_client
+All settings come from environment variables.
 
-Copy [``config/miners.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/miners.yml.example) to ``config/miners.yml`` and update with the IP addresses (and optional ports and timeouts) of your cgminer instances. E.g.
+| Variable | Required | Default | Notes |
+|----------|----------|---------|-------|
+| `CGMINER_MONITOR_URL` | yes | — | Base URL for `cgminer_monitor` (e.g., `http://localhost:9292`) |
+| `MINERS_FILE` | | `config/miners.yml` | YAML list of `{host, port}` entries (optional `label` for display) |
+| `PORT` | | `3000` | Listening port |
+| `BIND` | | `127.0.0.1` | Listening interface |
+| `SESSION_SECRET` | yes in production | generated in dev | Signs session cookies (CSRF) |
+| `CGMINER_MANAGER_ADMIN_USER` | | — | HTTP Basic Auth username for `/admin/*` routes; pair with `CGMINER_MANAGER_ADMIN_PASSWORD`. Empty strings = unset. |
+| `CGMINER_MANAGER_ADMIN_PASSWORD` | | — | HTTP Basic Auth password. When both this and `CGMINER_MANAGER_ADMIN_USER` are set, Admin POSTs require Basic Auth; valid credentials also bypass CSRF (intended for scripts / curl). |
+| `LOG_FORMAT` | | `text` (dev), `json` (prod) | |
+| `LOG_LEVEL` | | `info` | `debug`, `info`, `warn`, `error` |
+| `STALE_THRESHOLD_SECONDS` | | `300` | Tile "updated Xm ago" warning threshold |
+| `SHUTDOWN_TIMEOUT` | | `10` | Seconds to wait for Puma to stop |
 
-    # connect to localhost on the default port (4028) with the default timeout (5 seconds)
-    - host: 127.0.0.1
-    # connect to 192.168.1.1 on a non-standard port (1234) with a custom timeout (1 second)
-    - host: 192.168.1.1
-      port: 1234
-      timeout: 1
+## CLI
 
-See [cgminer\_api\_client](https://github.com/jramos/cgminer_api_client#configuration) for more information.
+- `bin/cgminer_manager run` — start the server.
+- `bin/cgminer_manager doctor` — verify `miners.yml`, cgminer reachability, and monitor `/v2/miners`.
+- `bin/cgminer_manager version` — print version.
 
-### cgminer\_monitor
+## HTTP surface
 
-Copy [``config/mongoid.yml.example``](https://github.com/jramos/cgminer_manager/blob/master/config/mongoid.yml.example) to ``config/mongoid.yml`` and update as necessary.
+- `GET /` — dashboard (Summary / Miner Pool / Admin tabs).
+- `GET /miner/:miner_id` — per-miner page (Miner / Devs / Pools / Stats / Admin tabs). `:miner_id` is URL-encoded `host:port`.
+- `GET /graph_data/:metric` — aggregate graph data across all miners. Returns a JSON array of rows.
+- `GET /miner/:miner_id/graph_data/:metric` — per-miner graph data, same shape.
+- `POST /manager/manage_pools`, `POST /miner/:miner_id/manage_pools` — pool management commands (CSRF-protected).
+- `POST /manager/admin/:command` — typed fleet admin (`version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`). CSRF-protected; Basic Auth when configured.
+- `POST /miner/:miner_id/admin/:command` — per-miner variant of the above.
+- `POST /manager/admin/run` — raw cgminer RPC with `command` + `args` + `scope` params; `scope` is `all` or a configured `host:port`. Server-side rejects hardware-tuning verbs (`pgaset`, `ascset`, `pgarestart`, `ascrestart`, `pga{enable,disable}`, `asc{enable,disable}`) with `scope=all`.
+- `POST /miner/:miner_id/admin/run` — raw RPC against a single miner (no scope=all restriction).
+- `GET /api/v1/ping.json` — legacy probe, returns `{timestamp, available_miners, unavailable_miners}` computed directly from cgminers.
+- `GET /healthz` — service health (manager + monitor reachability).
 
-    production:
-      sessions:
-        default:
-          database: cgminer_monitor
-          hosts:
-            - localhost:27017
+Supported graph metrics: `hashrate` (7 columns), `temperature` (4 columns), `availability` (2-3 columns).
 
-See [cgminer\_monitor](https://github.com/jramos/cgminer_monitor#configuration) for more information.
+### Raw RPC arg escaping caveat
 
-### UI Options
+`POST /manager/admin/run` passes `args` to `cgminer_api_client`'s `Miner#query` after `split(',')` on the raw string. **Commas inside argument values are not escapable through this form** — the split happens before the gem's own escape pass. This is not a practical limitation for any cgminer verb in common use (`pgaset`/`ascset` take numeric or option-name args without commas), and the typed `manage_pools` endpoints handle pool-related commands with credentials that may contain commas.
 
-You can adjust these options by editing `app/assets/javascripts/config.js`.
+## Development
 
-#### Page Refreshing
+```bash
+bundle install
+bundle exec rake  # rubocop + rspec
+```
 
-The data on each page of the site will refresh every minute (60 seconds) by default. You can adjust this via `reload_interval`. Change to 0 to disable refreshing.
+## Security posture
 
-    var config = {
-      // data reload interval in seconds
-      reload_interval : 300,  // 5 minutes
-    
-      // Enable audio notifications
-      enable_audio: true,
-    
-      // misc UI options
-      show_github_ribbon: true
-    }
+Default bind is `127.0.0.1`. The service is designed for secure local networks; to expose it beyond localhost, put it behind a reverse proxy that provides authentication.
 
-#### Disable Audio Notifications
+The Admin surface (`/manager/admin/*`, `/miner/:id/admin/*`) is CSRF-protected for the browser path and additionally gated by HTTP Basic Auth when `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are set. Valid Basic Auth bypasses CSRF — a static credential is strictly stronger proof than a session cookie + CSRF token, and this lets operators curl admin routes during incidents.
 
-By default, audio is played when a warning is triggered, such as when a miner becomes unavailable or an ASC reports a bad chip. This can be disabled via the `enable_audio` configuration option. Set it to false if you don't want to hear audio notifications. You can toggle this setting in the UI, as well.
+The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`quit`) is **ergonomic, not defensive**: anyone who can reach `/manager/admin/run` can execute any cgminer verb. The defensive layers are:
 
-    var config = {
-      // data reload interval in seconds
-      reload_interval : 60,  // 1 minute
-    
-      // Enable audio notifications
-      enable_audio: false,
-    
-      // misc UI options
-      show_github_ribbon: true
-    }
+1. Basic Auth via the env vars above.
+2. Scope restrictions on hardware-tuning verbs (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) — the server refuses `scope=all` for these and the UI disables the `all` option when the command input matches.
+3. Per-command audit logging (`admin.command`, `admin.raw_command`, `admin.result`, `admin.auth_failed`, `admin.scope_rejected`) with a `request_id` UUID threading entry and exit events for any given POST.
 
-#### Disable Fork Ribbon
-
-To hide the "Fork Me" ribbon on the top right, change `show_github_ribbon` to false.
-
-    var config = {
-      // data reload interval in seconds
-      reload_interval : 60,  // 1 minute
-    
-      // Enable audio notifications
-      enable_audio: false,
-    
-      // misc UI options
-      show_github_ribbon: false
-    }
-
-## Running
-
-### Note
-
-This application is designed to be used on a secure local network. By default, it will only allow access from 127.0.0.1. Allowing access from other IP addresses is discouraged, since it would allow anyone on your local network and possibly the internet at large to run arbirary commands on your mining pool.
-
-### Automatically
-
-    rake server
-
-### Manually
-
-    env RAILS_ENV=production rake assets:clobber
-    env RAILS_ENV=production rake assets:precompile
-    env SECRET_KEY_BASE=`rake secret` bundle exec rails server thin -e production --binding=127.0.0.1
-
-Connect to [http://127.0.0.1:3000/](http://127.0.0.1:3000/) in your browser.
-
-## Updating
-
-    git pull
-    bundle install
-
-## Contributing
-
-1. Fork it ( https://github.com/jramos/cgminer_manager/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+Strongly recommend setting `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` in any deployment where the UI is reachable beyond localhost. Basic Auth transmits credentials base64-encoded (reversible), so also terminate TLS at a reverse proxy in that case.
 
 ## Donating
 
@@ -150,4 +139,4 @@ BTC: ``bc1q00genlpcpcglgd4rezqcurf4t4taz0acmm9vea``
 
 ## License
 
-Code released under [the MIT license](LICENSE.txt).
+MIT. See LICENSE.txt.

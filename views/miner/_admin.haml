@@ -1,0 +1,41 @@
+- miner_label = @miner_host_port
+
+#admin
+  %h3 Status queries
+  .admin-button-row
+    - %w[version stats devs].each do |cmd|
+      %form.admin-form(action="#{miner_admin_path(@miner_host_port, cmd)}" method="post" data-target="#miner-admin-response")
+        %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+        %button(type="submit")= cmd.capitalize
+
+  %h3 Operations
+  .admin-button-row
+    - ops = { 'zero' => "Zero statistics on #{miner_label}?", 'save' => "Save config on #{miner_label}?", 'restart' => "Restart cgminer on #{miner_label}? Mining will pause.", 'quit' => "Quit cgminer on #{miner_label}? You will need to restart it manually." }
+    - ops.each do |cmd, msg|
+      %form.admin-form(action="#{miner_admin_path(@miner_host_port, cmd)}" method="post" data-target="#miner-admin-response" onsubmit="return confirm('#{msg}');")
+        %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+        %button.danger(type="submit")= cmd.capitalize
+
+  .admin-raw
+    %h3.danger Raw cgminer RPC
+    %p.warning
+      %strong WARNING:
+      this executes a raw cgminer RPC against
+      %code= miner_label
+      Device-tuning commands like
+      %code pgaset
+      can permanently damage hardware if misused. Logs every invocation to
+      the audit trail.
+
+    %form.admin-form(action="#{miner_admin_path(@miner_host_port, 'run')}" method="post" data-target="#miner-admin-response" onsubmit="return confirm('Run raw RPC on #{miner_label}?');")
+      %input(type="hidden" name="authenticity_token" value="#{csrf_token}")
+      %label
+        Command
+        %input(type="text" name="command" required pattern="[a-z][a-z0-9_+]*" placeholder="e.g. pgaset")
+      %label
+        Args (comma-separated, optional)
+        %input(type="text" name="args" placeholder="e.g. 0,clock,690")
+      %button.danger(type="submit") Run
+
+  #miner-admin-response
+    %p.muted No command run yet.

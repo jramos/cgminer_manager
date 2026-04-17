@@ -1,24 +1,19 @@
+# frozen_string_literal: true
+
 source 'https://rubygems.org'
 
-# rails
-gem 'rails',              '4.2.11'
+gemspec
 
-# rails extensions
-gem 'haml-rails',         '~> 0.5.3'
-gem 'sass-rails',         '~> 4.0.3'
-gem 'jquery-rails',       '~> 3.1.1'
-gem 'jquery-ui-rails',    '~> 5.0.0'
-
-# core gems
-gem 'cgminer_api_client', '~> 0.2.5'
-gem 'cgminer_monitor',    '~> 0.2.23'
-
-# misc
-gem 'rake',               '~> 10.3.2'
-gem 'therubyracer',       '~> 0.12.1'
-gem 'thin',               '~> 1.6.2'
-gem 'uglifier',           '~> 2.5.3'
-
-group :development do
-  gem 'pry'
+group :development, :test do
+  # parallel 2.x requires Ruby >= 3.3; pin to 1.x so our Ruby 3.2 matrix entry
+  # can still bundle. Transitive dep of rubocop / rubocop-ast.
+  gem 'parallel', '< 2.0'
+  gem 'rack-test', '>= 2.1'
+  gem 'rake', '>= 13.2'
+  gem 'rspec', '>= 3.13'
+  gem 'rubocop', '>= 1.60'
+  gem 'rubocop-rake', '>= 0.6'
+  gem 'rubocop-rspec', '>= 2.27'
+  gem 'simplecov', '>= 0.22'
+  gem 'webmock', '>= 3.23'
 end
