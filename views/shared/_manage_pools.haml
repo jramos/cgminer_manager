@@ -1,21 +1,34 @@
-- pools = (@miner_data[@miner_id][:pools].first[:pools] || [] rescue [])
-
-- if @updated
-  .bold.red= @updated
-
-- 0.upto(2) do |i|
-  - pool = pools.detect{|pool| pool[:pool] == i} || {}
-
-  %h3 Pool #{i}
-  %table
-    %tr
-      %td= label_tag(:"url[#{i}]", "Url:")
-      %td= text_field_tag(:"url[#{i}]", pool[:url])
-    %tr
-      %td= label_tag(:"user[#{i}]", "User:")
-      %td= text_field_tag(:"user[#{i}]", pool[:user])
-    %tr
-      %td= label_tag(:"pass[#{i}]", "Pass:")
-      %td= text_field_tag(:"pass[#{i}]", nil, placeholder: "Not Shown - Reenter when updating")
-
-= submit_tag("Update")
+.pool-management-result
+  %h3 Pool management results
+  %table.results
+    %thead
+      %tr
+        %th Miner
+        %th Command
+        %th Save
+        %th Reason
+    %tbody
+      - @result.entries.each do |entry|
+        %tr
+          %td= entry.miner
+          %td
+            - case entry.command_status
+            - when :ok
+              %span.ok &#10003;
+            - when :failed
+              %span.failed &#10007;
+            - when :indeterminate
+              %span.indeterminate &#9888;
+          %td
+            - case entry.save_status
+            - when :ok
+              %span.ok &#10003;
+            - when :failed
+              %span.failed &#10007;
+            - when :indeterminate
+              %span.indeterminate &#9888;
+            - when :skipped
+              %span.skipped &mdash;
+          %td
+            - if entry.command_reason
+              %span.reason= entry.command_reason.message

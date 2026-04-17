@@ -10,6 +10,15 @@ require 'securerandom'
 require 'time'
 require 'cgminer_api_client'
 
+# Render CgminerApiClient::Miner as "host:port" so PoolManager's
+# MinerEntry#miner (populated via miner.to_s) displays as a stable
+# identifier rather than the default Object#to_s inspection string.
+# Upstream does not define to_s, and #respond_to_missing? excludes
+# names starting with 'to_', so this is a safe host-side addition.
+CgminerApiClient::Miner.class_eval do
+  def to_s = "#{host}:#{port}"
+end
+
 module CgminerManager
   class HttpApp < Sinatra::Base
     class << self
@@ -229,6 +238,31 @@ module CgminerManager
           }
         }
       end
+
+      def build_pool_manager_for_all
+        miners = self.class.configured_miners.map do |host, port|
+          CgminerApiClient::Miner.new(host, port)
+        end
+        PoolManager.new(miners, thread_cap: self.class.pool_thread_cap || 8)
+      end
+
+      def build_pool_manager_for(miner_ids)
+        miners = miner_ids.map do |id|
+          host, port = id.split(':', 2)
+          CgminerApiClient::Miner.new(host, port.to_i)
+        end
+        PoolManager.new(miners)
+      end
+
+      def dispatch_pool_action(pool_manager, action_name, pool_index)
+        case action_name.to_s
+        when 'disable' then pool_manager.disable_pool(pool_index: pool_index)
+        when 'enable'  then pool_manager.enable_pool(pool_index: pool_index)
+        when 'remove'  then pool_manager.remove_pool(pool_index: pool_index)
+        when 'add'     then pool_manager.add_pool(url: params[:url], user: params[:user], pass: params[:pass])
+        else halt 400, "unknown action: #{action_name}"
+        end
+      end
     end
 
     get '/' do
@@ -245,6 +279,24 @@ module CgminerManager
       @prev_miner_url, @next_miner_url = neighbor_urls(miner_id)
       @view = build_miner_view_model(miner_id)
       haml :'miner/show'
+    end
+
+    post '/manager/manage_pools' do
+      action_name = params[:action_name].to_s
+      pool_index  = params[:pool_index].to_i
+
+      pm = build_pool_manager_for_all
+      @result = dispatch_pool_action(pm, action_name, pool_index)
+      render_partial('shared/manage_pools')
+    end
+
+    post '/miner/:miner_id/manage_pools' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+
+      pm = build_pool_manager_for([miner_id])
+      @result = dispatch_pool_action(pm, params[:action_name], params[:pool_index].to_i)
+      render_partial('shared/manage_pools')
     end
 
     get '/miner/:miner_id/graph_data/:metric' do
