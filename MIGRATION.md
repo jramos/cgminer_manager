@@ -24,13 +24,29 @@
 
 ## Feature removals
 
-- `POST /manager/run` and `POST /miner/:id/run` arbitrary-command endpoints are gone. The typed pool-management actions (add / disable / enable / remove / save) remain via the UI.
-  - If you relied on `run` for ad-hoc command execution, use `cgminer_api_client` from IRB:
+- `POST /manager/run` and `POST /miner/:id/run` arbitrary-command endpoints were removed in 1.1.0 as a security-hardening step. **1.2.0 restores the equivalent functionality behind structured gates** — see the "1.2.0 Admin surface restoration" section below.
+  - If you relied on `run` for scripted ad-hoc commands, you can also still use `cgminer_api_client` from IRB:
     ```ruby
     require 'cgminer_api_client'
     miner = CgminerApiClient::Miner.new('10.0.0.5', 4028)
     miner.query(:version)
     ```
+
+## 1.2.0 Admin surface restoration
+
+1.2.0 brings back an Admin tab on the dashboard and per-miner page with fleet operations. Unlike the legacy `/manager/run`, every admin POST is:
+
+- **CSRF-protected** (browser path) with optional **HTTP Basic Auth** bypass for scripts (set `CGMINER_MANAGER_ADMIN_USER` + `CGMINER_MANAGER_ADMIN_PASSWORD`).
+- **Scope-restricted** — hardware-tuning verbs (`pgaset`, `ascset`, `pgarestart`, `ascrestart`, `pga{enable,disable}`, `asc{enable,disable}`) refuse `scope=all` to avoid broadcasting clock/voltage settings to heterogeneous hardware.
+- **Audit-logged** — `admin.command` / `admin.raw_command` entry events, `admin.result` exit events (threaded by `request_id` UUID), plus `admin.auth_failed` / `admin.scope_rejected` on rejection paths.
+
+Routes added:
+
+- `POST /manager/admin/:command` — typed allowlist (`version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`).
+- `POST /manager/admin/run` — raw cgminer RPC with `command` + `args` + `scope` params.
+- `POST /miner/:miner_id/admin/:command` and `POST /miner/:miner_id/admin/run` — per-miner variants.
+
+The typed allowlist is **ergonomic**, not a defensive boundary — anyone with access to `/admin/run` can run any cgminer verb. The defensive boundary is Basic Auth + scope restrictions + audit logging. See README "Security posture" for full details.
 
 ## `/api/v1/ping.json`
 
