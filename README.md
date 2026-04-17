@@ -2,6 +2,24 @@
 
 Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`](https://github.com/jramos/cgminer_monitor) and issues pool-management commands to miners via [`cgminer_api_client`](https://github.com/jramos/cgminer_api_client).
 
+## Screenshots
+
+### Dashboard
+
+![Dashboard](public/screenshots/dashboard.png)
+
+Aggregate hashrate, temperature, and error rates across the pool, with a per-miner row summary at the bottom.
+
+### Miner detail — Antminer S1
+
+![Antminer S1 detail](public/screenshots/miner.png)
+
+### Miner detail — Antminer S3
+
+![Antminer S3 detail](public/screenshots/miner-s3.png)
+
+Screenshots are generated from a scripted harness in `dev/screenshots/` — see that directory's README for how to regenerate.
+
 ## Requirements
 
 - Ruby 3.2+ (4.0.2 recommended; see `.ruby-version`)
