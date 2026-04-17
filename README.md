@@ -2,6 +2,22 @@
 
 Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`](https://github.com/jramos/cgminer_monitor) and issues pool-management commands to miners via [`cgminer_api_client`](https://github.com/jramos/cgminer_api_client).
 
+## Screenshots
+
+### Pool summary
+
+![Summary](public/screenshots/summary.png)
+
+### Miner pool
+
+![Miner pool](public/screenshots/miner-pool.png)
+
+### Miner detail
+
+![Miner detail](public/screenshots/miner.png)
+
+Screenshots are generated from a scripted harness in `dev/screenshots/` — see that directory's README for how to regenerate.
+
 ## Requirements
 
 - Ruby 3.2+ (4.0.2 recommended; see `.ruby-version`)

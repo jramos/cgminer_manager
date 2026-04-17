@@ -21,6 +21,12 @@ end
 
 module CgminerManager
   class HttpApp < Sinatra::Base
+    # Sinatra auto-detects root from the file that defined this class (here
+    # lib/cgminer_manager/http_app.rb), which would resolve public_folder to
+    # lib/cgminer_manager/public. Pin root to the repo root so /public and
+    # /views load from their actual locations.
+    set :root, File.expand_path('../..', __dir__)
+
     class << self
       attr_accessor :monitor_url, :miners_file, :stale_threshold_seconds, :pool_thread_cap
 
@@ -491,6 +497,12 @@ module CgminerManager
 
     get '/api/v1/ping.json' do
       content_type :json
+
+      # Dev/screenshot harness bypass: avoid 5s-per-miner TCP timeouts against
+      # phantom IPs. Payload is a literal JSON string the caller controls.
+      if (fake = ENV.fetch('CGMINER_MANAGER_FAKE_PING', nil))
+        return fake
+      end
 
       available = 0
       unavailable = 0

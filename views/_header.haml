@@ -16,6 +16,6 @@
     :javascript
       initAudioStatus();
 
-  %h1!= content_for?(:page_title) ? content_for(:page_title) : link_to("CgminerManager", root_url)
+  %h1!= content_for?(:page_title) ? yield_content(:page_title) : link_to("CgminerManager", root_url)
 
   .clear

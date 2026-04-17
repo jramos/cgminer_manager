@@ -10,6 +10,7 @@ AllCops:
   Exclude:
     - 'vendor/**/*'
     - 'tmp/**/*'
+    - 'dev/**/*'
 
 plugins:
   - rubocop-rake
