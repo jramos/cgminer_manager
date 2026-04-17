@@ -19,7 +19,7 @@
           %td.red.bold= device[:status]
 
         %td= time_ago_in_words(Time.now - device[:device_elapsed].to_f)
-        %td= raw(device[:temperature].to_s + '&deg; C')
+        %td!= "#{device[:temperature]}&deg; C"
         %td= device[:'device_rejected%']&.round(2).to_s + '%'
         %td= device[:'device_hardware%']&.round(2).to_s + '%'
 
@@ -31,7 +31,7 @@
 
             %tr.text-center
               %td= "#{type.to_s.upcase}#{i - 1}"
-              %td(colspan="4")= raw(status.downcase.gsub('x', '<span class="red bold">x</span>'))
+              %td(colspan="4")!= status.downcase.gsub('x', '<span class="red bold">x</span>')
               - error_rate = (1 - (status.downcase.count('o').to_f / status.gsub(' ','').length.to_f)) * 100
               - if error_rate.positive?
                 %td.red.bold= error_rate.round(2).to_s + '%'
