@@ -36,7 +36,21 @@ cp config/miners.yml.example config/miners.yml
 docker compose up
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. The Admin tab at the top of the dashboard exposes
+fleet operations (version / stats / devs / zero / save / restart / quit) and a
+raw cgminer RPC form.
+
+To additionally require HTTP Basic Auth on Admin routes (strongly recommended
+if the UI is reachable beyond loopback), set both:
+
+```bash
+export CGMINER_MANAGER_ADMIN_USER=admin
+export CGMINER_MANAGER_ADMIN_PASSWORD=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(24)')
+docker compose up
+```
+
+`docker-compose.yml` passes these through verbatim. Unset / empty strings = no
+Basic Auth gate (CSRF-only, same posture as the rest of the UI).
 
 ## Manual install
 
