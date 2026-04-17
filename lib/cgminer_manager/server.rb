@@ -20,7 +20,13 @@ module CgminerManager
 
       launcher = build_puma_launcher
       puma_thread = start_puma_thread(launcher)
-      reinstall_signal_handlers
+
+      # Puma's setup_signals runs on its thread during launcher.run and
+      # overwrites any SIGTERM/SIGINT traps we installed earlier. Wait briefly
+      # for that to complete, then reinstall ours so signals land back in our
+      # @stop queue.
+      sleep 0.2
+      install_signal_handlers
 
       signal = @stop.pop
       Logger.info(event: 'server.stopping', signal: signal)
@@ -54,15 +60,12 @@ module CgminerManager
       %w[INT TERM].each { |s| trap(s) { @stop << s } }
     end
 
-    def reinstall_signal_handlers
-      install_signal_handlers
-    end
-
     def build_puma_launcher
       puma_config = Puma::Configuration.new do |user_config|
         user_config.bind("tcp://#{@config.bind}:#{@config.port}")
         user_config.threads(1, 8)
         user_config.environment(@config.rack_env)
+        user_config.raise_exception_on_sigterm(false)
         user_config.app(Rack::Builder.new { run HttpApp.new }.to_app)
       end
       Puma::Launcher.new(puma_config, log_writer: Puma::LogWriter.null)
