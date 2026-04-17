@@ -93,7 +93,8 @@ module CgminerManager
           key: 'cgminer_manager.session',
           secret: ENV.fetch('SESSION_SECRET') { SecureRandom.hex(32) },
           same_site: :lax
-      use Rack::Protection::AuthenticityToken
+      use CgminerManager::AdminAuth
+      use CgminerManager::ConditionalAuthenticityToken
     end
 
     helpers do

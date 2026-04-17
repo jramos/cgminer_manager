@@ -73,6 +73,8 @@ RSpec/MultipleDescribes:
     - 'spec/cgminer_manager/view_miner_spec.rb'
     # Split: FleetQueryResult + FleetWriteResult value types vs. CgminerCommander service.
     - 'spec/cgminer_manager/cgminer_commander_spec.rb'
+    # Split: AdminAuth middleware vs. ConditionalAuthenticityToken middleware (separate classes).
+    - 'spec/cgminer_manager/admin_auth_spec.rb'
 
 RSpec/RepeatedExampleGroupDescription:
   Exclude:
