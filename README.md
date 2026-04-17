@@ -4,19 +4,17 @@ Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`
 
 ## Screenshots
 
-### Dashboard
+### Pool summary
 
-![Dashboard](public/screenshots/dashboard.png)
+![Summary](public/screenshots/summary.png)
 
-Aggregate hashrate, temperature, and error rates across the pool, with a per-miner row summary at the bottom.
+### Miner pool
 
-### Miner detail — Antminer S1
+![Miner pool](public/screenshots/miner-pool.png)
 
-![Antminer S1 detail](public/screenshots/miner.png)
+### Miner detail
 
-### Miner detail — Antminer S3
-
-![Antminer S3 detail](public/screenshots/miner-s3.png)
+![Miner detail](public/screenshots/miner.png)
 
 Screenshots are generated from a scripted harness in `dev/screenshots/` — see that directory's README for how to regenerate.
 

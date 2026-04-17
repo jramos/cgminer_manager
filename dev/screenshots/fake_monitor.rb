@@ -250,8 +250,15 @@ class FakeMonitor < Sinatra::Base
 
     def temperature_row(specs, ts, idx, miner_id)
       rng = prng('temperature', miner_id, idx)
-      temps = specs.map { |s| jitter(s[:temp], 0.02, rng) }
-      [ts, round1(temps.min), round1(temps.sum / temps.size), round1(temps.max)]
+      if specs.size == 1
+        # Per-miner reading: fabricate a plausible min/avg/max spread across
+        # the miner's chips so the legacy three-band chart still renders.
+        avg = jitter(specs.first[:temp], 0.02, rng)
+        [ts, round1(avg - jitter(2.5, 0.3, rng)), round1(avg), round1(avg + jitter(3.0, 0.3, rng))]
+      else
+        temps = specs.map { |s| jitter(s[:temp], 0.02, rng) }
+        [ts, round1(temps.min), round1(temps.sum / temps.size), round1(temps.max)]
+      end
     end
 
     def availability_row(specs, ts, miner_id)

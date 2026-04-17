@@ -25,9 +25,9 @@ This starts two background processes and blocks until both respond:
 
 Capture the three PNGs (from any browser or Playwright MCP session):
 
-- `http://127.0.0.1:3030/` → `public/screenshots/dashboard.png`
-- `http://127.0.0.1:3030/miner/192.168.1.153%3A4028` → `public/screenshots/miner.png`
-- `http://127.0.0.1:3030/miner/192.168.1.151%3A4028` → `public/screenshots/miner-s3.png`
+- `http://127.0.0.1:3030/` → `public/screenshots/summary.png` (hide `#miner-pool` via `style.display='none'` before the fullPage shot so only the 6 aggregate graphs render)
+- `http://127.0.0.1:3030/` → `public/screenshots/miner-pool.png` (inject `<style>#summary{display:none!important}</style>` before `$(document).ready` so the availability chart draws at full container height)
+- `http://127.0.0.1:3030/miner/192.168.1.151%3A4028` → `public/screenshots/miner.png` (Antminer S3 detail; full page)
 
 For each, wait until `jQuery.active === 0` and every `<canvas>` has `width > 50`
 so Chart.js has finished rendering, then take a full-page screenshot at
