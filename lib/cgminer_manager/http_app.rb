@@ -74,6 +74,18 @@ module CgminerManager
     set :host_authorization, { permitted_hosts: [] }
     set :views, File.expand_path('../../views', __dir__)
 
+    before do
+      @request_started_at = Time.now
+    end
+
+    after do
+      Logger.info(event: 'http.request',
+                  path: request.path,
+                  method: request.request_method,
+                  status: response.status,
+                  render_ms: ((Time.now - @request_started_at) * 1000).round)
+    end
+
     configure do
       use Rack::Session::Cookie,
           key: 'cgminer_manager.session',
