@@ -1,0 +1,55 @@
+# Screenshot regeneration harness
+
+Boots `cgminer_manager` against a scripted fake `cgminer_monitor` so the
+dashboard can be screenshotted without physical miners. The scenario
+(2× Antminer S3 on `192.168.1.151-152` + 4× Antminer S1 on
+`192.168.1.153-156`) reproduces the data shown in the legacy
+`public/screenshots/miner-pool.png` from the v0.x Rails era.
+
+## Prerequisites
+
+- Ruby 3.2+ with the repo's Gemfile installed (`bundle install` from the
+  repo root).
+- Nothing listening on ports **9292** (fake monitor) or **3030** (manager).
+
+## Regenerate
+
+```bash
+dev/screenshots/boot.sh
+```
+
+This starts two background processes and blocks until both respond:
+
+- Fake `cgminer_monitor` on `127.0.0.1:9292`
+- `cgminer_manager` on `127.0.0.1:3030`
+
+Capture the three PNGs (from any browser or Playwright MCP session):
+
+- `http://127.0.0.1:3030/` → `public/screenshots/dashboard.png`
+- `http://127.0.0.1:3030/miner/192.168.1.153%3A4028` → `public/screenshots/miner.png`
+- `http://127.0.0.1:3030/miner/192.168.1.151%3A4028` → `public/screenshots/miner-s3.png`
+
+For each, wait until `jQuery.active === 0` and every `<canvas>` has `width > 50`
+so Chart.js has finished rendering, then take a full-page screenshot at
+1280 × 2400 (Chrome will crop the height to actual content).
+
+When finished:
+
+```bash
+dev/screenshots/teardown.sh
+```
+
+## Files
+
+- `scenario.rb` — the six-miner spec (source of truth). Anchor time is pinned
+  to `2026-04-17 09:04:06 UTC`; values use a seeded PRNG so rebuilds are
+  byte-identical.
+- `fake_monitor.rb` — Sinatra app serving the monitor `/v2/*` API (miners,
+  per-miner snapshots, graph data, healthz).
+- `miners.yml` — config for the manager's `MINERS_FILE`.
+- `boot.sh` / `teardown.sh` — harness lifecycle.
+- `.run/` (gitignored) — pidfiles and logs.
+
+To tweak the scenario (different models, miner count, error rates), edit
+`scenario.rb` and re-run `boot.sh`. No other files depend on the scenario
+shape at runtime.
