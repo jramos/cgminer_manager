@@ -34,6 +34,11 @@ RSpec.describe 'GET /', type: :integration do
       get '/'
       expect(last_response.body).to match(/<meta name="csrf-token" content="[^"]+">/)
     end
+
+    it 'renders the dashboard hashrate canvas (graph partial wired up)' do
+      get '/'
+      expect(last_response.body).to match(/<canvas[^>]+id=['"]local_hashrate['"]/)
+    end
   end
 
   context 'when monitor is unreachable' do

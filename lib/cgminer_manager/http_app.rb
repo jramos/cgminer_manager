@@ -92,7 +92,16 @@ module CgminerManager
 
     helpers do
       def h(text) = Rack::Utils.escape_html(text.to_s)
-      def raw(str) = str.to_s
+
+      # `raw` is a marker for "trust this string; do not HTML-escape it".
+      # Haml 6's default escape (triggered by `=`) only skips strings that
+      # report `html_safe? == true`; stamp the return accordingly so callers
+      # can write `= raw('...')` without seeing entities in output.
+      def raw(str)
+        s = str.to_s.dup
+        s.define_singleton_method(:html_safe?) { true }
+        s
+      end
 
       def root_url = '/'
       def miner_url(miner_id) = "/miner/#{CGI.escape(miner_id.to_s)}"
@@ -101,25 +110,25 @@ module CgminerManager
 
       def link_to(text, href, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
-        body  = text.is_a?(String) ? h(text) : text
-        %(<a href="#{h(href)}" #{attrs}>#{body}</a>)
+        body  = text.respond_to?(:html_safe?) && text.html_safe? ? text : h(text.to_s)
+        raw(%(<a href="#{h(href)}" #{attrs}>#{body}</a>))
       end
 
       def image_tag(src, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
-        %(<img src="#{h(src)}" #{attrs}>)
+        raw(%(<img src="#{h(src)}" #{attrs}>))
       end
 
       def stylesheet_link_tag(name)
-        %(<link rel="stylesheet" href="/css/#{h(name)}.css">)
+        raw(%(<link rel="stylesheet" href="/css/#{h(name)}.css">))
       end
 
       def javascript_include_tag(name)
-        %(<script src="/js/#{h(name)}.js"></script>)
+        raw(%(<script src="/js/#{h(name)}.js"></script>))
       end
 
       def csrf_meta_tag
-        %(<meta name="csrf-token" content="#{h(csrf_token)}">)
+        raw(%(<meta name="csrf-token" content="#{h(csrf_token)}">))
       end
 
       def csrf_meta_tags = csrf_meta_tag
@@ -129,26 +138,36 @@ module CgminerManager
       end
 
       def hidden_field_tag(name, value = nil)
-        %(<input type="hidden" name="#{h(name)}" value="#{h(value)}">)
+        raw(%(<input type="hidden" name="#{h(name)}" value="#{h(value)}">))
       end
 
       def text_field_tag(name, value = nil, placeholder: nil)
         ph = placeholder ? %( placeholder="#{h(placeholder)}") : ''
-        %(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>)
+        raw(%(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>))
       end
 
       def label_tag(name, text)
-        %(<label for="#{h(name)}">#{h(text)}</label>)
+        raw(%(<label for="#{h(name)}">#{h(text)}</label>))
       end
 
       def submit_tag(text)
-        %(<input type="submit" value="#{h(text)}">)
+        raw(%(<input type="submit" value="#{h(text)}">))
       end
 
       def render_partial(name, locals: {})
         parts = name.split('/')
         parts[-1] = "_#{parts[-1]}"
-        haml parts.join('/').to_sym, layout: false, locals: locals
+        html_safe(haml(parts.join('/').to_sym, layout: false, locals: locals))
+      end
+
+      # Haml 6's default escape_html treats any String emitted via `=` as
+      # unsafe unless the object reports `html_safe? == true`. Embedded
+      # partials (whether from `render_partial` or bare `haml :name`) are
+      # already rendered HTML. Stamping the return value avoids the visible
+      # double-escape cascade seen in layout.haml's `= haml :_header`.
+      def html_safe(str)
+        str.define_singleton_method(:html_safe?) { true } unless str.respond_to?(:html_safe?)
+        str
       end
 
       def staleness_badge(fetched_at, threshold_seconds)
@@ -202,8 +221,30 @@ module CgminerManager
       def get_stats_for(miner_index, stat_name)
         slice = @miner_data&.dig(miner_index, :stats)
         stats = slice&.first&.dig(:stats) || []
-        prefix = stat_name.to_s
-        stats.select { |entry| entry[:id].to_s.start_with?(prefix) }
+        stats.detect { |entry| entry[:id].to_s == stat_name.to_s }
+      end
+
+      # Build a ViewMinerPool from monitor's /v2/miners response. Accepts
+      # either the live Hash list (with :available flag) or the fallback
+      # array built when monitor is down (all :available=false).
+      def build_view_miner_pool(monitor_miners)
+        view_miners = (monitor_miners || []).map do |m|
+          host  = m[:host] || m['host']
+          port  = m[:port] || m['port']
+          avail = m.fetch(:available) { m['available'] || false }
+          ViewMiner.build(host, port, avail)
+        end
+        ViewMinerPool.new(miners: view_miners)
+      end
+
+      # Variant for the per-miner page, where we only need to thread the
+      # configured miner list into @miner_pool for any partial that reaches
+      # for it. Monitor availability isn't fetched separately here.
+      def build_view_miner_pool_from_yml
+        view_miners = self.class.configured_miners.map do |host, port|
+          ViewMiner.build(host, port, false)
+        end
+        ViewMinerPool.new(miners: view_miners)
       end
 
       def build_dashboard_view_model
@@ -333,7 +374,11 @@ module CgminerManager
     end
 
     get '/' do
-      @view = build_dashboard_view_model
+      @view               = build_dashboard_view_model
+      @miner_pool         = build_view_miner_pool(@view[:miners])
+      @miner_data         = SnapshotAdapter.build_miner_data(self.class.configured_miners,
+                                                             @view[:snapshots])
+      @bad_chain_elements = []
       haml :'manager/index'
     end
 

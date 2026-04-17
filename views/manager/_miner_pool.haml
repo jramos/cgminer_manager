@@ -1,15 +1,15 @@
 #miner-pool
   .container
-    = render_partial 'shared/graphs/availability', locals: { target: 'local' }
+    != render_partial 'shared/graphs/availability', locals: { target: 'local' }
 
   - @miner_pool.available_miners  # check the status of each in bulk
   - @miner_pool.miners.each_with_index do |miner, miner_index|
     - if miner.available?
       %hr
-      .clickable-container(onclick="goToMiner(#{miner_index});")
-        .left.half-width=  render_partial 'shared/miner_hashrate_table', locals: { miner: miner, miner_index: miner_index }
+      .clickable-container(onclick="window.location.href='#{miner_url("#{miner.host}:#{miner.port}")}';")
+        .left.half-width!= render_partial 'shared/miner_hashrate_table', locals: { miner: miner, miner_index: miner_index }
         .mobile-clear
-        .left.half-width= render_partial 'shared/miner_devices_table', locals: { miner: miner, miner_index: miner_index }
+        .left.half-width!= render_partial 'shared/miner_devices_table', locals: { miner: miner, miner_index: miner_index }
         .clear
 
     - else
