@@ -45,11 +45,12 @@ Unchanged shape: `{timestamp, available_miners, unavailable_miners}`. Data sourc
 
 ## Rollback
 
-The pre-1.0 Rails app remains at the `v0-legacy` git tag (cut just before the Rails unmount commit). To roll back:
+As of 1.1.0 the legacy Rails tree has been removed from HEAD. To roll back to the pre-Sinatra app, check out the `v0-legacy` tag:
 
 ```bash
 git checkout v0-legacy
-# restore the old Rails boot chain; reinstall bundle with old Gemfile
+bundle install         # uses the old Rails 4.2 Gemfile frozen at that commit
+rails server thin      # or `rake server` per the Rails-era README
 ```
 
-This works until the separate "delete Rails tree" follow-up PR lands. After that, `v0-legacy` remains but the tree is gone from HEAD.
+The tag points at the last commit where the Rails app still booted. It is not part of the current HEAD history, so `git log` from master or develop will not show those commits — you must check out the tag explicitly.
