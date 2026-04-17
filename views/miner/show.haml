@@ -1,58 +1,21 @@
+- if @prev_miner_url
+  .left= link_to raw("&laquo; Previous Miner"), @prev_miner_url
+- if @next_miner_url
+  .right= link_to raw("Next Miner &raquo;"), @next_miner_url
+
+%h1!= link_to("CgminerManager", root_url) + " > " + @miner_id
+
 #miner-show
-  #prev-next-miner
-    - if @prev_miner_url
-      .left= link_to raw("&laquo; Previous Miner"), @prev_miner_url
-    - if @next_miner_url
-      .right= link_to raw("Next Miner &raquo;"), @next_miner_url
-    .clear
+  %h2= @miner_id
+  %p!= link_to('Back to dashboard', root_url)
 
-  - unless @miner.nil? || !@miner.available?
-    - content_for(:page_title) do
-      = link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
-
-    = render_partial 'shared/warnings'
-
-    .clear
-
-    #miner
-      #tabs
-        %ul
-          %li= link_to 'Miner',  '#summary'
-          %li= link_to 'Devs',  '#devices'
-          %li= link_to 'Pools', '#pools'
-          %li= link_to 'Stats', '#stats'
-
-        = render_partial 'summary'
-        = render_partial 'devices'
-        = render_partial 'pools'
-        = render_partial 'stats'
-
-    :javascript
-      $(document).unbind('update');
-      $(document).on('update', function() {
-        $('#updated').addClass('updating').text('Updating...');
-        $('title').text('Updating...');
-
-        $('#miner-show').load('#{@miner_url}', function() {
-          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + new Date().toLocaleTimeString() + "</span>");
-          $('title').text('CgminerManager');
-        });
-      });
-
+  - snapshots = @view[:snapshots]
+  - summary = snapshots[:summary]
+  - if summary && !summary.is_a?(Hash) || (summary.is_a?(Hash) && !summary[:error])
+    .section
+      %h3 Summary
+      %pre= summary.inspect
   - else
-    #miner
-      #tabs
-        %ul
-          %li= link_to 'Summary',   '#summary'
-
-      #summary
-        #unknown-unavailable
-          - if @miner.nil?
-            Unknown miner
-          - else
-            Miner unavailable
-
-:javascript
-  $(function() {
-    $('#tabs').tabs({activate: setWindowHash});
-  });
+    .section
+      %h3 Summary
+      %p.unavailable Data unavailable.

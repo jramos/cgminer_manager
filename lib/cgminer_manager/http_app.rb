@@ -184,11 +184,46 @@ module CgminerManager
       rescue MonitorError => e
         { error: e.message }
       end
+
+      def miner_configured?(miner_id)
+        self.class.configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
+      end
+
+      def neighbor_urls(miner_id)
+        ids = self.class.configured_miners.map { |host, port| "#{host}:#{port}" }
+        idx = ids.index(miner_id)
+        prev = idx&.positive? ? miner_url(ids[idx - 1]) : nil
+        nxt  = idx && idx < ids.size - 1 ? miner_url(ids[idx + 1]) : nil
+        [prev, nxt]
+      end
+
+      def build_miner_view_model(miner_id)
+        {
+          miner_id: miner_id,
+          snapshots: {
+            summary: safe_fetch { monitor_client.summary(miner_id) },
+            devices: safe_fetch { monitor_client.devices(miner_id) },
+            pools: safe_fetch { monitor_client.pools(miner_id) },
+            stats: safe_fetch { monitor_client.stats(miner_id) }
+          }
+        }
+      end
     end
 
     get '/' do
       @view = build_dashboard_view_model
       haml :'manager/index'
+    end
+
+    get '/miner/:miner_id' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+
+      @miner_id = miner_id
+      @miner_url = miner_url(miner_id)
+      @prev_miner_url, @next_miner_url = neighbor_urls(miner_id)
+      @view = build_miner_view_model(miner_id)
+      haml :'miner/show'
     end
 
     get '/healthz' do
