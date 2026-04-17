@@ -1,5 +1,6 @@
-- width = target == 'miner' ? '850' : '864'
-- url   = target == 'miner' ? 'miner_availability.json?miner_id=' + @miner_id.to_s : 'local_availability.json'
+- width  = target == 'miner' ? '850' : '864'
+- metric = 'availability'
+- url    = target == 'miner' ? "#{miner_url(@miner_host_port)}/graph_data/#{metric}" : "/graph_data/#{metric}"
 
 #availability-graph
   %h2 Availability
@@ -7,7 +8,8 @@
 
 :javascript
   $(document).ready(function(){
-    $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
+    var isMiner = #{target == 'miner' ? 'true' : 'false'};
+    $.getJSON('#{url}', function(hash_rate_response){
       if (hash_rate_response && hash_rate_response.length > 1) {
         var labels = [];
         var availabilities = [];
@@ -20,7 +22,7 @@
           } else {
             labels.push("");
           }
-          availabilities.push(parseFloat(response[1] / parseFloat(response[2])) * 100);
+          availabilities.push(isMiner ? response[1] * 100 : response[1] / parseFloat(response[2]) * 100);
         });
 
         var data = {
