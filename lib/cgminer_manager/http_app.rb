@@ -122,6 +122,73 @@ module CgminerManager
         parts[-1] = "_#{parts[-1]}"
         haml parts.join('/').to_sym, layout: false, locals: locals
       end
+
+      def build_dashboard_view_model
+        begin
+          miners = monitor_client.miners[:miners]
+        rescue MonitorError => e
+          fallback_miners = self.class.configured_miners.map do |host, port|
+            { id: "#{host}:#{port}", host: host, port: port }
+          end
+          return { miners: fallback_miners, snapshots: {},
+                   banner: "data source unavailable (#{e.message})",
+                   stale_threshold: self.class.stale_threshold_seconds || 300 }
+        end
+
+        snapshots = fetch_snapshots_for(miners)
+        { miners: miners, snapshots: snapshots, banner: nil,
+          stale_threshold: self.class.stale_threshold_seconds || 300 }
+      end
+
+      def fetch_snapshots_for(miners)
+        queue = Queue.new
+        miners.each { |m| queue << m }
+        results = {}
+        mutex = Mutex.new
+
+        worker_count = [self.class.pool_thread_cap || 8, miners.size].min
+        worker_count = 1 if worker_count < 1
+        threads = worker_count.times.map { spawn_snapshot_worker(queue, results, mutex) }
+        threads.each(&:join)
+        results
+      end
+
+      def spawn_snapshot_worker(queue, results, mutex)
+        Thread.new do
+          loop do
+            miner = pop_or_break(queue) or break
+            miner_id = miner[:id] || miner['id']
+            tile = fetch_tile(miner_id)
+            mutex.synchronize { results[miner_id] = tile }
+          end
+        end
+      end
+
+      def pop_or_break(queue)
+        queue.pop(true)
+      rescue ThreadError
+        nil
+      end
+
+      def fetch_tile(miner_id)
+        {
+          summary: safe_fetch { monitor_client.summary(miner_id) },
+          devices: safe_fetch { monitor_client.devices(miner_id) },
+          pools: safe_fetch { monitor_client.pools(miner_id) },
+          stats: safe_fetch { monitor_client.stats(miner_id) }
+        }
+      end
+
+      def safe_fetch
+        yield
+      rescue MonitorError => e
+        { error: e.message }
+      end
+    end
+
+    get '/' do
+      @view = build_dashboard_view_model
+      haml :'manager/index'
     end
 
     get '/healthz' do

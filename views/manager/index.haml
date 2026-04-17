@@ -1,35 +1,29 @@
+- if @view[:banner]
+  .alert.alert-warning= @view[:banner]
+
 #manager
-  - unless @miner_pool.miners.empty?
-    - @miner = @miner_pool.miners.first
-    - @miner_id = 0
+  %h2 cgminer_manager dashboard
 
-    - content_for(:miner_pool) do
-      = render_partial 'miner_pool'
-
-    = render_partial 'shared/warnings'
-
-    #manager-content
-      %ul
-        %li= link_to 'Summary', '#summary'
-        %li= link_to 'Miner Pool', '#miner-pool'
-
-      = render_partial 'summary'
-      = yield_content :miner_pool
-
-    :javascript
-      $('#manager-content').tabs({activate: setWindowHash});
-
-    :javascript
-      $(document).unbind('update');
-      $(document).on('update', function() {
-        $('#updated').addClass('updating').text('Updating...');
-        $('title').text('Updating...');
-
-        $('#manager').load('/', function() {
-          now = new Date();
-          current_time = formatUpdatedAt(now);
-
-          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + current_time + "</span>");
-          $('title').text('CgminerManager');
-        });
-      });
+  %table.miners
+    %thead
+      %tr
+        %th Miner
+        %th Status
+        %th Updated
+    %tbody
+      - @view[:miners].each do |miner|
+        - miner_id = miner.is_a?(Hash) ? (miner[:id] || miner['id']) : miner.to_s
+        - snapshot = @view[:snapshots][miner_id]
+        %tr
+          %td!= link_to(miner_id, miner_url(miner_id))
+          %td
+            - if snapshot.nil? || (snapshot[:summary].is_a?(Hash) && snapshot[:summary][:error])
+              %span.offline offline
+            - else
+              %span.online online
+          %td
+            - summary = snapshot && snapshot[:summary]
+            - if summary.is_a?(Hash) && summary[:fetched_at]
+              %span.updated= summary[:fetched_at]
+            - else
+              %span.waiting waiting for first poll
