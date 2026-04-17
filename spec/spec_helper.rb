@@ -5,7 +5,12 @@ SimpleCov.start do
   add_filter '/spec/'
   add_filter '/vendor/'
   add_filter '/app/' # legacy Rails tree excluded from coverage math
-  minimum_coverage line: 80
+
+  # Coverage floor is only meaningful when running the full suite (both unit
+  # and integration specs). Partial runs (rspec --tag ~integration, or a
+  # single file) will naturally show lower coverage. Rakefile sets
+  # ENFORCE_COVERAGE=1 when running `rake spec`.
+  minimum_coverage line: 80 if ENV['ENFORCE_COVERAGE'] == '1'
 end
 
 ENV['RACK_ENV'] ||= 'test'

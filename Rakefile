@@ -3,7 +3,12 @@
 require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
 
-RSpec::Core::RakeTask.new(:spec)
+RSpec::Core::RakeTask.new(:spec) do |t|
+  # Enforce the SimpleCov coverage floor only when rspec runs the full suite
+  # via this rake task (not when CI or a developer runs a filtered subset).
+  t.rspec_opts = nil
+  ENV['ENFORCE_COVERAGE'] ||= '1'
+end
 RuboCop::RakeTask.new
 
 task default: %i[rubocop spec]
