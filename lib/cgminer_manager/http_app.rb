@@ -60,13 +60,9 @@ module CgminerManager
     helpers Sinatra::ContentFor
 
     GRAPH_METRIC_PROJECTIONS = {
-      'hashrate' => %w[ts ghs_5s ghs_av],
+      'hashrate' => %w[ts ghs_5s ghs_av device_hardware_pct device_rejected_pct pool_rejected_pct pool_stale_pct],
       'temperature' => %w[ts min avg max],
-      'availability' => %w[ts available],
-      'hardware_error' => %w[ts device_hardware_pct],
-      'device_rejected' => %w[ts device_rejected_pct],
-      'pool_rejected' => %w[ts pool_rejected_pct],
-      'pool_stale' => %w[ts pool_stale_pct]
+      'availability' => %w[ts available configured]
     }.freeze
 
     set :show_exceptions, false
@@ -96,7 +92,16 @@ module CgminerManager
 
     helpers do
       def h(text) = Rack::Utils.escape_html(text.to_s)
-      def raw(str) = str.to_s
+
+      # `raw` is a marker for "trust this string; do not HTML-escape it".
+      # Haml 6's default escape (triggered by `=`) only skips strings that
+      # report `html_safe? == true`; stamp the return accordingly so callers
+      # can write `= raw('...')` without seeing entities in output.
+      def raw(str)
+        s = str.to_s.dup
+        s.define_singleton_method(:html_safe?) { true }
+        s
+      end
 
       def root_url = '/'
       def miner_url(miner_id) = "/miner/#{CGI.escape(miner_id.to_s)}"
@@ -105,25 +110,25 @@ module CgminerManager
 
       def link_to(text, href, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
-        body  = text.is_a?(String) ? h(text) : text
-        %(<a href="#{h(href)}" #{attrs}>#{body}</a>)
+        body  = text.respond_to?(:html_safe?) && text.html_safe? ? text : h(text.to_s)
+        raw(%(<a href="#{h(href)}" #{attrs}>#{body}</a>))
       end
 
       def image_tag(src, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
-        %(<img src="#{h(src)}" #{attrs}>)
+        raw(%(<img src="#{h(src)}" #{attrs}>))
       end
 
       def stylesheet_link_tag(name)
-        %(<link rel="stylesheet" href="/css/#{h(name)}.css">)
+        raw(%(<link rel="stylesheet" href="/css/#{h(name)}.css">))
       end
 
       def javascript_include_tag(name)
-        %(<script src="/js/#{h(name)}.js"></script>)
+        raw(%(<script src="/js/#{h(name)}.js"></script>))
       end
 
       def csrf_meta_tag
-        %(<meta name="csrf-token" content="#{h(csrf_token)}">)
+        raw(%(<meta name="csrf-token" content="#{h(csrf_token)}">))
       end
 
       def csrf_meta_tags = csrf_meta_tag
@@ -133,26 +138,36 @@ module CgminerManager
       end
 
       def hidden_field_tag(name, value = nil)
-        %(<input type="hidden" name="#{h(name)}" value="#{h(value)}">)
+        raw(%(<input type="hidden" name="#{h(name)}" value="#{h(value)}">))
       end
 
       def text_field_tag(name, value = nil, placeholder: nil)
         ph = placeholder ? %( placeholder="#{h(placeholder)}") : ''
-        %(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>)
+        raw(%(<input type="text" name="#{h(name)}" value="#{h(value)}"#{ph}>))
       end
 
       def label_tag(name, text)
-        %(<label for="#{h(name)}">#{h(text)}</label>)
+        raw(%(<label for="#{h(name)}">#{h(text)}</label>))
       end
 
       def submit_tag(text)
-        %(<input type="submit" value="#{h(text)}">)
+        raw(%(<input type="submit" value="#{h(text)}">))
       end
 
       def render_partial(name, locals: {})
         parts = name.split('/')
         parts[-1] = "_#{parts[-1]}"
-        haml parts.join('/').to_sym, layout: false, locals: locals
+        html_safe(haml(parts.join('/').to_sym, layout: false, locals: locals))
+      end
+
+      # Haml 6's default escape_html treats any String emitted via `=` as
+      # unsafe unless the object reports `html_safe? == true`. Embedded
+      # partials (whether from `render_partial` or bare `haml :name`) are
+      # already rendered HTML. Stamping the return value avoids the visible
+      # double-escape cascade seen in layout.haml's `= haml :_header`.
+      def html_safe(str)
+        str.define_singleton_method(:html_safe?) { true } unless str.respond_to?(:html_safe?)
+        str
       end
 
       def staleness_badge(fetched_at, threshold_seconds)
@@ -163,6 +178,75 @@ module CgminerManager
 
         minutes = (age_seconds / 60).to_i
         "updated #{minutes}m ago"
+      end
+
+      def format_hashrate(rate)
+        rate = rate.to_f
+        unit = 'H/s'
+        %w[KH/s MH/s GH/s TH/s PH/s EH/s ZH/s YH/s].each do |next_unit|
+          break if rate < 1000
+
+          rate /= 1000
+          unit = next_unit
+        end
+        "#{rate.round(2)} #{unit}"
+      end
+
+      def number_with_delimiter(num)
+        return '' if num.nil?
+
+        whole, dec = num.to_s.split('.', 2)
+        whole = whole.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+        dec ? "#{whole}.#{dec}" : whole
+      end
+
+      # NOTE: the legacy view call sites use this (mis)spelling verbatim.
+      def to_ferinheight(centigrade)
+        ((1.8 * centigrade.to_f) + 32).round(1)
+      end
+
+      def time_ago_in_words(input)
+        seconds = case input
+                  when Numeric then input
+                  when Time    then Time.now - input
+                  when String  then Time.now - Time.parse(input)
+                  else 0
+                  end.to_i.abs
+
+        return "#{seconds}s" if seconds < 60
+        return "#{seconds / 60}m" if seconds < 3600
+        return "#{seconds / 3600}h" if seconds < 86_400
+
+        "#{seconds / 86_400}d"
+      end
+
+      def get_stats_for(miner_index, stat_name)
+        slice = @miner_data&.dig(miner_index, :stats)
+        stats = slice&.first&.dig(:stats) || []
+        stats.detect { |entry| entry[:id].to_s == stat_name.to_s }
+      end
+
+      # Build a ViewMinerPool from monitor's /v2/miners response. Accepts
+      # either the live Hash list (with :available flag) or the fallback
+      # array built when monitor is down (all :available=false).
+      def build_view_miner_pool(monitor_miners)
+        view_miners = (monitor_miners || []).map do |m|
+          host  = m[:host] || m['host']
+          port  = m[:port] || m['port']
+          avail = m.fetch(:available) { m['available'] || false }
+          ViewMiner.build(host, port, avail)
+        end
+        ViewMinerPool.new(miners: view_miners)
+      end
+
+      # Variant for the per-miner page, where we only need to thread the
+      # configured miner list into @miner_pool for any partial that reaches
+      # for it. Monitor availability isn't fetched separately here.
+      def build_view_miner_pool_from_yml
+        view_miners = self.class.configured_miners.map do |host, port|
+          ViewMiner.build(host, port, false)
+        end
+        ViewMinerPool.new(miners: view_miners)
       end
 
       def build_dashboard_view_model
@@ -292,18 +376,36 @@ module CgminerManager
     end
 
     get '/' do
-      @view = build_dashboard_view_model
+      @view               = build_dashboard_view_model
+      @miner_pool         = build_view_miner_pool(@view[:miners])
+      @miner_data         = SnapshotAdapter.build_miner_data(self.class.configured_miners,
+                                                             @view[:snapshots])
+      @bad_chain_elements = []
       haml :'manager/index'
     end
 
     get '/miner/:miner_id' do
-      miner_id = CGI.unescape(params[:miner_id])
-      halt 404 unless miner_configured?(miner_id)
+      miner_host_port = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_host_port)
 
-      @miner_id = miner_id
-      @miner_url = miner_url(miner_id)
-      @prev_miner_url, @next_miner_url = neighbor_urls(miner_id)
-      @view = build_miner_view_model(miner_id)
+      miner_index = self.class.configured_miners
+                        .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
+      host, port  = self.class.configured_miners[miner_index]
+
+      @view        = build_miner_view_model(miner_host_port)
+      snap_summary = @view[:snapshots][:summary]
+      snap_ok      = snap_summary.is_a?(Hash) && !snap_summary[:error] && snap_summary[:response]
+
+      @miner_id           = miner_index
+      @miner_host_port    = miner_host_port
+      @miner_url          = miner_url(miner_host_port)
+      @prev_miner_url, @next_miner_url = neighbor_urls(miner_host_port)
+      @miner              = ViewMiner.build(host, port, snap_ok ? true : false)
+      @miner_pool         = build_view_miner_pool_from_yml
+      @miner_data         = SnapshotAdapter.build_miner_data(
+        self.class.configured_miners, miner_host_port => @view[:snapshots]
+      )
+      @bad_chain_elements = []
       haml :'miner/show'
     end
 
@@ -344,6 +446,22 @@ module CgminerManager
 
       content_type :json
       JSON.generate(projected)
+    end
+
+    get '/graph_data/:metric' do
+      projection = GRAPH_METRIC_PROJECTIONS[params[:metric]]
+      halt 404 unless projection
+
+      envelope = monitor_client.graph_data(metric: params[:metric],
+                                           miner_id: nil,
+                                           since: params[:since])
+
+      fields  = envelope[:fields] || []
+      rows    = envelope[:data]   || []
+      indices = projection.map { |f| fields.index(f) }
+
+      content_type :json
+      JSON.generate(rows.map { |row| indices.map { |i| i ? row[i] : nil } })
     end
 
     get '/healthz' do

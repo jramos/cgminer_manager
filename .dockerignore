@@ -4,9 +4,6 @@ spec
 tmp
 log
 docs
-app
-test
 config/miners.yml
-config/mongoid.yml
 .worktrees
 coverage

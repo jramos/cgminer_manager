@@ -1,5 +1,6 @@
-- width = target == 'miner' ? '850' : '864'
-- url   = target == 'miner' ? 'miner_temperature.json?miner_id=' + @miner_id.to_s : 'local_temperature.json'
+- width  = target == 'miner' ? '850' : '864'
+- metric = 'temperature'
+- url    = target == 'miner' ? "#{miner_url(@miner_host_port)}/graph_data/#{metric}" : "/graph_data/#{metric}"
 
 #temperature-graph
   %h2 Temperature
@@ -7,7 +8,7 @@
 
 :javascript
   $(document).ready(function(){
-    $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(temperature_response){
+    $.getJSON('#{url}', function(temperature_response){
       if (temperature_response && temperature_response.length > 1) {
         var labels = [];
         var min_temperatures = [];

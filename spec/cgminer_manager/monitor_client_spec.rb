@@ -55,6 +55,19 @@ RSpec.describe CgminerManager::MonitorClient do
     end
   end
 
+  describe '#graph_data without miner_id' do
+    it 'omits the miner query param' do
+      stub_request(:get, 'http://localhost:9292/v2/graph_data/hashrate')
+        .to_return(status: 200, body: '{"fields":["ts","ghs_5s"],"data":[]}',
+                   headers: { 'Content-Type' => 'application/json' })
+
+      client.graph_data(metric: 'hashrate')
+
+      expect(a_request(:get, 'http://localhost:9292/v2/graph_data/hashrate')
+               .with { |req| !req.uri.query.to_s.include?('miner=') }).to have_been_made
+    end
+  end
+
   describe '#healthz' do
     it 'returns the health payload' do
       stub_monitor_healthz

@@ -1,5 +1,6 @@
-- width = target == 'miner' ? '850' : '864'
-- url   = target == 'miner' ? 'miner_hashrate.json?miner_id=' + @miner_id.to_s : 'local_hashrate.json'
+- width  = target == 'miner' ? '850' : '864'
+- metric = 'hashrate'
+- url    = target == 'miner' ? "#{miner_url(@miner_host_port)}/graph_data/#{metric}" : "/graph_data/#{metric}"
 
 #pool-rejected-hashrate-graph
   %h2 Pool Rejected %
@@ -7,7 +8,7 @@
 
 :javascript
   $(document).ready(function(){
-    $.getJSON('/cgminer_monitor/api/v1/graph_data/#{url}', function(hash_rate_response){
+    $.getJSON('#{url}', function(hash_rate_response){
       if (hash_rate_response && hash_rate_response.length > 1) {
         var labels = [];
         var error_rates   = [];

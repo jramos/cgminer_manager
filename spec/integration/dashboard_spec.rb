@@ -34,6 +34,17 @@ RSpec.describe 'GET /', type: :integration do
       get '/'
       expect(last_response.body).to match(/<meta name="csrf-token" content="[^"]+">/)
     end
+
+    it 'renders the dashboard hashrate canvas (graph partial wired up)' do
+      get '/'
+      expect(last_response.body).to match(/<canvas[^>]+id=['"]local_hashrate['"]/)
+    end
+
+    it 'points graph JS at the new Sinatra /graph_data/:metric proxy' do
+      get '/'
+      expect(last_response.body).to include('/graph_data/hashrate')
+      expect(last_response.body).not_to include('/cgminer_monitor/api/v1/')
+    end
   end
 
   context 'when monitor is unreachable' do

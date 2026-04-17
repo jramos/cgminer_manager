@@ -20,9 +20,10 @@ module CgminerManager
     def pools(miner_id)    = get("/v2/miners/#{CGI.escape(miner_id)}/pools")
     def stats(miner_id)    = get("/v2/miners/#{CGI.escape(miner_id)}/stats")
 
-    def graph_data(metric:, miner_id:, since: nil)
-      params = { miner: miner_id }
-      params[:since] = since if since
+    def graph_data(metric:, miner_id: nil, since: nil)
+      params = {}
+      params[:miner] = miner_id if miner_id
+      params[:since] = since    if since
       get("/v2/graph_data/#{metric}", params: params)
     end
 

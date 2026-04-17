@@ -54,6 +54,18 @@ All settings come from environment variables.
 - `bin/cgminer_manager doctor` — verify `miners.yml`, cgminer reachability, and monitor `/v2/miners`.
 - `bin/cgminer_manager version` — print version.
 
+## HTTP surface
+
+- `GET /` — dashboard (miner rows + 6 summary graphs).
+- `GET /miner/:miner_id` — per-miner page (4 tabs: Miner/Devs/Pools/Stats). `:miner_id` is URL-encoded `host:port`.
+- `GET /graph_data/:metric` — aggregate graph data across all miners. Returns a JSON array of rows.
+- `GET /miner/:miner_id/graph_data/:metric` — per-miner graph data, same shape.
+- `POST /manager/manage_pools`, `POST /miner/:miner_id/manage_pools` — pool management commands (CSRF-protected).
+- `GET /api/v1/ping.json` — legacy probe, returns `{timestamp, available_miners, unavailable_miners}` computed directly from cgminers.
+- `GET /healthz` — service health (manager + monitor reachability).
+
+Supported graph metrics: `hashrate` (7 columns), `temperature` (4 columns), `availability` (2-3 columns).
+
 ## Development
 
 ```bash
