@@ -8,7 +8,7 @@
 
   - unless @miner.nil? || !@miner.available?
     - content_for(:page_title) do
-      != link_to("CgminerManager", root_url) + ' > ' + @miner.host + ':' + @miner.port.to_s
+      != link_to("CgminerManager", root_url) + ' > ' + @miner.to_s
 
     != render_partial 'shared/warnings'
 

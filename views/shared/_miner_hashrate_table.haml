@@ -8,6 +8,6 @@
   %tbody
     - summary = @miner_data.dig(miner_index, :summary)&.first&.dig(:summary)&.first || {}
     %tr
-      %td= miner.host + ':' + miner.port.to_s
+      %td= miner.to_s
       %td.text-center= format_hashrate(summary[:ghs_5s].to_f * 1e9)
       %td.text-center= format_hashrate(summary[:ghs_av].to_f * 1e9)

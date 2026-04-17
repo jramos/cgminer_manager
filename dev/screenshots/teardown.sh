@@ -23,11 +23,13 @@ stop_pid() {
 }
 
 stop_pid manager
+stop_pid fake_cgminer_fleet
 stop_pid fake_monitor
 
 # Belt-and-braces: anything still bound to our known scripts or ports.
 pkill -f 'dev/screenshots/fake_monitor.rb' 2>/dev/null || true
-for port in "${FAKE_MONITOR_PORT:-9292}" "${MANAGER_PORT:-3030}"; do
+pkill -f 'dev/screenshots/fake_cgminer_fleet.rb' 2>/dev/null || true
+for port in "${FAKE_MONITOR_PORT:-9292}" "${MANAGER_PORT:-3030}" 40281 40282 40283 40284 40285 40286; do
   lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | xargs -I{} kill -TERM {} 2>/dev/null || true
 done
 

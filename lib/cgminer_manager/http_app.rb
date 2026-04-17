@@ -54,7 +54,7 @@ module CgminerManager
       def parse_miners_file
         raw = YAML.safe_load_file(miners_file) || []
         validate_miners_shape!(raw)
-        raw.map { |m| [m['host'], m['port'] || 4028].freeze }.freeze
+        raw.map { |m| [m['host'], m['port'] || 4028, m['label']].freeze }.freeze
       end
 
       def validate_miners_shape!(raw)
@@ -137,6 +137,15 @@ module CgminerManager
       def manager_admin_path(command) = "/manager/admin/#{command}"
       def miner_admin_path(miner_id, command) = "#{miner_url(miner_id)}/admin/#{command}"
       def admin_path?(path) = path.match?(%r{\A/(?:manager|miner/[^/]+)/admin(?:/|\z)})
+
+      # Translates a raw "host:port" miner identifier into its display
+      # label when miners.yml specifies one, otherwise returns the
+      # identifier verbatim. Used by the admin result partials so rows
+      # show "192.168.1.151:4028" (the label) instead of
+      # "127.0.0.1:40281" (the routed host).
+      def miner_display(host_port)
+        configured_labels_by_id[host_port] || host_port
+      end
 
       def link_to(text, href, **opts)
         attrs = opts.map { |k, v| %(#{k}="#{h(v)}") }.join(' ')
@@ -260,21 +269,32 @@ module CgminerManager
       # either the live Hash list (with :available flag) or the fallback
       # array built when monitor is down (all :available=false).
       def build_view_miner_pool(monitor_miners)
+        labels_by_id = configured_labels_by_id
         view_miners = (monitor_miners || []).map do |m|
-          host  = m[:host] || m['host']
-          port  = m[:port] || m['port']
-          avail = m.fetch(:available) { m['available'] || false }
-          ViewMiner.build(host, port, avail)
+          build_view_miner_from_monitor(m, labels_by_id)
         end
         ViewMinerPool.new(miners: view_miners)
+      end
+
+      def configured_labels_by_id
+        self.class.configured_miners.each_with_object({}) do |(host, port, label), acc|
+          acc["#{host}:#{port}"] = label
+        end
+      end
+
+      def build_view_miner_from_monitor(raw, labels_by_id)
+        host  = raw[:host] || raw['host']
+        port  = raw[:port] || raw['port']
+        avail = raw.fetch(:available) { raw['available'] || false }
+        ViewMiner.build(host, port, avail, labels_by_id["#{host}:#{port}"])
       end
 
       # Variant for the per-miner page, where we only need to thread the
       # configured miner list into @miner_pool for any partial that reaches
       # for it. Monitor availability isn't fetched separately here.
       def build_view_miner_pool_from_yml
-        view_miners = self.class.configured_miners.map do |host, port|
-          ViewMiner.build(host, port, false)
+        view_miners = self.class.configured_miners.map do |host, port, label|
+          ViewMiner.build(host, port, false, label)
         end
         ViewMinerPool.new(miners: view_miners)
       end
@@ -472,7 +492,7 @@ module CgminerManager
 
       miner_index = self.class.configured_miners
                         .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
-      host, port  = self.class.configured_miners[miner_index]
+      host, port, label = self.class.configured_miners[miner_index]
 
       @view        = build_miner_view_model(miner_host_port)
       snap_summary = @view[:snapshots][:summary]
@@ -482,7 +502,7 @@ module CgminerManager
       @miner_host_port    = miner_host_port
       @miner_url          = miner_url(miner_host_port)
       @prev_miner_url, @next_miner_url = neighbor_urls(miner_host_port)
-      @miner              = ViewMiner.build(host, port, snap_ok ? true : false)
+      @miner              = ViewMiner.build(host, port, snap_ok ? true : false, label)
       @miner_pool         = build_view_miner_pool_from_yml
       @miner_data         = SnapshotAdapter.build_miner_data(
         self.class.configured_miners, miner_host_port => @view[:snapshots]
@@ -646,15 +666,9 @@ module CgminerManager
     get '/api/v1/ping.json' do
       content_type :json
 
-      # Dev/screenshot harness bypass: avoid 5s-per-miner TCP timeouts against
-      # phantom IPs. Payload is a literal JSON string the caller controls.
-      if (fake = ENV.fetch('CGMINER_MANAGER_FAKE_PING', nil))
-        return fake
-      end
-
       available = 0
       unavailable = 0
-      self.class.configured_miners.each do |host, port|
+      self.class.configured_miners.each do |host, port, _label|
         miner = CgminerApiClient::Miner.new(host, port)
         if miner.available?
           available += 1

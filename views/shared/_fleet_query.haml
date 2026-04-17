@@ -8,7 +8,7 @@
     %tbody
       - @query_result.entries.each do |entry|
         %tr
-          %td= entry.miner
+          %td= miner_display(entry.miner)
           %td
             - if entry.ok?
               %span.ok &#10003;

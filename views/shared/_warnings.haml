@@ -9,7 +9,7 @@
       Bad chain element(s) detected on:
       %ul
         - @bad_chain_elements.each do |miner|
-          %li= miner.host + ':' + miner.port.to_s
+          %li= miner.to_s
 
     :javascript
       playWarningSound();
