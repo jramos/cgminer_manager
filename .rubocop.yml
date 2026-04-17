@@ -71,6 +71,8 @@ RSpec/MultipleDescribes:
     - 'spec/cgminer_manager/pool_manager_spec.rb'
     # Split: ViewMiner value type vs. ViewMinerPool partitioning.
     - 'spec/cgminer_manager/view_miner_spec.rb'
+    # Split: FleetQueryResult + FleetWriteResult value types vs. CgminerCommander service.
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'
 
 RSpec/RepeatedExampleGroupDescription:
   Exclude:
@@ -82,7 +84,9 @@ RSpec/MessageSpies:
   Exclude:
     # Command-path tests assert precise call sequence to cgminer; expect-receive is clearer than spies.
     - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'
 
 RSpec/StubbedMock:
   Exclude:
     - 'spec/cgminer_manager/pool_manager_spec.rb'
+    - 'spec/cgminer_manager/cgminer_commander_spec.rb'
