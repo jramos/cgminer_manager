@@ -12,11 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  # Serialize bundle install to avoid a known llhttp-ffi / ffi-compiler
-  # native-extension build race when installed in parallel with ffi.
-  BUNDLE_JOBS: '1'
-
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -25,7 +20,7 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.4'
-          bundler-cache: true
+      - run: bundle install --jobs 1
       - run: bundle exec rubocop
 
   test:
@@ -39,7 +34,7 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler-cache: true
+      - run: bundle install --jobs 1
       - run: bundle exec rspec --tag ~integration
 
   integration:
@@ -49,5 +44,5 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.4'
-          bundler-cache: true
+      - run: bundle install --jobs 1
       - run: bundle exec rspec --tag integration
