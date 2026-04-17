@@ -60,13 +60,9 @@ module CgminerManager
     helpers Sinatra::ContentFor
 
     GRAPH_METRIC_PROJECTIONS = {
-      'hashrate' => %w[ts ghs_5s ghs_av],
+      'hashrate' => %w[ts ghs_5s ghs_av device_hardware_pct device_rejected_pct pool_rejected_pct pool_stale_pct],
       'temperature' => %w[ts min avg max],
-      'availability' => %w[ts available],
-      'hardware_error' => %w[ts device_hardware_pct],
-      'device_rejected' => %w[ts device_rejected_pct],
-      'pool_rejected' => %w[ts pool_rejected_pct],
-      'pool_stale' => %w[ts pool_stale_pct]
+      'availability' => %w[ts available configured]
     }.freeze
 
     set :show_exceptions, false
@@ -389,6 +385,22 @@ module CgminerManager
 
       content_type :json
       JSON.generate(projected)
+    end
+
+    get '/graph_data/:metric' do
+      projection = GRAPH_METRIC_PROJECTIONS[params[:metric]]
+      halt 404 unless projection
+
+      envelope = monitor_client.graph_data(metric: params[:metric],
+                                           miner_id: nil,
+                                           since: params[:since])
+
+      fields  = envelope[:fields] || []
+      rows    = envelope[:data]   || []
+      indices = projection.map { |f| fields.index(f) }
+
+      content_type :json
+      JSON.generate(rows.map { |row| indices.map { |i| i ? row[i] : nil } })
     end
 
     get '/healthz' do
