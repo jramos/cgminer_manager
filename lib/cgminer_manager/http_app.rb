@@ -7,6 +7,7 @@ require 'json'
 require 'yaml'
 require 'cgi'
 require 'securerandom'
+require 'time'
 require 'cgminer_api_client'
 
 module CgminerManager
@@ -131,6 +132,16 @@ module CgminerManager
         parts = name.split('/')
         parts[-1] = "_#{parts[-1]}"
         haml parts.join('/').to_sym, layout: false, locals: locals
+      end
+
+      def staleness_badge(fetched_at, threshold_seconds)
+        return 'waiting for first poll' if fetched_at.nil? || fetched_at.to_s.empty?
+
+        age_seconds = Time.now.utc - Time.parse(fetched_at.to_s)
+        return nil if age_seconds < threshold_seconds
+
+        minutes = (age_seconds / 60).to_i
+        "updated #{minutes}m ago"
       end
 
       def build_dashboard_view_model

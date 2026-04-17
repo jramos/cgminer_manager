@@ -23,7 +23,12 @@
               %span.online online
           %td
             - summary = snapshot && snapshot[:summary]
-            - if summary.is_a?(Hash) && summary[:fetched_at]
-              %span.updated= summary[:fetched_at]
+            - fetched = summary.is_a?(Hash) ? summary[:fetched_at] : nil
+            - threshold = @view[:stale_threshold] || 300
+            - badge = staleness_badge(fetched, threshold)
+            - if badge
+              %span.staleness-badge= badge
+            - elsif fetched
+              %span.updated= fetched
             - else
               %span.waiting waiting for first poll
