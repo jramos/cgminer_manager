@@ -265,6 +265,20 @@ module CgminerManager
       end
     end
 
+    not_found do
+      content_type :html
+      haml :'errors/404', layout: false
+    end
+
+    error do
+      err = env['sinatra.error']
+      Logger.error(event: 'http.500', error: err.class.to_s,
+                   message: err.message,
+                   backtrace: err.backtrace&.first(10))
+      content_type :html
+      haml :'errors/500', layout: false
+    end
+
     get '/' do
       @view = build_dashboard_view_model
       haml :'manager/index'

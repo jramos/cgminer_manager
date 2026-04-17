@@ -20,6 +20,6 @@
     %script{ src: '/js/miner.js' }
   %body
     #content
-      = haml :'layouts/_header', layout: false
+      = haml :_header, layout: false
       = yield
-    = haml :'layouts/_footer', layout: false
+    = haml :_footer, layout: false

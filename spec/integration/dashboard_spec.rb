@@ -29,6 +29,11 @@ RSpec.describe 'GET /', type: :integration do
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('127.0.0.1:4028')
     end
+
+    it 'includes the CSRF meta tag in the rendered layout' do
+      get '/'
+      expect(last_response.body).to match(/<meta name="csrf-token" content="[^"]+">/)
+    end
   end
 
   context 'when monitor is unreachable' do
