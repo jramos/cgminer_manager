@@ -90,6 +90,22 @@ All settings come from environment variables.
 - `bin/cgminer_manager doctor` — verify `miners.yml`, cgminer reachability, and monitor `/v2/miners`.
 - `bin/cgminer_manager version` — print version.
 
+### Errors and Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Clean shutdown (`run`), all checks passed (`doctor`), or normal completion (`version`). |
+| `1` | `doctor`: at least one check failed. |
+| `2` | Configuration error (missing `CGMINER_MONITOR_URL`, unreadable `miners.yml`, invalid `LOG_FORMAT`/`LOG_LEVEL`, etc.). |
+| `64` | Unknown or missing CLI verb (`EX_USAGE`-ish). |
+
+The gem's error taxonomy (all under `CgminerManager::Error < StandardError`):
+
+-   `CgminerManager::ConfigError` — configuration validation failed at boot. The CLI translates this to exit 2.
+-   `CgminerManager::MonitorError::ConnectionError` — couldn't reach `cgminer_monitor` (DNS, refused, timeout). Renders a "data source unavailable" banner on the dashboard; fails `doctor`.
+-   `CgminerManager::MonitorError::ApiError` — monitor answered with a non-2xx response. Carries `status:` and `body:`. Same UI behavior as `ConnectionError`.
+-   `CgminerManager::PoolManagerError::DidNotConverge` — a pool operation's post-write verification query saw an unexpected state. Caught internally and surfaced as `:indeterminate` in the per-miner result row (not raised to the caller).
+
 ## HTTP surface
 
 - `GET /` — dashboard (Summary / Miner Pool / Admin tabs).
@@ -130,6 +146,14 @@ The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`q
 3. Per-command audit logging (`admin.command`, `admin.raw_command`, `admin.result`, `admin.auth_failed`, `admin.scope_rejected`) with a `request_id` UUID threading entry and exit events for any given POST.
 
 Strongly recommend setting `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` in any deployment where the UI is reachable beyond localhost. Basic Auth transmits credentials base64-encoded (reversible), so also terminate TLS at a reverse proxy in that case.
+
+## Further Reading
+
+-   [`CHANGELOG.md`](CHANGELOG.md) — release history: 1.0 Sinatra rewrite, 1.1 rich UI restoration, 1.2 admin surface restoration.
+-   [`MIGRATION.md`](MIGRATION.md) — step-by-step upgrade from the 0.x Rails engine era.
+-   [`AGENTS.md`](AGENTS.md) — context for AI coding assistants; also a useful conventions-and-extension guide for human contributors.
+-   [`docs/`](docs/) — topic-split deep dives on architecture, components, interfaces, data models, workflows, and dependencies. Start with [`docs/index.md`](docs/index.md).
+-   [`cgminer_monitor`](https://github.com/jramos/cgminer_monitor) and [`cgminer_api_client`](https://github.com/jramos/cgminer_api_client) — the upstream gems this service consumes. Operators frequently need to cross-reference them.
 
 ## Donating
 
