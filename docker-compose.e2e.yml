@@ -70,15 +70,12 @@ services:
     # Uses a non-default port for the same reason manager does (see below).
     ports:
       - "19292:9292"
-    # Invoke via `bundle exec ruby bin/cgminer_monitor` rather than the image's
-    # default `bundle exec cgminer_monitor` entrypoint: monitor's Dockerfile
-    # uses `gemspec` in its Gemfile without generating binstubs, so bundler
-    # can't resolve the `cgminer_monitor` executable at runtime. Calling the
-    # script directly sidesteps the bundler resolution failure. Remove this
-    # override once monitor's Dockerfile ships binstubs.
+    # Run migrate then the server. Mirrors monitor's own docker-compose.yml:
+    # the image's ENTRYPOINT is exec-form `bundle exec cgminer_monitor`, so an
+    # override to chain verbs must also replace the entrypoint.
     entrypoint: ["sh", "-c"]
     command:
-      - "bundle exec ruby bin/cgminer_monitor migrate && bundle exec ruby bin/cgminer_monitor run"
+      - "cgminer_monitor migrate && cgminer_monitor run"
     healthcheck:
       test:
         - "CMD"
