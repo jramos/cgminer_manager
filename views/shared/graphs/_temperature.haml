@@ -39,16 +39,17 @@
           type: 'line',
           data: {
             labels: labels,
-            // Max fills down to Min (fill: '+2' points two datasets ahead)
-            // so the shaded area is the Max..Min range band. Avg is drawn as
-            // a line through the band; Min has no fill below it.
+            // Stacked fill bands from the x-axis upward: Min fills down to 0,
+            // Avg fills down to Min, Max fills down to Avg. Each band is
+            // bounded by two lines and disjoint from its neighbours, so the
+            // three colours don't overlap.
             datasets: [
               { label: 'Max Temperature', data: max_temperatures,
-                backgroundColor: 'rgba(255, 0, 0, 0.15)', borderColor: 'red',     fill: '+2', tension: 0.3, pointRadius: 2 },
+                backgroundColor: 'rgba(255, 0, 0, 0.35)',   borderColor: 'red',     fill: '+1',    tension: 0.3, pointRadius: 2 },
               { label: 'Avg Temperature', data: avg_temperatures,
-                backgroundColor: 'orange',                borderColor: 'orange',  fill: false, tension: 0.3, pointRadius: 2 },
+                backgroundColor: 'rgba(255, 165, 0, 0.35)', borderColor: 'orange',  fill: '+1',    tension: 0.3, pointRadius: 2 },
               { label: 'Min Temperature', data: min_temperatures,
-                backgroundColor: '#d4b400',               borderColor: '#d4b400', fill: false, tension: 0.3, pointRadius: 2 }
+                backgroundColor: 'rgba(255, 221, 0, 0.35)', borderColor: '#d4b400', fill: 'origin', tension: 0.3, pointRadius: 2 }
             ]
           },
           options: {
