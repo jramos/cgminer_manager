@@ -1,7 +1,23 @@
 body {
-  font-size: 0.7em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
   background: #efefef;
+  color: #222;
 }
+
+h1, h2, h3 {
+  font-family: inherit;
+  font-weight: 600;
+  color: #222;
+  margin: 0.8em 0 0.4em;
+}
+
+h1 { font-size: 1.8em; font-weight: 700; }
+h2 { font-size: 1.3em; }
+h3 { font-size: 1.05em; letter-spacing: 0.02em; }
+
+.muted { color: #888; }
 
 a {
   color: blue !important;
@@ -11,10 +27,12 @@ a {
 
 .text-left {
   text-align: left;
+  padding-left: 20px;
 }
 
 .text-right {
   text-align: right;
+  padding-right: 20px;
 }
 
 .text-center {
@@ -27,15 +45,16 @@ table {
 }
 
 table tr:hover {
-  background: #efefef;
+  background: #f5f5f5;
 }
 
 .clickable-container {
   cursor: pointer;
+  padding-right: 20px;
 }
 
 .clickable-container:hover {
-  background: #efefef;
+  background: #f5f5f5;
 }
 
 td {
@@ -122,14 +141,40 @@ label {
   margin: 0 auto;
 }
 
-/* Canvases declare fixed pixel width/height so they size correctly
- * before Chart.js runs. On the dashboard they sit inside a tab panel
- * whose padding + borders narrow the usable width below the 864px
- * canvas base, so the canvas would otherwise bleed past the panel's
- * right edge. Clamping to 100% of the parent stops the overflow. */
+/* Chart.js runs with responsive: false, so each canvas has a fixed
+ * pixel resolution (864 × 400 on the dashboard, 850 × 400 on miner
+ * detail). CSS stretches the canvas to 100% of its container so the
+ * rendering fills the full content width regardless of the pixel
+ * attribute. The browser scales the rendered content to fit. */
 canvas {
-  max-width: 100%;
+  width: 100% !important;
   height: auto;
+}
+
+#summary,
+#miner-pool,
+#admin {
+  background: white;
+}
+
+#admin {
+  padding: 20px;
+}
+
+/* Collapse the first heading's top margin so the tab strip sits flush
+ * against the panel's padding rather than the heading margin + padding. */
+#admin > :first-child {
+  margin-top: 0;
+}
+
+#hashrate-graph,
+#temperature-graph,
+#hardware-error-hashrate-graph,
+#device-rejected-hashrate-graph,
+#pool-rejected-hashrate-graph,
+#pool-stale-hashrate-graph,
+#availability-graph {
+  padding: 20px;
 }
 
 #run-command input[type=text],
@@ -186,7 +231,24 @@ hr {
 #stats > ul {
   list-style: none;
   padding: 0;
-  margin: 0 0 8px 0;
+  margin: 0;
+  border-bottom: 1px solid #ccc;
+}
+
+/* The miner detail outer-tabs sit inside #miner (white background).
+ * Reset the tab strip to the page grey so the inactive tabs blend with
+ * the surrounding chrome instead of the panel content. */
+#tabs > ul {
+  background: #efefef;
+}
+
+/* Box the active tab panel with left/right/bottom borders. The top
+ * border is already provided by the tab strip's border-bottom, so
+ * skip it here to avoid doubling up. */
+#manager-content > div,
+#tabs > div {
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
   border-bottom: 1px solid #ccc;
 }
 #manager-content > ul > li,

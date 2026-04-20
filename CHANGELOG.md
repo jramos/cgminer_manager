@@ -14,6 +14,63 @@
   sibling repos.
 
 ### Changed
+- **Frontend purged of jQuery, jQuery UI, and jquery.cookie.** Drops
+  ~390 KB (~80 KB gzipped) of vendored JS and the last jQuery-family
+  dep surface. Replacements:
+  - `public/js/fetch_helpers.js` (new) — `csrfFetch` and `getJSON`
+    helpers built on native `fetch`. CSRF token is read once from
+    `<meta name="csrf-token">` and injected on non-GET requests.
+    Replaces `$.ajaxSetup`, `$.getJSON`, `$.ajax`.
+  - `public/js/tabs.js` (new, ~45 LOC) — vanilla replacement for
+    jQuery UI's `.tabs()`. Honors `window.location.hash`, fires an
+    optional `activate` callback only on user clicks (matching jQuery
+    UI's behaviour), and styles the active tab via a `.tab-active`
+    class. Dashboard outer tabs wait on `window.__chartsReadyPromise`
+    before init so the availability canvas on the Miner Pool panel
+    gets laid out at full width before the panel is hidden.
+  - `public/js/application.js` — AJAX polling, DOM updates, and the
+    `update` CustomEvent bus are all vanilla. `appendWarning` now
+    dedupes by id so repeated polls don't stack identical warning
+    divs (fixing a latent jQuery-era bug).
+  - `public/js/audio.js` — audio-toggle preference persists in
+    `localStorage` under `enable-audio` instead of a `$.cookie`.
+    Existing cookie-based preferences are not migrated.
+  - `public/js/admin.js` — form submission uses `csrfFetch` with
+    `URLSearchParams(new FormData(form))`; error body rendering is
+    DOM-constructed rather than round-tripped through escaped
+    innerHTML.
+  - `views/miner/show.haml` update handler replaces jQuery's
+    `.load()` with `fetch` + `DOMParser` + script reanimation,
+    guarded by an `AbortController` so overlapping `update` ticks
+    can't race. `@miner_url` is serialised through `.to_json` to
+    block interpolation injection.
+- **Chart.js upgraded from 1.0.1-beta.3 (2015) to 4.5.1.** All seven
+  graph partials under `views/shared/graphs/` rewrite their configs
+  to v4's `new Chart(canvas, { type, data, options })` shape and
+  call `Chart.getChart(canvas)?.destroy()` before instantiating so
+  the miner-detail `.load()`-equivalent reload path doesn't trip
+  v4's "Canvas is already in use" error. `window.__chartsReady`
+  and `window.__chartsReadyPromise` are the new vanilla replacements
+  for `jQuery.active === 0`; the screenshot harness waits on that
+  flag before capturing.
+- **Temperature graph renders as three stacked fill bands** (0..Min
+  yellow, Min..Avg orange, Avg..Max red) using Chart.js v4's
+  relative `fill: '+1'` and `fill: 'origin'` options. Each series
+  fills exactly the region between its own line and the next-lower
+  series, so the bands are disjoint and all three lines stay
+  visible on top.
+- **Other graph partials are filled areas** (hashrate, availability,
+  hardware_error, device_rejected, pool_rejected, pool_stale) with
+  semi-transparent backgrounds, matching the v1 visual with `fillColor`.
+- **Dashboard Admin tab buttons are laid out horizontally.** The
+  `.admin-button-row` class gets `display: flex` with 8 px gap so
+  the Status queries (Version/Stats/Devs) and Fleet operations
+  (Zero/Save/Restart/Quit) groups render as one row each instead
+  of stacking vertically.
+- **Screenshots regenerated.** `public/screenshots/summary.png`,
+  `miner-pool.png`, `miner.png`, and `admin.png` all reflect the
+  new vanilla tab CSS, Chart.js v4 visuals, the stacked-band
+  temperature fill, and the horizontal admin button rows.
 - **Session cookie is now `Secure` in production.** `Rack::Session::Cookie`
   gets `secure: true` when `Config#production?`, gated so dev/test on
   `http://127.0.0.1` keeps working. Complements the README's reverse-

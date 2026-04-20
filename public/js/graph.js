@@ -1,3 +1,11 @@
+// Match chart axis/legend typography to surrounding HAML text. The font
+// stack must stay in sync with body { font-family } in public/css/base.css.
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  Chart.defaults.font.size   = 12;
+  Chart.defaults.color       = '#333';
+}
+
 // Chart-ready signalling. Graph partials tick window.__chartReady() once
 // each canvas has rendered (or the partial removed itself because it had
 // no data). The miner detail page's update handler calls
