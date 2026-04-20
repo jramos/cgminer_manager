@@ -15,6 +15,9 @@
   .clear
 
 :javascript
-  $(function() {
-    $('#pools').tabs();
-  });
+  (function () {
+    function go() { initTabs('#pools'); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', go);
+    } else { go(); }
+  })();

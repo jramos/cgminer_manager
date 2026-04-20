@@ -19,6 +19,9 @@
   .clear
 
 :javascript
-  $(function() {
-    $('#stats').tabs();
-  });
+  (function () {
+    function go() { initTabs('#stats'); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', go);
+    } else { go(); }
+  })();

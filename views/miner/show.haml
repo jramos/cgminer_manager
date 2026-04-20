@@ -97,7 +97,14 @@
           - else
             Miner unavailable
 
-:javascript
-  $(function() {
-    $('#tabs').tabs({activate: setWindowHash});
-  });
+  :javascript
+    (function () {
+      function go() {
+        window.__chartsReadyPromise.then(function () {
+          initTabs('#tabs', { activate: setWindowHash });
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', go);
+      } else { go(); }
+    })();

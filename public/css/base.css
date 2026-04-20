@@ -182,3 +182,46 @@ hr {
   border: 0;
   border-top: 1px solid #ccc;
 }
+
+/* Tabs (vanilla replacement for jquery-ui .ui-tabs). */
+#manager-content > ul,
+#tabs > ul,
+#devices > ul,
+#pools > ul,
+#stats > ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+  border-bottom: 1px solid #ccc;
+}
+#manager-content > ul > li,
+#tabs > ul > li,
+#devices > ul > li,
+#pools > ul > li,
+#stats > ul > li {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-right: 4px;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  background: #f3f3f3;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+}
+#manager-content > ul > li.tab-active,
+#tabs > ul > li.tab-active,
+#devices > ul > li.tab-active,
+#pools > ul > li.tab-active,
+#stats > ul > li.tab-active {
+  background: #fff;
+  border-bottom: 1px solid #fff;
+  margin-bottom: -1px;
+}
+#manager-content > ul > li > a,
+#tabs > ul > li > a,
+#devices > ul > li > a,
+#pools > ul > li > a,
+#stats > ul > li > a {
+  color: #333;
+  text-decoration: none;
+}
