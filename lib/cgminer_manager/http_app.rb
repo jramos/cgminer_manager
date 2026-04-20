@@ -29,15 +29,18 @@ module CgminerManager
     set :root, File.expand_path('../..', __dir__)
 
     class << self
-      attr_accessor :monitor_url, :miners_file, :stale_threshold_seconds, :pool_thread_cap
+      attr_accessor :monitor_url, :miners_file, :stale_threshold_seconds,
+                    :pool_thread_cap, :monitor_timeout_ms
 
       def configure_for_test!(monitor_url:, miners_file:,
                               stale_threshold_seconds: 300,
-                              pool_thread_cap: 8)
+                              pool_thread_cap: 8,
+                              monitor_timeout_ms: 2000)
         self.monitor_url             = monitor_url
         self.miners_file             = miners_file
         self.stale_threshold_seconds = stale_threshold_seconds
         self.pool_thread_cap         = pool_thread_cap
+        self.monitor_timeout_ms      = monitor_timeout_ms
         reset_configured_miners! if respond_to?(:reset_configured_miners!)
       end
 
@@ -693,7 +696,8 @@ module CgminerManager
     private
 
     def monitor_client
-      @monitor_client ||= MonitorClient.new(base_url: self.class.monitor_url)
+      @monitor_client ||= MonitorClient.new(base_url: self.class.monitor_url,
+                                            timeout_ms: self.class.monitor_timeout_ms || 2000)
     end
   end
 end

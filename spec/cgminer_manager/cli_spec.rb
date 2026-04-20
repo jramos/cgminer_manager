@@ -75,7 +75,9 @@ RSpec.describe CgminerManager::CLI do
 
     context 'with doctor verb' do
       let(:config) do
-        instance_double(CgminerManager::Config, monitor_url: 'http://monitor:9292')
+        instance_double(CgminerManager::Config,
+                        monitor_url: 'http://monitor:9292',
+                        monitor_timeout: 2000)
       end
       let(:miner) { instance_double(CgminerApiClient::Miner) }
       let(:client) { instance_double(CgminerManager::MonitorClient) }

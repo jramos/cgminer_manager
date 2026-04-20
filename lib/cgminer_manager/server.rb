@@ -46,6 +46,7 @@ module CgminerManager
       HttpApp.miners_file             = @config.miners_file
       HttpApp.stale_threshold_seconds = @config.stale_threshold_seconds
       HttpApp.pool_thread_cap         = @config.pool_thread_cap
+      HttpApp.monitor_timeout_ms      = @config.monitor_timeout
       HttpApp.reset_configured_miners! if HttpApp.respond_to?(:reset_configured_miners!)
     end
 

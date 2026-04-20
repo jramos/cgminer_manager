@@ -53,7 +53,7 @@ module CgminerManager
     end
 
     def check_monitor(config, failures)
-      client = MonitorClient.new(base_url: config.monitor_url, timeout_ms: 2000)
+      client = MonitorClient.new(base_url: config.monitor_url, timeout_ms: config.monitor_timeout)
       monitor_miners = client.miners[:miners]
       puts "  monitor /v2/miners: OK (#{monitor_miners.size} miner(s))"
       monitor_miners
