@@ -35,11 +35,19 @@
     width: 100%;
   }
 
-  .ui-tabs {
+  #manager-content,
+  #tabs,
+  #devices,
+  #pools,
+  #stats {
     padding: 0;
   }
 
-  .ui-tabs .ui-tabs-panel {
+  #manager-content > div,
+  #tabs > div,
+  #devices > div,
+  #pools > div,
+  #stats > div {
     padding: 4px !important;
   }
 

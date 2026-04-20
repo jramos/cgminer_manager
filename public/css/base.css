@@ -76,10 +76,6 @@ label {
   width: 100%;
 }
 
-.ui-widget .ui-widget {
-  font-size: 0.9em;
-}
-
 .green {
   color: green;
 }
@@ -126,12 +122,11 @@ label {
   margin: 0 auto;
 }
 
-/* Chart.js 1.x sets the canvas attribute width to a fixed pixel value
- * and then scales it via responsive: true. On the dashboard the graphs
- * sit inside a jQuery UI tabs panel whose padding + borders narrow the
- * usable width below the 864px canvas base, so the canvas bleeds past
- * the panel's right edge. Clamping to 100% of the parent stops the
- * overflow without otherwise changing how Chart.js draws. */
+/* Canvases declare fixed pixel width/height so they size correctly
+ * before Chart.js runs. On the dashboard they sit inside a tab panel
+ * whose padding + borders narrow the usable width below the 864px
+ * canvas base, so the canvas would otherwise bleed past the panel's
+ * right edge. Clamping to 100% of the parent stops the overflow. */
 canvas {
   max-width: 100%;
   height: auto;
