@@ -33,10 +33,10 @@ require 'socket'
 class FakeCgminer
   attr_reader :port
 
-  def initialize(responses: CgminerFixtures::DEFAULT, port: 0, on_request: nil)
+  def initialize(responses: CgminerFixtures::DEFAULT, port: 0, host: '127.0.0.1', on_request: nil)
     @responses = responses
     @on_request = on_request
-    @server = TCPServer.new('127.0.0.1', port)
+    @server = TCPServer.new(host, port)
     @port = @server.addr[1]
   end
 

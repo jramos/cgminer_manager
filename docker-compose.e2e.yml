@@ -1,0 +1,116 @@
+# docker-compose.e2e.yml — cross-repo end-to-end test harness.
+#
+# Layered over docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
+#
+# Prerequisites before `up`:
+#   1. `_e2e_build/cgminer_monitor/` must exist (CI clones monitor into it;
+#      for local use, `git clone https://github.com/jramos/cgminer_monitor.git
+#      _e2e_build/cgminer_monitor`).
+#   2. `config/miners.yml` must match `test/e2e/miners.yml` (CI copies it;
+#      for local use, `cp test/e2e/miners.yml config/miners.yml`).
+#   3. Env: `SESSION_SECRET`, `CGMINER_MANAGER_ADMIN_PASSWORD`.
+#
+# Adds three FakeCgminer containers reachable as `fake1`/`fake2`/`fake3` on the
+# compose network, builds monitor from source, and wires healthchecks across
+# the whole graph so `--wait` blocks until everything is actually healthy.
+
+services:
+  mongo:
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  fake1: &fake
+    image: ruby:3.4-slim
+    working_dir: /app
+    volumes:
+      - ./spec/support:/app/spec/support:ro
+    command:
+      - "ruby"
+      - "-r"
+      - "/app/spec/support/cgminer_fixtures.rb"
+      - "-r"
+      - "/app/spec/support/fake_cgminer.rb"
+      - "-e"
+      - "FakeCgminer.with(port: 4028, host: '0.0.0.0') { |p| puts p; sleep }"
+    healthcheck:
+      test:
+        - "CMD"
+        - "ruby"
+        - "-rsocket"
+        - "-e"
+        - "TCPSocket.new('127.0.0.1', 4028).close"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  fake2: *fake
+  fake3: *fake
+
+  monitor:
+    build:
+      context: ./_e2e_build/cgminer_monitor
+    depends_on: !override
+      mongo:
+        condition: service_healthy
+      fake1:
+        condition: service_healthy
+      fake2:
+        condition: service_healthy
+      fake3:
+        condition: service_healthy
+    environment:
+      CGMINER_MONITOR_INTERVAL: "5"
+    # Publish monitor on the host so smoke.sh can assert against /v2/* directly.
+    # Uses a non-default port for the same reason manager does (see below).
+    ports:
+      - "19292:9292"
+    # Run migrate then the server. Mirrors monitor's own docker-compose.yml:
+    # the image's ENTRYPOINT is exec-form `bundle exec cgminer_monitor`, so an
+    # override to chain verbs must also replace the entrypoint.
+    entrypoint: ["sh", "-c"]
+    command:
+      - "cgminer_monitor migrate && cgminer_monitor run"
+    healthcheck:
+      test:
+        - "CMD"
+        - "ruby"
+        - "-rnet/http"
+        - "-rjson"
+        - "-e"
+        - "h=JSON.parse(Net::HTTP.get(URI('http://127.0.0.1:9292/v2/healthz'))); exit(h['status']=='healthy' ? 0 : 1)"
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 10s
+
+  manager:
+    depends_on: !override
+      monitor:
+        condition: service_healthy
+    # Publish on a distinct host port to avoid clashing with anything the
+    # developer has bound to :3000 (a Rails dev server, etc.) on the machine
+    # running the e2e stack. CI-side or inside the compose network, nothing
+    # changes — the smoke.sh script reads MANAGER_URL to stay in sync.
+    ports: !override
+      - "13000:3000"
+    environment:
+      CGMINER_MANAGER_ADMIN_USER: "admin"
+      CGMINER_MANAGER_ADMIN_PASSWORD: "${CGMINER_MANAGER_ADMIN_PASSWORD:?set CGMINER_MANAGER_ADMIN_PASSWORD}"
+    healthcheck:
+      test:
+        - "CMD"
+        - "ruby"
+        - "-rnet/http"
+        - "-rjson"
+        - "-e"
+        - "h=JSON.parse(Net::HTTP.get(URI('http://127.0.0.1:3000/healthz'))); exit(h['ok']==true ? 0 : 1)"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 5s

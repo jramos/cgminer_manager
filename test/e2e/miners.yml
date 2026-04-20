@@ -1,0 +1,6 @@
+- host: fake1
+  port: 4028
+- host: fake2
+  port: 4028
+- host: fake3
+  port: 4028
