@@ -1,38 +1,40 @@
-// Admin form submission handler. Serializes the form, POSTs via XHR,
-// and injects the rendered response partial into the form's
-// data-target element. CSRF token is already attached to every
-// $.ajax request via the $.ajaxSetup in application.js / manager.js.
-//
-// On error, shows the server body (or status code) in the target so
-// operators can see what went wrong.
+// Admin form submission. Serializes via FormData (so the hidden
+// authenticity_token hidden field ships with the body) and POSTs via
+// csrfFetch (which also adds X-CSRF-Token for defense-in-depth). The
+// response partial is rendered into the form's data-target element.
 
-$(function() {
-  $(document).on('submit', 'form.admin-form', function(e) {
-    e.preventDefault();
-    var $form  = $(this);
-    var target = $form.data('target');
-    var $target = $(target);
+document.addEventListener('submit', function (e) {
+  var form = e.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  if (!form.classList.contains('admin-form')) return;
+  e.preventDefault();
 
-    $target.html('<p class="muted">Running…</p>');
+  var targetSel = form.dataset.target;
+  var target    = targetSel ? document.querySelector(targetSel) : null;
+  if (target) target.innerHTML = '<p class="muted">Running…</p>';
 
-    $.ajax({
-      url: $form.attr('action'),
-      method: 'post',
-      data: $form.serialize()
-    }).done(function(html) {
-      $target.html(html);
-    }).fail(function(xhr) {
-      var body = xhr.responseText || '(no body)';
-      $target.html('<div class="admin-error"><strong>Error ' + xhr.status + ':</strong> ' + $('<div/>').text(body).html() + '</div>');
-    });
-
-    return false;
+  csrfFetch(form.action, {
+    method:  'POST',
+    body:    new URLSearchParams(new FormData(form)),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  }).then(function (r) {
+    return r.text().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
+  }).then(function (res) {
+    if (!target) return;
+    if (res.ok) {
+      target.innerHTML = res.body; // server-rendered partial, trusted
+    } else {
+      var wrap   = document.createElement('div');
+      wrap.className = 'admin-error';
+      var strong = document.createElement('strong');
+      strong.textContent = 'Error ' + res.status + ':';
+      wrap.append(strong, ' ', res.body || '(no body)');
+      target.replaceChildren(wrap);
+    }
   });
 });
 
-// Extra confirmation for the raw-command form: show the exact cgminer
-// verb + args + scope the operator is about to dispatch so they can
-// double-check before firing.
+// Extra confirmation for the raw-command form.
 function confirmRawCommand(form) {
   var cmd   = form.command.value;
   var args  = form.args ? form.args.value : '';
