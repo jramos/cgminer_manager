@@ -23,11 +23,12 @@ This starts two background processes and blocks until both respond:
 - Fake `cgminer_monitor` on `127.0.0.1:9292`
 - `cgminer_manager` on `127.0.0.1:3030`
 
-Capture the three PNGs (from any browser or Playwright MCP session):
+Capture the four PNGs (from any browser or Playwright MCP session):
 
 - `http://127.0.0.1:3030/` → `public/screenshots/summary.png` (hide `#miner-pool` via `document.getElementById('miner-pool').style.display = 'none'` before the fullPage shot so only the 6 aggregate graphs render)
 - `http://127.0.0.1:3030/` → `public/screenshots/miner-pool.png` (inject `<style>#summary{display:none!important}</style>` before `DOMContentLoaded` so the availability chart draws at full container height)
 - `http://127.0.0.1:3030/miner/127.0.0.1%3A40281` → `public/screenshots/miner.png` (Antminer S3 detail; full page)
+- `http://127.0.0.1:3030/` → `public/screenshots/admin.png` (click the Admin tab link after `window.__chartsReady` flips; `initTabs` hides the Summary and Miner Pool panels automatically)
 
 For each, wait until `window.__chartsReady === true` (the flag the graph
 partials set after every canvas has rendered), then take a full-page
