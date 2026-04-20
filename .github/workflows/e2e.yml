@@ -2,8 +2,7 @@ name: e2e
 
 on:
   schedule:
-    # Mondays 12:00 UTC — once a week, per the ideation brief.
-    - cron: '0 12 * * 1'
+    - cron: '0 12 * * 1'  # Mondays 12:00 UTC
   workflow_dispatch:
     inputs:
       monitor_ref:
