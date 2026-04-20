@@ -1,3 +1,7 @@
+// Legacy jQuery $.ajaxSetup — still needed in commit 1 because the graph
+// partials and admin form still use $.getJSON / $.ajax. fetch_helpers.js
+// handles CSRF for the vanilla callers. This file is deleted in commit 4
+// once the last jQuery AJAX caller is gone.
 $(function() {
   var token = $('meta[name="csrf-token"]').attr('content');
   if (token) {
@@ -6,10 +10,3 @@ $(function() {
     });
   }
 });
-
-// Place all the behaviors and hooks related to the matching controller here.
-// All this logic will automatically be available in application.js.
-
-var goToMiner = function(miner_index) {
-  document.location='/miner/' + miner_index.toString();
-}

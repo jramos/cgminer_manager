@@ -1,30 +1,28 @@
+var AUDIO_KEY = 'enable-audio';
+
 var playWarningSound = function () {
   if (config.enable_audio) {
-    warning = $("#audio-warning")[0];
-
-    if (warning && warning.play) {
-        warning.play();
-    }
+    var el = document.getElementById('audio-warning');
+    if (el && el.play) el.play();
   }
-}
+};
 
 var initAudioStatus = function () {
-  if ($.cookie('enable-audio') == undefined) {
-    $.cookie('enable-audio', config.enable_audio, { expires: 365, path: '/' });
+  if (localStorage.getItem(AUDIO_KEY) === null) {
+    localStorage.setItem(AUDIO_KEY, String(config.enable_audio));
   }
-
-  current_value = $.cookie('enable-audio');
-  current_value = current_value == 'true' ? true : false;
-  config.enable_audio = current_value;
-  $('#audio-status').text(current_value ? 'Enabled' : 'Disabled');
-}
+  var on = localStorage.getItem(AUDIO_KEY) === 'true';
+  config.enable_audio = on;
+  var el = document.getElementById('audio-status');
+  if (el) el.textContent = on ? 'Enabled' : 'Disabled';
+};
 
 var toggleAudioStatus = function () {
-  current_value = $.cookie('enable-audio');
-  current_value = current_value == 'true' ? true : false;
-  new_value = !current_value;
-  config.enable_audio = new_value;
+  var on = localStorage.getItem(AUDIO_KEY) !== 'true';
+  config.enable_audio = on;
+  localStorage.setItem(AUDIO_KEY, String(on));
+  var el = document.getElementById('audio-status');
+  if (el) el.textContent = on ? 'Enabled' : 'Disabled';
+};
 
-  $.cookie('enable-audio', config.enable_audio, { expires: 365, path: '/' });
-  $('#audio-status').text(new_value ? 'Enabled' : 'Disabled');
-}
+document.addEventListener('DOMContentLoaded', initAudioStatus);

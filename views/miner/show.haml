@@ -29,17 +29,60 @@
         != render_partial 'miner/stats'
         != render_partial 'miner/admin'
 
+    %script
+      != "window.__minerUrl = #{@miner_url.to_json};"
     :javascript
-      $(document).unbind('update');
-      $(document).on('update', function() {
-        $('#updated').addClass('updating').text('Updating...');
-        $('title').text('Updating...');
+      document.removeEventListener('update', window.__minerShowUpdate);
 
-        $('#miner-show').load('#{@miner_url}', function() {
-          $('#updated').removeClass('updating').html("<b>Updated:</b> <span>" + new Date().toLocaleTimeString() + "</span>");
-          $('title').text('CgminerManager');
-        });
-      });
+      window.__minerShowUpdate = function () {
+        if (window.__minerShowAbort) window.__minerShowAbort.abort();
+        window.__minerShowAbort = new AbortController();
+
+        if (typeof window.__resetChartsReady === 'function') {
+          window.__resetChartsReady();
+        }
+
+        var updated = document.getElementById('updated');
+        if (updated) { updated.classList.add('updating'); updated.textContent = 'Updating...'; }
+        document.title = 'Updating...';
+
+        csrfFetch(window.__minerUrl, { signal: window.__minerShowAbort.signal })
+          .then(function (r) { return r.text(); })
+          .then(function (html) {
+            var doc      = new DOMParser().parseFromString(html, 'text/html');
+            var incoming = doc.getElementById('miner-show');
+            var current  = document.getElementById('miner-show');
+            if (!incoming || !current) return;
+            current.innerHTML = incoming.innerHTML;
+
+            // DOMParser <script> nodes don't execute. Clone each so graph
+            // partials and nested-tab inits run again.
+            var scripts = current.querySelectorAll('script');
+            for (var i = 0; i < scripts.length; i++) {
+              var old = scripts[i];
+              var neu = document.createElement('script');
+              for (var j = 0; j < old.attributes.length; j++) {
+                neu.setAttribute(old.attributes[j].name, old.attributes[j].value);
+              }
+              neu.text = old.textContent;
+              old.parentNode.replaceChild(neu, old);
+            }
+
+            var freshUpdated = document.getElementById('updated');
+            if (freshUpdated) {
+              freshUpdated.classList.remove('updating');
+              freshUpdated.innerHTML = '<b>Updated:</b> <span>' + new Date().toLocaleTimeString() + '</span>';
+            }
+            document.title = 'CgminerManager';
+          })
+          .catch(function (e) {
+            if (e && e.name === 'AbortError') return;
+            var freshUpdated = document.getElementById('updated');
+            if (freshUpdated) { freshUpdated.classList.remove('updating'); freshUpdated.textContent = 'Update failed'; }
+            document.title = 'CgminerManager';
+          });
+      };
+      document.addEventListener('update', window.__minerShowUpdate);
 
   - else
     #miner
