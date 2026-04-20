@@ -47,6 +47,7 @@ module CgminerManager
       HttpApp.stale_threshold_seconds = @config.stale_threshold_seconds
       HttpApp.pool_thread_cap         = @config.pool_thread_cap
       HttpApp.monitor_timeout_ms      = @config.monitor_timeout
+      HttpApp.session_secret          = @config.session_secret
       HttpApp.reset_configured_miners! if HttpApp.respond_to?(:reset_configured_miners!)
 
       # Force-evaluate the memoized miners list so a malformed miners.yml
