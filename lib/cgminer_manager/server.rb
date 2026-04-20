@@ -48,6 +48,11 @@ module CgminerManager
       HttpApp.pool_thread_cap         = @config.pool_thread_cap
       HttpApp.monitor_timeout_ms      = @config.monitor_timeout
       HttpApp.reset_configured_miners! if HttpApp.respond_to?(:reset_configured_miners!)
+
+      # Force-evaluate the memoized miners list so a malformed miners.yml
+      # surfaces as a ConfigError at boot (CLI exit 2), not as an HTTP 500
+      # on the first request after Puma binds the listener.
+      HttpApp.configured_miners
     end
 
     def start_puma_thread(launcher)
