@@ -6,51 +6,68 @@
   %h2 Hardware Error %
   %canvas(id="hardware_error_hashrate" width="#{width}" height="400")
 
+%script
+  != "window.__hardwareErrorUrl = #{url.to_json};"
 :javascript
-  $(document).ready(function(){
-    $.getJSON('#{url}', function(hash_rate_response){
-      if (hash_rate_response && hash_rate_response.length > 1) {
-        var labels = [];
-        var error_rates = [];
-        var error_rates_raw = [];
-
-        $.each(hash_rate_response, function(index, response) {
-          date = new Date(response[0] * 1000);
-          if (date.getMinutes() % 5 == 0) {
-            minutes = "00" + date.getMinutes().toString();
-            labels.push(date.getHours() + ':' + minutes.slice(-2));
+  (function () {
+    function run() {
+      getJSON(window.__hardwareErrorUrl).then(function (hash_rate_response) {
+        if (!hash_rate_response || hash_rate_response.length <= 1) {
+          var el = document.getElementById('hardware-error-hashrate-graph');
+          if (el) el.remove();
+          window.__chartReady && window.__chartReady();
+          return;
+        }
+        var labels = [], error_rates = [], error_rates_raw = [];
+        hash_rate_response.forEach(function (response) {
+          var date = new Date(response[0] * 1000);
+          if (date.getMinutes() % 5 === 0) {
+            var mm = '00' + date.getMinutes().toString();
+            labels.push(date.getHours() + ':' + mm.slice(-2));
           } else {
-            labels.push("");
+            labels.push('');
           }
           error_rates.push(response[3] * 100);
           error_rates_raw.push(response[3]);
         });
 
-        var data = {
-          labels: labels,
-          datasets: [
-            {
+        var canvas = document.getElementById('hardware_error_hashrate');
+        var prior  = Chart.getChart(canvas); if (prior) prior.destroy();
+
+        new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
               label: 'Hardware Error',
-              fillColor: "red",
-              data: error_rates
+              data: error_rates,
+              backgroundColor: 'rgba(255, 0, 0, 0.25)',
+              borderColor: 'red',
+              fill: false,
+              tension: 0.3,
+              pointRadius: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: { display: true },
+              tooltip: { callbacks: { label: function (ctx) { return ctx.parsed.y + '%'; } } }
             }
-          ]
-        }
-
-        var options = {
-          pointHitDetectionRadius : 1,
-          animation               : false,
-          tooltipTemplate         : "<%= value %>%",
-          multiTooltipTemplate    : "<%= value %>%",
-          responsive              : true
-        };
-
-        var ctx = $("#hardware_error_hashrate").get(0).getContext("2d");
-        var myLineChart = new Chart(ctx).Line(data, options);
+          }
+        });
 
         injectHashrateTable([], [], error_rates_raw, '#hardware-error-hashrate-graph');
-      } else {
-        $("#hardware-error-hashrate-graph").remove();
-      }
-    });
-  });
+        window.__chartReady && window.__chartReady();
+      }).catch(function () {
+        window.__chartReady && window.__chartReady();
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+  })();
