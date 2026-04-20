@@ -25,13 +25,13 @@ This starts two background processes and blocks until both respond:
 
 Capture the three PNGs (from any browser or Playwright MCP session):
 
-- `http://127.0.0.1:3030/` → `public/screenshots/summary.png` (hide `#miner-pool` via `style.display='none'` before the fullPage shot so only the 6 aggregate graphs render)
-- `http://127.0.0.1:3030/` → `public/screenshots/miner-pool.png` (inject `<style>#summary{display:none!important}</style>` before `$(document).ready` so the availability chart draws at full container height)
-- `http://127.0.0.1:3030/miner/192.168.1.151%3A4028` → `public/screenshots/miner.png` (Antminer S3 detail; full page)
+- `http://127.0.0.1:3030/` → `public/screenshots/summary.png` (hide `#miner-pool` via `document.getElementById('miner-pool').style.display = 'none'` before the fullPage shot so only the 6 aggregate graphs render)
+- `http://127.0.0.1:3030/` → `public/screenshots/miner-pool.png` (inject `<style>#summary{display:none!important}</style>` before `DOMContentLoaded` so the availability chart draws at full container height)
+- `http://127.0.0.1:3030/miner/127.0.0.1%3A40281` → `public/screenshots/miner.png` (Antminer S3 detail; full page)
 
-For each, wait until `jQuery.active === 0` and every `<canvas>` has `width > 50`
-so Chart.js has finished rendering, then take a full-page screenshot at
-1280 × 2400 (Chrome will crop the height to actual content).
+For each, wait until `window.__chartsReady === true` (the flag the graph
+partials set after every canvas has rendered), then take a full-page
+screenshot at 1280 × 2400 (Chrome will crop the height to actual content).
 
 When finished:
 
