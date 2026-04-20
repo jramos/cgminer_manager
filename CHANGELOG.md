@@ -1,5 +1,37 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- AI-assistant knowledge base under `docs/` (architecture, components,
+  interfaces, data models, workflows, dependencies, review notes,
+  plus an `index.md` router) and a consolidated `AGENTS.md` at the
+  repo root. Not packaged in the gem.
+- README subsections for CLI exit codes (0/1/2/64), the gem's error
+  taxonomy (`ConfigError`, `MonitorError::{ConnectionError, ApiError}`,
+  `PoolManagerError::DidNotConverge`), and a Further Reading list
+  linking to CHANGELOG, MIGRATION, AGENTS, docs/, and the two
+  sibling repos.
+
+### Changed
+- **Session cookie is now `Secure` in production.** `Rack::Session::Cookie`
+  gets `secure: true` when `Config#production?`, gated so dev/test on
+  `http://127.0.0.1` keeps working. Complements the README's reverse-
+  proxy posture.
+- **`Config.session_secret` is now the single source of truth** for the
+  session cookie secret. Previously `HttpApp`'s `configure` block did
+  its own `ENV.fetch('SESSION_SECRET') { SecureRandom.hex(32) }` inline,
+  duplicating `Config.resolve_session_secret`'s logic. Now `Server#configure_http_app`
+  plumbs `@config.session_secret` into `HttpApp.session_secret` and the
+  middleware reads from there.
+- **`HttpApp.configured_miners` is force-evaluated at boot.** `Server#configure_http_app`
+  now invokes it eagerly, so malformed `miners.yml` surfaces as
+  `ConfigError` → CLI exit 2 rather than HTTP 500 on the first request.
+- **`MONITOR_TIMEOUT_MS` now takes effect.** `Config#monitor_timeout` flows
+  through `HttpApp.monitor_timeout_ms` and into `MonitorClient.new(timeout_ms:)`.
+  Previously every monitor call used the client's hardcoded 2-second
+  default regardless of env. Same for `bin/cgminer_manager doctor`.
+
 ## [1.2.0] — 2026-04-17
 
 ### Restored (opt-in, hardened)

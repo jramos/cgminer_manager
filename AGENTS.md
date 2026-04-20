@@ -266,15 +266,15 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 5. **`SnapshotAdapter.sanitize_key` preserves `%`.** It does `downcase.tr(' ', '_').to_sym` only. `"Device Hardware%"` → `:'device_hardware%'`. That matches `cgminer_api_client::Miner#sanitized` (what the legacy partials expect), **not** monitor's Poller normalization (which maps `%` → `_pct` for time-series sample metadata). Don't "fix" the adapter to match the Poller; the partials will break.
 
-6. **`HttpApp.configured_miners` is lazily memoized at first request, not at boot.** If miners.yml has a bad shape, the error surfaces as an HTTP 500 on first hit rather than a boot failure. `bin/cgminer_manager doctor` validates eagerly; `run` doesn't. (Flagged in `review_notes.md`.)
+6. **`HttpApp.configured_miners` is memoized on the class, eager-evaluated at boot.** `Server#configure_http_app` forces the evaluation after setting class attrs, so miners.yml shape errors (bad YAML, non-Array, entries missing `host`) surface as `ConfigError` → CLI exit 2 rather than as HTTP 500 on first request. Tests and dev harnesses that mutate `miners_file` must still call `HttpApp.reset_configured_miners!` between examples to clear the memo.
 
-7. **`Config#monitor_timeout` is declared but not plumbed through.** `MonitorClient.new` is called without `timeout_ms:`, so it uses its hardcoded 2-second default. `MONITOR_TIMEOUT_MS` env var does nothing today. (Flagged in `review_notes.md`.)
+7. **Raw admin RPC splits `args` on comma before escaping.** `CgminerCommander#raw!` does `args.to_s.split(',')` and passes the positional array to `Miner#query`. Commas inside argument values are not escapable through this form. Not a practical limitation for any real cgminer verb. Matches the README "raw RPC arg escaping caveat".
 
-8. **Raw admin RPC splits `args` on comma before escaping.** `CgminerCommander#raw!` does `args.to_s.split(',')` and passes the positional array to `Miner#query`. Commas inside argument values are not escapable through this form. Not a practical limitation for any real cgminer verb. Matches the README "raw RPC arg escaping caveat".
+8. **Exit code 2 for config errors, not 78.** `cgminer_monitor` uses `78` (`EX_CONFIG`). Manager uses `2`. Not consistent; not worth fixing retroactively.
 
-9. **Exit code 2 for config errors, not 78.** `cgminer_monitor` uses `78` (`EX_CONFIG`). Manager uses `2`. Not consistent; not worth fixing retroactively.
+9. **`config/puma.rb` exists but is not used by `cgminer_manager run`.** `Server#build_puma_launcher` constructs its own `Puma::Configuration` inline. The file is there for direct `puma` / `rackup` invocations (dev harness, `config.ru`-based runs). Don't edit `config/puma.rb` expecting it to affect `run`.
 
-10. **`config/puma.rb` exists but is not used by `cgminer_manager run`.** `Server#build_puma_launcher` constructs its own `Puma::Configuration` inline. The file is there for direct `puma` / `rackup` invocations (dev harness, `config.ru`-based runs). Don't edit `config/puma.rb` expecting it to affect `run`.
+10. **Session cookie is `Secure` only in production.** `Rack::Session::Cookie` gets `secure: HttpApp.production == true`, set from `Config#production?` in `Server#configure_http_app`. Dev/test on `http://127.0.0.1` keeps working because `secure: false`; production deployments behind a TLS-terminating proxy get the Secure flag as belt-and-suspenders with the reverse-proxy posture. Integration specs default `production: false` via `HttpApp.configure_for_test!`.
 
 11. **Out-of-band git changes are normal.** Don't treat surprising git state (uncommitted changes you didn't make, an unfamiliar branch) as a tool malfunction — the maintainer works outside the assistant session.
 

@@ -46,7 +46,7 @@
 **Purpose:** Runtime deps (cgminer_api_client, Sinatra, sinatra-contrib, Puma, HAML, http, rack-protection — no MongoDB, no Rails), dev deps (rspec, webmock, rack-test, rubocop, simplecov, parallel pinned <2.0). Ruby version rationale (3.2+ for `Data.define` and endless methods). CI matrix (lint + test matrix + integration, plus nightly for 4.0/head). Why the dep set is small (the 1.0 rewrite deleted Rails/Mongoid/Sprockets). **Read this for "can I add gem X?" or "why is parallel pinned?" questions.**
 
 ### [`review_notes.md`](review_notes.md)
-**Purpose:** Self-audit. Cross-file consistency check (passed). Known gaps in the code (`Config.monitor_timeout` not plumbed, miners.yml shape errors surface as HTTP 500 not CLI exit 2, inline `ENV['SESSION_SECRET']` bypassing `Config.session_secret`, no OpenAPI parity check, per-request thread-pool spawn, no `brakeman`). Gaps in these docs themselves. Recommendations with effort/value triage. **Read this before trusting a confident-sounding claim elsewhere in these docs.**
+**Purpose:** Self-audit. Cross-file consistency check (passed). Remaining gaps in the code (exit code 2 vs 78 convention, no OpenAPI parity check, per-request thread-pool spawn, no `brakeman`, `session_id_hash` truncation rationale not in-code, `raw!`'s intentional comma-split pass-through). Gaps in these docs themselves. Recommendations with effort/value triage. **Read this before trusting a confident-sounding claim elsewhere in these docs.**
 
 ## Example queries and where to go
 

@@ -73,7 +73,7 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error`. Default `info`. |
 | `STALE_THRESHOLD_SECONDS` | UI staleness badge threshold. Default `300`. |
 | `SHUTDOWN_TIMEOUT` | Seconds to wait for Puma to stop after SIGTERM. Default `10`. |
-| `MONITOR_TIMEOUT_MS` | HTTP timeout for monitor calls. Default `2000`. (Note: not currently plumbed through to `MonitorClient` — see `review_notes.md`.) |
+| `MONITOR_TIMEOUT_MS` | HTTP timeout for monitor calls in milliseconds. Default `2000`. |
 | `POOL_THREAD_CAP` | Thread cap for `CgminerCommander` + `PoolManager` + dashboard snapshot fan-out. Default `8`. |
 | `RACK_ENV` | Passed to Puma and used to gate dev vs. production defaults. Default `development`. |
 
@@ -183,7 +183,7 @@ Endpoints consumed (via `MonitorClient`):
 - `GET /v2/graph_data/:metric` — time-series for graphs.
 - `GET /v2/healthz` — used by our own `/healthz`.
 
-Manager speaks to monitor over plain HTTP with a 2-second timeout (configurable via `MONITOR_TIMEOUT_MS`, though not yet plumbed through — see `review_notes.md`). Manager does **not** speak monitor's Prometheus `/metrics` or use its OpenAPI spec; we have our own OpenAPI gap (see `architecture.md` and `review_notes.md`).
+Manager speaks to monitor over plain HTTP with a timeout controlled by `MONITOR_TIMEOUT_MS` (default 2000ms), flowing through `Config#monitor_timeout` → `HttpApp.monitor_timeout_ms` → `MonitorClient.new(timeout_ms:)`. Manager does **not** speak monitor's Prometheus `/metrics` or use its OpenAPI spec; we have our own OpenAPI gap (see `review_notes.md`).
 
 Manager requires `cgminer_monitor` 1.0+ (the release that introduced `/v2/*`). The 0.x Rails-engine monitor has no `/v2/*` and will fail manager's startup `doctor` check.
 
