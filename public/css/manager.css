@@ -31,3 +31,22 @@
 #manager_results table td:first-child {
   font-weight: bold;
 }
+
+/* Admin tab: lay the action buttons out in a horizontal row with
+ * consistent spacing instead of stacking one form per line. Each
+ * admin-form wraps a single submit button, so flex-ing the row is
+ * enough to put the buttons side-by-side. */
+.admin-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 16px 0;
+}
+
+.admin-button-row .admin-form {
+  margin: 0;
+}
+
+.admin-button-row .admin-form button {
+  padding: 6px 14px;
+}
