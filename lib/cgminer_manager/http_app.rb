@@ -30,19 +30,22 @@ module CgminerManager
 
     class << self
       attr_accessor :monitor_url, :miners_file, :stale_threshold_seconds,
-                    :pool_thread_cap, :monitor_timeout_ms, :session_secret
+                    :pool_thread_cap, :monitor_timeout_ms, :session_secret,
+                    :production
 
       def configure_for_test!(monitor_url:, miners_file:, # rubocop:disable Metrics/ParameterLists
                               stale_threshold_seconds: 300,
                               pool_thread_cap: 8,
                               monitor_timeout_ms: 2000,
-                              session_secret: 'x' * 64)
+                              session_secret: 'x' * 64,
+                              production: false)
         self.monitor_url             = monitor_url
         self.miners_file             = miners_file
         self.stale_threshold_seconds = stale_threshold_seconds
         self.pool_thread_cap         = pool_thread_cap
         self.monitor_timeout_ms      = monitor_timeout_ms
         self.session_secret          = session_secret
+        self.production              = production
         reset_configured_miners! if respond_to?(:reset_configured_miners!)
       end
 
@@ -117,7 +120,13 @@ module CgminerManager
       use Rack::Session::Cookie,
           key: 'cgminer_manager.session',
           secret: CgminerManager::HttpApp.session_secret || SecureRandom.hex(32),
-          same_site: :lax
+          same_site: :lax,
+          # Gate on production so dev/test over plain HTTP on 127.0.0.1
+          # keeps working. Operators running in production are expected
+          # to terminate TLS at a reverse proxy per the README security
+          # posture; this prevents the session cookie from being sent
+          # back over a non-HTTPS hop.
+          secure: CgminerManager::HttpApp.production == true
       use CgminerManager::AdminAuth
       use CgminerManager::ConditionalAuthenticityToken
     end
