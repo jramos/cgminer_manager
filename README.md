@@ -30,6 +30,17 @@ Screenshots are generated from a scripted harness in `dev/screenshots/` — see 
 
 ## Quick start (Docker)
 
+Multi-arch images (`linux/amd64` + `linux/arm64`) are published from CI
+to GHCR on every `v*` tag push:
+
+```bash
+docker pull ghcr.io/jramos/cgminer_manager:latest
+# or pin to a specific release:
+docker pull ghcr.io/jramos/cgminer_manager:1.3
+```
+
+Run with the provided compose stack:
+
 ```bash
 export SESSION_SECRET=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(32)')
 cp config/miners.yml.example config/miners.yml

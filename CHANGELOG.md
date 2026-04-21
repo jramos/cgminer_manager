@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+- **CI publishes multi-arch container images on `v*` tag push.** New
+  `.github/workflows/release.yml` builds `linux/amd64` + `linux/arm64`
+  images on native GitHub-hosted runners and pushes to
+  `ghcr.io/jramos/cgminer_manager` with semver-derived tags
+  (`1.2.3` / `1.2` / `1` / `latest`, prerelease-safe) plus SLSA
+  provenance and CycloneDX SBOM attestations. A `workflow_dispatch`
+  entry point runs ad-hoc builds with a user-supplied tag
+  (default `edge`) for smoke tests.
+
 ### Changed
 - **Thread-cap fan-out extracted to `CgminerManager::ThreadedFanOut.map`.**
   The Queue + fixed-worker + Mutex pattern previously duplicated across
