@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-04-21
+
 ### Added
 - **CI publishes multi-arch container images on `v*` tag push.** New
   `.github/workflows/release.yml` builds `linux/amd64` + `linux/arm64`
