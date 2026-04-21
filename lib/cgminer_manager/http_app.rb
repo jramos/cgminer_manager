@@ -363,33 +363,23 @@ module CgminerManager
       end
 
       def build_pool_manager_for_all
-        miners = configured_miners.map do |host, port|
-          CgminerApiClient::Miner.new(host, port)
-        end
-        PoolManager.new(miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.pool_manager_for_all(
+          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+        )
       end
 
       def build_pool_manager_for(miner_ids)
-        miners = miner_ids.map do |id|
-          host, port = id.split(':', 2)
-          CgminerApiClient::Miner.new(host, port.to_i)
-        end
-        PoolManager.new(miners)
+        FleetBuilders.pool_manager_for(miner_ids)
       end
 
       def build_commander_for_all
-        miners = configured_miners.map do |host, port|
-          CgminerApiClient::Miner.new(host, port)
-        end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for_all(
+          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+        )
       end
 
       def build_commander_for(miner_ids)
-        miners = miner_ids.map do |id|
-          host, port = id.split(':', 2)
-          CgminerApiClient::Miner.new(host, port.to_i)
-        end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for(miner_ids, thread_cap: settings.pool_thread_cap)
       end
 
       def admin_session_id_hash
