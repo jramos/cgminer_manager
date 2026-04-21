@@ -64,33 +64,34 @@ sequenceDiagram
     Puma->>HttpApp: dispatch to '/' route
     HttpApp->>HttpApp: @request_started_at = Time.now
 
-    HttpApp->>HttpApp: build_dashboard_view_model
-    HttpApp->>MC: monitor_client.miners
+    HttpApp->>ViewModels: ViewModels.build_dashboard(monitor_client:, configured_miners:, ...)
+    ViewModels->>MC: monitor_client.miners
     MC->>Monitor: GET /v2/miners
     alt monitor reachable
         Monitor-->>MC: {miners: [...]}
         MC->>Logger: 'monitor.call' url=/v2/miners status=200 duration_ms=...
-        MC-->>HttpApp: parsed miners
-        HttpApp->>HttpApp: fetch_snapshots_for(miners)
+        MC-->>ViewModels: parsed miners
+        ViewModels->>ViewModels: fetch_snapshots_for(monitor_client, miners, cap)
 
         par per-miner parallel (up to pool_thread_cap)
-            HttpApp->>Workers: spawn worker with queue
+            ViewModels->>Workers: spawn worker with queue
             Workers->>MC: summary, devices, pools, stats (four calls)
             MC->>Monitor: four GETs per miner
             Monitor-->>MC: four responses
             MC-->>Workers: four parsed snapshots (each may be {error: ...} on rescue)
-            Workers-->>HttpApp: miner_id => {summary:, devices:, pools:, stats:}
+            Workers-->>ViewModels: miner_id => {summary:, devices:, pools:, stats:}
         end
 
     else monitor down
-        MC--xHttpApp: MonitorError
-        HttpApp->>HttpApp: banner='data source unavailable'; miners=fallback from yml
+        MC--xViewModels: MonitorError
+        ViewModels->>ViewModels: banner='data source unavailable'; miners=fallback from yml
     end
 
+    ViewModels-->>HttpApp: @view = {miners:, snapshots:, banner:, stale_threshold:}
     HttpApp->>Adapter: SnapshotAdapter.build_miner_data(configured_miners, snapshots)
     Adapter->>Adapter: per-type: sanitize keys, wrap in legacy [{type: inner}] shape
     Adapter-->>HttpApp: @miner_data
-    HttpApp->>HttpApp: build_view_miner_pool(monitor_miners) → @miner_pool
+    HttpApp->>ViewModels: ViewModels.build_view_miner_pool(monitor_miners, configured_miners:) → @miner_pool
     HttpApp->>HAML: haml :'manager/index' with @miner_pool, @miner_data, @bad_chain_elements, @view
     HAML->>HAML: render layout, _header, manager/index (Summary/Miner Pool/Admin tabs),
     HAML-->>HttpApp: HTML
@@ -102,7 +103,7 @@ sequenceDiagram
 **Key observations:**
 - A dashboard render with 10 miners performs 1 + 10×4 = 41 HTTP calls to monitor. With `POOL_THREAD_CAP=8` (default), the 40 per-miner calls run in parallel batches of 8.
 - Each of the 40 per-miner calls independently catches `MonitorError` and turns it into `{error: "..."}`. A single bad tile doesn't fail the whole dashboard.
-- The top-level `build_dashboard_view_model` catch handles the "can't even enumerate miners" case — it falls back to `configured_miners` from `miners.yml` with no availability data and sets a banner.
+- The top-level `ViewModels.build_dashboard` rescue handles the "can't even enumerate miners" case — it falls back to `configured_miners` from `miners.yml` with no availability data and sets a banner.
 - `@miner_pool` drives the "Miner Pool" tab (availability status from monitor). `@miner_data` drives the "Summary" tab (per-miner hashrate and devices tables). Graph canvases on Summary pull their data from `/graph_data/:metric` via Chart.js after page load.
 
 ## 3. Pool management flow (`POST /manager/manage_pools`)

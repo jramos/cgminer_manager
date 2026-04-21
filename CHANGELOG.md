@@ -28,6 +28,23 @@
   call so repeated invocations in tests don't stack duplicates.
 
 ### Changed
+- **`HttpApp` split into routes + HTML/display helpers + three sibling
+  pure modules.** View-model construction moved to
+  `CgminerManager::ViewModels` (dashboard, per-miner, and miner-pool
+  builders, plus the threaded snapshot fan-out — all pure functions
+  taking `monitor_client:` / `configured_miners:` /
+  `stale_threshold_seconds:` / `pool_thread_cap:` explicitly). Fleet
+  adapter factories moved to `CgminerManager::FleetBuilders`
+  (`pool_manager_for_all` / `pool_manager_for` / `commander_for_all` /
+  `commander_for`). Admin audit-log plumbing moved to
+  `CgminerManager::AdminLogging` (`session_id_hash`,
+  `command_log_entry`, `result_log_entry`). `HttpApp` keeps one-line
+  delegating helpers so Haml templates and route blocks don't change;
+  `dispatch_pool_action` and `render_admin_result` stay on `HttpApp`
+  because they read Sinatra-scoped state (params for the add-pool
+  branch; haml partials). The `Metrics/ClassLength: Max 550` rubocop
+  override becomes per-file exclusions on `HttpApp` and `PoolManager`;
+  new classes go back to getting the 100-line default.
 - **`HttpApp` class-level state moved to Sinatra `settings`.** The
   `class << self` block that held `attr_accessor :monitor_url,
   :miners_file, :stale_threshold_seconds, :pool_thread_cap,

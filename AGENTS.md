@@ -48,7 +48,10 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 │   ├── errors.rb                   # Error, ConfigError, MonitorError { Connection, Api }, PoolManagerError::DidNotConverge
 │   ├── fleet_query_result.rb       # FleetQueryEntry + FleetQueryResult (Data.define)
 │   ├── fleet_write_result.rb       # FleetWriteEntry + FleetWriteResult (Data.define)
-│   ├── http_app.rb                 # Sinatra app: 14 routes, helpers, view-model builders (~700 LOC)
+│   ├── http_app.rb                 # Sinatra app: 14 routes + HTML/display helpers + middleware (~650 LOC)
+│   ├── view_models.rb              # Pure view-model builders — no Sinatra, no Rack::Test needed
+│   ├── fleet_builders.rb           # Pure PoolManager / CgminerCommander factories
+│   ├── admin_logging.rb            # Pure session-id hashing + admin log-entry construction
 │   ├── logger.rb                   # Structured JSON/text logger (module singleton, thread-safe)
 │   ├── monitor_client.rb           # HTTP client for cgminer_monitor /v2/*
 │   ├── pool_manager.rb             # PoolManager + MinerEntry + PoolActionResult (Data.define)
@@ -77,7 +80,7 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 ├── .github/workflows/
 │   ├── ci.yml                      # lint + test matrix (3.2/3.3/3.4) + integration jobs
 │   └── nightly.yml                 # Ruby 4.0 / head experimental
-├── .rubocop.yml                    # TargetRubyVersion 3.2; Metrics/ClassLength 550 for HttpApp
+├── .rubocop.yml                    # TargetRubyVersion 3.2; Metrics/ClassLength excluded for HttpApp + PoolManager
 ├── .rspec, .ruby-version
 ├── Rakefile                        # default: [rubocop, spec]
 ├── Dockerfile                      # multi-stage, ruby:3.4-slim
@@ -121,7 +124,7 @@ bin/cgminer_manager run
 4. **`Config` is immutable** (`Data.define`). Validated at boot. **Exception:** `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER`/`_PASSWORD` per-request — deliberate, so dev harnesses can toggle auth without restart.
 5. **`CgminerApiClient::Miner.to_s` is monkey-patched** at the top of `http_app.rb` to return `"host:port"`. Upstream doesn't define it; `respond_to_missing?` excludes `to_*`, so it's a safe host-side addition. Makes `FleetWriteEntry.miner` and `MinerEntry.miner` display stable identifiers.
 6. **Admin surface has 4 defensive layers.** In order: (a) CSRF via `ConditionalAuthenticityToken`, (b) optional Basic Auth via `AdminAuth` — valid Basic Auth bypasses CSRF, (c) scope restrictions on hardware-tuning verbs (refuse `scope=all`), (d) per-request audit logging threaded by `request_id`. The typed-allowlist on `/manager/admin/:command` is **ergonomic** (UI buttons), not defensive — anyone who can reach `/admin/run` can run any cgminer verb.
-7. **Thread-cap fan-out pattern** appears three times: `HttpApp#fetch_snapshots_for`, `CgminerCommander#fan_out`, `PoolManager#run_each`. All three use `Queue` + fixed worker count + `Mutex`-protected results. Default cap is 8 via `POOL_THREAD_CAP`.
+7. **Thread-cap fan-out pattern** appears three times: `ViewModels.fetch_snapshots_for`, `CgminerCommander#fan_out`, `PoolManager#run_each`. All three use `Queue` + fixed worker count + `Mutex`-protected results. Default cap is 8 via `POOL_THREAD_CAP`.
 8. **No OpenAPI spec** (unlike `cgminer_monitor`). If you add one, also add a CI parity check.
 
 ## Conventions that matter when editing code

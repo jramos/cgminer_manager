@@ -141,8 +141,8 @@ Wraps `Array<ViewMiner>`. Two helpers:
 - `#unavailable_miners` — `miners.reject(&:available?)`.
 
 Built two ways:
-- `HttpApp#build_view_miner_pool(monitor_miners)` — for the dashboard, takes monitor's `/v2/miners` list (which carries `available:` flags).
-- `HttpApp#build_view_miner_pool_from_yml` — for per-miner pages, builds from `configured_miners` with everyone flagged `available: false` (availability isn't needed for the pool-wide sidebar on those pages).
+- `ViewModels.build_view_miner_pool(monitor_miners, configured_miners:)` — for the dashboard, takes monitor's `/v2/miners` list (which carries `available:` flags).
+- `ViewModels.build_view_miner_pool_from_yml(configured_miners:)` — for per-miner pages, builds from `configured_miners` with everyone flagged `available: false` (availability isn't needed for the pool-wide sidebar on those pages).
 
 ### `FleetQueryEntry` and `FleetQueryResult`
 
@@ -276,7 +276,7 @@ See `ViewMinerPool` above.
 
 ### `@view` (Hash)
 
-Returned by `build_dashboard_view_model` (for `/`) or `build_miner_view_model` (for `/miner/:id`).
+Returned by `ViewModels.build_dashboard` (for `/`) or `ViewModels.build_miner_view_model` (for `/miner/:id`).
 
 Dashboard shape:
 ```ruby
@@ -333,6 +333,6 @@ Where they're raised:
 | `MonitorError::ApiError` | `MonitorClient#get` | non-2xx HTTP response from monitor |
 | `PoolManagerError::DidNotConverge` | `PoolManager#verify_pool_state`, `#verify_pool_absent` | post-write query shows unexpected pool state, or verification timed out |
 
-`HttpApp#build_dashboard_view_model` and `#safe_fetch` catch `MonitorError` at the boundary and produce fallback UI state rather than propagating the error to the user. The CLI (`doctor`) catches `MonitorError` and reports it as a check failure.
+`ViewModels.build_dashboard` and `ViewModels.safe_fetch` catch `MonitorError` at the boundary and produce fallback UI state rather than propagating the error to the user. The CLI (`doctor`) catches `MonitorError` and reports it as a check failure.
 
 `PoolManagerError::DidNotConverge` is caught internally by `PoolManager#safe_call` and translated into `command_status: :indeterminate` — it never escapes to the route handler or to callers of `PoolActionResult`.

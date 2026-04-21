@@ -78,10 +78,10 @@ sequenceDiagram
     Client->>Puma: GET /
     Puma->>CSRF: middleware chain
     CSRF-->>App: pass-through (GET, no token needed)
-    App->>App: build_dashboard_view_model
+    App->>App: ViewModels.build_dashboard(monitor_client:, configured_miners:, ...)
     App->>Monitor: GET /v2/miners
     Monitor-->>App: {miners: [...]}
-    App->>App: fetch_snapshots_for(miners) — spawn worker pool
+    App->>App: ViewModels.fetch_snapshots_for — spawn worker pool
 
     par per-miner parallel
         App->>Thread: spawn with @stop queue
@@ -96,7 +96,7 @@ sequenceDiagram
     App->>Adapter: SnapshotAdapter.build_miner_data(configured_miners, snapshots)
     Adapter->>Adapter: per-type legacy shape: [{type => sanitize(response[inner_key])}]
     Adapter-->>App: @miner_data
-    App->>App: build_view_miner_pool(monitor_miners) → ViewMiner instances
+    App->>App: ViewModels.build_view_miner_pool(monitor_miners, configured_miners:) → ViewMiner instances
     App->>HAML: haml :'manager/index' with @miner_pool, @miner_data, @bad_chain_elements
     HAML-->>App: HTML
     App-->>Puma: 200 HTML
@@ -106,7 +106,7 @@ sequenceDiagram
 **Key observations on the read path:**
 
 - Each tile is fetched independently. If `monitor.pools(miner)` 5xxs but `monitor.summary(miner)` succeeds, the miner's row on the dashboard still renders — just with the Pools tab empty.
-- `build_dashboard_view_model` rescues `MonitorError` *once at the top level*: if `monitor.miners` itself fails (can't even enumerate miners), we fall back to `miners.yml` as the list and set `banner: "data source unavailable"`.
+- `ViewModels.build_dashboard` rescues `MonitorError` *once at the top level*: if `monitor.miners` itself fails (can't even enumerate miners), we fall back to `miners.yml` as the list and set `banner: "data source unavailable"`.
 - Snapshots are cached inside a single request via `Thread.new { ... fetch_tile ... }`; no request-to-request caching.
 - The legacy HAML partials (pre-dating the 1.1 restoration) read the shape `@miner_data[i][:summary].first[:summary]` — nested-array-of-arrays with a type-keyed inner hash. That's why `SnapshotAdapter` exists: the monitor's `/v2/miners/:id/summary` envelope is `{miner:, command:, fetched_at:, ok:, response: {STATUS: [...], SUMMARY: [...]}, error:}`, but the partials expect `[{summary: [...]}]`. The adapter bridges that.
 
@@ -211,7 +211,7 @@ A shared `@stop: Queue` is the rendezvous point for "time to stop." Signal handl
 ### Thread-capped fan-out (two places)
 Both `CgminerCommander` and `PoolManager` use the same pattern: a `Queue` pre-loaded with all miners, a fixed number of worker threads (min of `thread_cap` and `miners.size`), each popping with `queue.pop(true)` and writing to a shared `results` array under a `Mutex`. When the queue is drained, `queue.pop(true)` raises `ThreadError` and the worker breaks out of its loop.
 
-Also appears in `HttpApp#fetch_snapshots_for` (different shape: tile-per-miner-hash instead of a result array).
+Also appears in `ViewModels.fetch_snapshots_for` (different shape: tile-per-miner-hash instead of a result array).
 
 ### `SnapshotAdapter` as a shape-translation leaf
 One module, four methods. Turns monitor's `/v2/miners/:id/:type` envelope into the `[{type => data}]` shape that legacy partials read. Key sanitization (`"MHS 5s"` → `:mhs_5s`, `"Device Hardware%"` → `:'device_hardware%'`) matches `cgminer_api_client::Miner#sanitized` — **not** cgminer_monitor's Poller normalization (which maps `%` to `_pct`; that rule only applies to time-series sample metadata). The adapter is a compatibility layer, not a general-purpose JSON transformer.
