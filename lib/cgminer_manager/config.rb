@@ -37,6 +37,7 @@ module CgminerManager
   class << Config
     def from_env(env = ENV)
       rack_env = env.fetch('RACK_ENV', 'development')
+      validate_admin_auth!(env)
       new(
         monitor_url: env['CGMINER_MONITOR_URL'],
         miners_file: env.fetch('MINERS_FILE', 'config/miners.yml'),
@@ -54,6 +55,30 @@ module CgminerManager
     end
 
     private
+
+    # Admin auth is required by default as of 1.3.0. Creds are
+    # deliberately not a Config field — AdminAuth reads them
+    # per-request so tests/dev can toggle without restart. This
+    # boot-time check only asserts the posture is configured; the
+    # runtime middleware still handles post-boot ENV mutation.
+    #
+    # Boot accepts `=off` regardless of creds (short-circuits on the
+    # first line). Runtime (AdminAuth#call) only honors `=off` when
+    # creds are unset — creds-set wins at request time. Intentional
+    # asymmetry: boot's job is "posture is configured," runtime's job
+    # is "don't let a stale hatch bypass rotated creds."
+    def validate_admin_auth!(env)
+      return if env['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
+
+      user = env['CGMINER_MANAGER_ADMIN_USER'].to_s
+      pass = env['CGMINER_MANAGER_ADMIN_PASSWORD'].to_s
+      return unless user.empty? || pass.empty?
+
+      raise ConfigError,
+            'admin auth is required by default: set CGMINER_MANAGER_ADMIN_USER + ' \
+            'CGMINER_MANAGER_ADMIN_PASSWORD, or CGMINER_MANAGER_ADMIN_AUTH=off to ' \
+            'deliberately disable (see MIGRATION.md)'
+    end
 
     def parse_int(env, key, default)
       Integer(env.fetch(key, default))

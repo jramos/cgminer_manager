@@ -28,7 +28,7 @@ Nothing contradictory. If later edits introduce drift, re-run this section.
 
 ### 2. Dashboard and per-miner routes spawn thread pools per request
 
-`HttpApp#fetch_snapshots_for` and `HttpApp#build_commander_for_all` both spawn a fresh pool of threads for each request. Under load (dashboard auto-refresh at low interval, multiple operators refreshing, Prometheus scraping `/healthz` frequently) this creates thread churn.
+`ViewModels.fetch_snapshots_for` and `FleetBuilders.commander_for_all` both spawn a fresh pool of threads for each request. Under load (dashboard auto-refresh at low interval, multiple operators refreshing, Prometheus scraping `/healthz` frequently) this creates thread churn.
 
 **Not a problem at current scale** (< 10 miners, < 10 operators), but if usage grows, consider a persistent worker pool per `HttpApp` instance. Documenting for future-you.
 
@@ -40,7 +40,7 @@ Nothing contradictory. If later edits introduce drift, re-run this section.
 
 ### 4. Admin audit log: `session_id_hash` truncation is cosmetic
 
-`admin_session_id_hash` returns `Digest::SHA256.hexdigest(sid)[0..11]` — 12 hex chars, 48 bits. Collisions are extraordinarily unlikely in a short log window, but not zero. Documenting because the comment in the code doesn't explain the trade-off: 12 chars is "short enough to eyeball across log entries, long enough that correlating two entries by the hash isn't attacker-useful even if the session ID is long-lived."
+`AdminLogging.session_id_hash` returns `Digest::SHA256.hexdigest(sid)[0..11]` — 12 hex chars, 48 bits. Collisions are extraordinarily unlikely in a short log window, but not zero. Documenting because the comment in the code doesn't explain the trade-off: 12 chars is "short enough to eyeball across log entries, long enough that correlating two entries by the hash isn't attacker-useful even if the session ID is long-lived."
 
 ### 5. `raw!` comma-split is documented but error-handling isn't
 
@@ -48,7 +48,7 @@ Nothing contradictory. If later edits introduce drift, re-run this section.
 
 ## Gaps in these docs
 
-- I didn't count lines in each partial or enumerate every helper method. The "~700 LOC" figure for `http_app.rb` is from `wc -l`, rounded.
+- I didn't count lines in each partial or enumerate every helper method. The "~650 LOC" figure for `http_app.rb` (post view-model split) is from `wc -l`, rounded.
 - I didn't exhaustively trace every CSS/JS file under `public/`. Chart.js lives there; the exact version isn't pinned here.
 - The CI workflow section in `dependencies.md` accurately describes `ci.yml` but only skims `nightly.yml` (I didn't read it end-to-end).
 - The screenshot harness in `dev/screenshots/` is mentioned but not deeply documented — its own README is authoritative.

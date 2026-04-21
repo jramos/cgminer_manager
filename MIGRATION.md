@@ -1,3 +1,44 @@
+# Migration
+
+## 1.3.0 — Admin auth required by default (BREAKING)
+
+Upgrading from 1.2.x requires one of the following before restarting:
+
+1. **Set admin credentials** (recommended):
+
+       export CGMINER_MANAGER_ADMIN_USER=operator
+       export CGMINER_MANAGER_ADMIN_PASSWORD=<a-real-password>
+
+2. **Opt into the open-admin posture** (only if you're genuinely behind a
+   trust boundary you control):
+
+       export CGMINER_MANAGER_ADMIN_AUTH=off
+
+Without one of these, the server will fail to boot with:
+
+    config error: admin auth is required by default: ...
+
+Runtime behavior:
+
+- With creds set: admin routes require Basic Auth (unchanged from 1.2.x
+  opt-in). The admin Basic Auth + CSRF-bypass plumbing added in 1.2.0 is
+  unchanged — only the default is inverted.
+- With `CGMINER_MANAGER_ADMIN_AUTH=off` and no creds set: admin routes are
+  open; CSRF still protects the browser path.
+- With creds set AND `CGMINER_MANAGER_ADMIN_AUTH=off`: the escape hatch is
+  ignored — creds-set always engages the gate. Rotating creds can't
+  accidentally slip through a leftover `=off`.
+- A misconfigured runtime (env tampering post-boot wipes the creds but
+  leaves `=off` unset) returns `503 Service Unavailable` on admin paths
+  with `Content-Type: text/plain` and emits `admin.auth_misconfigured`.
+
+`bin/cgminer_manager doctor` reports the active posture so audits can
+confirm which deployments are gated.
+
+No changes are required for deployments that already set admin credentials.
+
+---
+
 # Migrating from cgminer_manager 0.x (Rails) to 1.0 (Sinatra)
 
 ## Prerequisites

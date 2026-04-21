@@ -7,7 +7,7 @@
 3. **Thread-capped parallel fan-out.** A dashboard render with 10 miners fires 4 monitor requests per miner = 40 requests; a pool operation across 10 miners fires 10 TCP RPCs plus a save per miner = 20. Both paths bound concurrency via a `Queue + Mutex` worker pool to avoid thundering herds against upstream services (default 8 threads, tunable via `POOL_THREAD_CAP`).
 4. **Structural error recovery for reads, explicit confirmation for writes.** A monitor tile that 5xx's renders "data source unavailable" banner without failing the whole dashboard. A pool operation returns a per-miner result envelope (`:ok`/`:failed`/`:indeterminate`) so the operator can see exactly what happened to each miner.
 5. **`Config` is immutable at boot.** `Data.define`, validated once. Changing anything requires a restart. (One exception: the `AdminAuth` middleware reads its env vars per-request — see below.)
-6. **Admin surface is defensive in depth.** CSRF + optional Basic Auth + scope restrictions + audit logging. Anyone who reaches `/manager/admin/run` can run any cgminer verb — the allowlist is *ergonomic* UI copy, not a security boundary.
+6. **Admin surface is defensive in depth.** CSRF + default-required Basic Auth (with `CGMINER_MANAGER_ADMIN_AUTH=off` escape hatch) + scope restrictions + audit logging. Anyone who reaches `/manager/admin/run` can run any cgminer verb — the allowlist is *ergonomic* UI copy, not a security boundary.
 
 ## The single-thread HTTP execution model
 
@@ -78,10 +78,10 @@ sequenceDiagram
     Client->>Puma: GET /
     Puma->>CSRF: middleware chain
     CSRF-->>App: pass-through (GET, no token needed)
-    App->>App: build_dashboard_view_model
+    App->>App: ViewModels.build_dashboard(monitor_client:, configured_miners:, ...)
     App->>Monitor: GET /v2/miners
     Monitor-->>App: {miners: [...]}
-    App->>App: fetch_snapshots_for(miners) — spawn worker pool
+    App->>App: ViewModels.fetch_snapshots_for — spawn worker pool
 
     par per-miner parallel
         App->>Thread: spawn with @stop queue
@@ -96,7 +96,7 @@ sequenceDiagram
     App->>Adapter: SnapshotAdapter.build_miner_data(configured_miners, snapshots)
     Adapter->>Adapter: per-type legacy shape: [{type => sanitize(response[inner_key])}]
     Adapter-->>App: @miner_data
-    App->>App: build_view_miner_pool(monitor_miners) → ViewMiner instances
+    App->>App: ViewModels.build_view_miner_pool(monitor_miners, configured_miners:) → ViewMiner instances
     App->>HAML: haml :'manager/index' with @miner_pool, @miner_data, @bad_chain_elements
     HAML-->>App: HTML
     App-->>Puma: 200 HTML
@@ -106,7 +106,7 @@ sequenceDiagram
 **Key observations on the read path:**
 
 - Each tile is fetched independently. If `monitor.pools(miner)` 5xxs but `monitor.summary(miner)` succeeds, the miner's row on the dashboard still renders — just with the Pools tab empty.
-- `build_dashboard_view_model` rescues `MonitorError` *once at the top level*: if `monitor.miners` itself fails (can't even enumerate miners), we fall back to `miners.yml` as the list and set `banner: "data source unavailable"`.
+- `ViewModels.build_dashboard` rescues `MonitorError` *once at the top level*: if `monitor.miners` itself fails (can't even enumerate miners), we fall back to `miners.yml` as the list and set `banner: "data source unavailable"`.
 - Snapshots are cached inside a single request via `Thread.new { ... fetch_tile ... }`; no request-to-request caching.
 - The legacy HAML partials (pre-dating the 1.1 restoration) read the shape `@miner_data[i][:summary].first[:summary]` — nested-array-of-arrays with a type-keyed inner hash. That's why `SnapshotAdapter` exists: the monitor's `/v2/miners/:id/summary` envelope is `{miner:, command:, fetched_at:, ok:, response: {STATUS: [...], SUMMARY: [...]}, error:}`, but the partials expect `[{summary: [...]}]`. The adapter bridges that.
 
@@ -131,8 +131,11 @@ sequenceDiagram
     else Basic Auth configured but invalid
         AA->>AA: Logger.warn 'admin.auth_failed'
         AA-->>Browser: 401 + WWW-Authenticate
-    else Basic Auth not configured
+    else Creds unset AND CGMINER_MANAGER_ADMIN_AUTH=off
         AA-->>CSRF: pass through (admin_authed = false)
+    else Creds unset AND no escape hatch (misconfigured)
+        AA->>AA: Logger.warn 'admin.auth_misconfigured'
+        AA-->>Browser: 503 + text body
     end
 
     CSRF->>CSRF: admin_authed? → skip token check : validate token
@@ -158,7 +161,7 @@ sequenceDiagram
 
 **Key observations on the write path:**
 
-- Every admin POST gets a `request_id = SecureRandom.uuid` in the `before` filter. That ID threads through the entry event (`admin.command` or `admin.raw_command`), any rejection events (`admin.scope_rejected`, `admin.auth_failed`), and the exit event (`admin.result`). Grep the structured log by `request_id` to see the full story for one operation.
+- Every admin POST gets a `request_id = SecureRandom.uuid` in the `before` filter. That ID threads through the entry event (`admin.command` or `admin.raw_command`), any rejection events (`admin.scope_rejected`, `admin.auth_failed`, `admin.auth_misconfigured`), and the exit event (`admin.result`). Grep the structured log by `request_id` to see the full story for one operation.
 - `ADMIN_RAW_COMMAND_PATTERN = /\A[a-z][a-z0-9_+]*\z/` is the regex applied to the `command` param before anything else. No whitespace, no null bytes, no path traversal — but still permits every real cgminer verb.
 - `SCOPE_RESTRICTED_VERBS` (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) refuse `scope=all` with 422 + `admin.scope_rejected` log. The UI also disables the "all" option in the scope dropdown when the command input matches one of these, but the server-side check is the defensive layer.
 - `args` is split on `,` before hitting `cgminer_api_client`'s own escape logic. That means commas inside argument values are not escapable through the form. Noted in the README.
@@ -211,7 +214,7 @@ A shared `@stop: Queue` is the rendezvous point for "time to stop." Signal handl
 ### Thread-capped fan-out (two places)
 Both `CgminerCommander` and `PoolManager` use the same pattern: a `Queue` pre-loaded with all miners, a fixed number of worker threads (min of `thread_cap` and `miners.size`), each popping with `queue.pop(true)` and writing to a shared `results` array under a `Mutex`. When the queue is drained, `queue.pop(true)` raises `ThreadError` and the worker breaks out of its loop.
 
-Also appears in `HttpApp#fetch_snapshots_for` (different shape: tile-per-miner-hash instead of a result array).
+Also appears in `ViewModels.fetch_snapshots_for` (different shape: tile-per-miner-hash instead of a result array).
 
 ### `SnapshotAdapter` as a shape-translation leaf
 One module, four methods. Turns monitor's `/v2/miners/:id/:type` envelope into the `[{type => data}]` shape that legacy partials read. Key sanitization (`"MHS 5s"` → `:mhs_5s`, `"Device Hardware%"` → `:'device_hardware%'`) matches `cgminer_api_client::Miner#sanitized` — **not** cgminer_monitor's Poller normalization (which maps `%` to `_pct`; that rule only applies to time-series sample metadata). The adapter is a compatibility layer, not a general-purpose JSON transformer.

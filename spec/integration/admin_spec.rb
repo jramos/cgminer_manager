@@ -36,6 +36,7 @@ RSpec.describe 'admin surface', type: :integration do
     fake.stop
     ENV.delete('CGMINER_MANAGER_ADMIN_USER')
     ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+    ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off' # restore suite-level default
   end
 
   before do
@@ -187,14 +188,29 @@ RSpec.describe 'admin surface', type: :integration do
       expect(last_response.body).to include("127.0.0.1:#{fake.port}")
     end
 
-    it 'treats empty-string env vars as unset (no auth gate)' do
+    it 'treats empty-string creds + CGMINER_MANAGER_ADMIN_AUTH=off as an open gate' do
       ENV['CGMINER_MANAGER_ADMIN_USER']     = ''
       ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = ''
+      ENV['CGMINER_MANAGER_ADMIN_AUTH']     = 'off'
 
       # CSRF still enforced, so this returns 403 — proves the Basic Auth
       # middleware is not asking for credentials (would otherwise 401).
       post '/manager/admin/version'
       expect(last_response.status).to eq(403)
+    end
+
+    # Only reachable in tests because HttpApp.configure_for_test! mounts
+    # middleware without going through Config.from_env — in production,
+    # boot-time validation fails before the process accepts a request.
+    # The 503 branch covers post-boot ENV tampering (and this regression).
+    it 'returns 503 when auth is required (no escape hatch) and creds are missing' do
+      ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+      ENV.delete('CGMINER_MANAGER_ADMIN_USER')
+      ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+
+      post '/manager/admin/version'
+      expect(last_response.status).to eq(503)
+      expect(last_response.body).to include('admin authentication is misconfigured')
     end
   end
 

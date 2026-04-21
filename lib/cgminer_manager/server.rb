@@ -53,6 +53,11 @@ module CgminerManager
       # ConfigError at boot (CLI exit 2), not as an HTTP 500 on the first
       # request after Puma binds the listener.
       HttpApp.set :configured_miners,       HttpApp.parse_miners_file(@config.miners_file)
+      # Wire the session + auth + CSRF middleware AFTER settings are
+      # populated — otherwise `use Rack::Session::Cookie, secret: ...`
+      # would freeze a nil/random secret before the operator's
+      # CGMINER_MANAGER_SESSION_SECRET ever reached the middleware.
+      HttpApp.install_middleware!
     end
 
     def start_puma_thread(launcher)

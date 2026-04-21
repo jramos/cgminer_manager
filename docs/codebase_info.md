@@ -176,16 +176,16 @@ graph TB
 
 1. **Two upstreams: HTTP to monitor, TCP to cgminer.** Read path goes through `MonitorClient` (HTTP). Write path goes direct to cgminer via `cgminer_api_client` (TCP). The manager never writes to Mongo and never reads cgminer directly for UI tiles.
 2. **Single-process, foreground, supervisor-driven.** No background workers. No daemonize. `cgminer_monitor run` (the CLI verb here is just `cgminer_manager run`) blocks until SIGTERM/SIGINT, then exits 0.
-3. **`Config` is immutable** (`Data.define`). Validated once at boot. No hot reload. Exception: `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` per-request (intentional — lets dev harnesses toggle auth without restart).
+3. **`Config` is immutable** (`Data.define`). Validated once at boot. No hot reload. Exception: `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` / `CGMINER_MANAGER_ADMIN_AUTH` per-request (intentional — lets dev harnesses toggle auth without restart). As of 1.3.0, admin Basic Auth is required by default; `Config.from_env` raises `ConfigError` at boot unless creds are configured or `CGMINER_MANAGER_ADMIN_AUTH=off` is set.
 4. **`HttpApp` state lives in Sinatra settings** set by `Server#configure_http_app` at boot: `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`, and `settings.configured_miners` (eagerly parsed via `HttpApp.parse_miners_file`). Tests populate them via `HttpApp.configure_for_test!(monitor_url:, miners_file:, ...)`.
 5. **CgminerCommander + PoolManager both use thread-cap fan-out** via `Queue` + `Mutex`. Default cap is 8. Configurable via `POOL_THREAD_CAP`. Scoped to the request lifecycle; no persistent thread pool.
 6. **`CgminerApiClient::Miner.to_s` is monkey-patched** in `http_app.rb` to return `"host:port"` so result rows display a stable identifier. Upstream's `Miner` doesn't define `to_s`; `respond_to_missing?` excludes `to_*`, so this is safe.
-7. **Admin surface has three defensive layers.** In order: (1) CSRF for browser path, (2) optional HTTP Basic Auth when both `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are set — valid Basic Auth bypasses CSRF, (3) scope restrictions on hardware-tuning verbs (`pgaset`/`ascset`/etc. refuse `scope=all`). Plus per-request audit logging threaded by `request_id`.
+7. **Admin surface has three defensive layers.** In order: (1) CSRF for browser path, (2) default-required HTTP Basic Auth (set `CGMINER_MANAGER_ADMIN_USER` + `CGMINER_MANAGER_ADMIN_PASSWORD`, or `CGMINER_MANAGER_ADMIN_AUTH=off` to disable) — valid Basic Auth bypasses CSRF, (3) scope restrictions on hardware-tuning verbs (`pgaset`/`ascset`/etc. refuse `scope=all`). Plus per-request audit logging threaded by `request_id`, including `admin.auth_failed` and `admin.auth_misconfigured`.
 8. **No OpenAPI spec.** Unlike `cgminer_monitor`, the HTTP surface here is not documented as an OpenAPI document. Routes are defined only in `http_app.rb`. If you add one, add the corresponding CI parity check too.
 
 ## Version and release posture
 
-- Current release: **1.2.0** (2026-04-17). See `CHANGELOG.md` for the 1.0 / 1.1 / 1.2 release notes.
+- Current release: **1.3.0** (2026-04-21). See `CHANGELOG.md` for the 1.0 / 1.1 / 1.2 / 1.3 release notes.
 - Semantic Versioning. 1.0 drew a line under the 0.x Rails-engine era. `v0-legacy` tag preserves the final Rails commit for rollback.
 - `rubygems_mfa_required` is set in gemspec metadata.
 - `Gemfile.lock` is `.gitignore`d — this gem expects consumers to generate their own.

@@ -143,20 +143,17 @@ Key moves in `#run`:
 8. `launcher.stop`, `puma_thread.join(shutdown_timeout)`, log `server.stopped`, return 0.
 
 ### `CgminerManager::HttpApp`
-**File:** `lib/cgminer_manager/http_app.rb` (~700 LOC)
+**File:** `lib/cgminer_manager/http_app.rb` (~650 LOC)
 
 The Sinatra app. Inherits from `Sinatra::Base`, uses `Sinatra::ContentFor` helper. Pins `set :root` to the repo root so `public/` and `views/` resolve correctly (Sinatra's auto-detection would point at `lib/cgminer_manager/`).
 
-Class-level state set by `Server#configure_http_app` at boot:
-- `.monitor_url` — base URL of cgminer_monitor.
-- `.miners_file` — path to `miners.yml`.
-- `.stale_threshold_seconds`, `.pool_thread_cap` — tuning knobs.
-- `.configured_miners` (memoized, built on first access from `miners_file`; returns `[[host, port, label]]` tuples).
-- `.reset_configured_miners!` (test-only reset).
-- `.configure_for_test!(...)` (test convenience).
+App state set by `Server#configure_http_app` at boot via Sinatra settings:
+- `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`.
+- `settings.configured_miners` (eagerly parsed by `HttpApp.parse_miners_file`; `[[host, port, label]]` tuples).
+- `HttpApp.configure_for_test!(...)` populates all of the above in one call for spec harnesses.
 
-Middleware stack (applied inside `configure do`):
-1. `Rack::Session::Cookie` signed with `SESSION_SECRET`, `same_site: :lax`.
+Middleware stack is installed by `HttpApp.install_middleware!`, which `Server#configure_http_app` (and `configure_for_test!`) calls *after* settings are populated so the operator's configured secret actually reaches Rack::Session::Cookie:
+1. `Rack::Session::Cookie` signed with `settings.session_secret`, `same_site: :lax`, `secure: settings.production`.
 2. `CgminerManager::AdminAuth` — gates `/manager|/miner/*/admin/*` routes when Basic Auth is configured.
 3. `CgminerManager::ConditionalAuthenticityToken` — Rack::Protection CSRF with the admin-Basic-Auth bypass.
 
@@ -166,9 +163,26 @@ Error handlers:
 - `not_found` → renders `views/errors/404.haml`.
 - `error` → logs `http.500` with backtrace (first 10 lines), renders `views/errors/500.haml`.
 
-Lots of view helpers defined via `helpers do`: HTML escape, CSRF token, format_hashrate, number_with_delimiter, time_ago_in_words, staleness_badge, get_stats_for (mis-spelled Rails-era helpers preserved for compatibility with the legacy partials), plus URL builders (`miner_url`, `manager_admin_path`, etc.) and view-model builders (`build_dashboard_view_model`, `build_miner_view_model`, `build_view_miner_pool`, `build_pool_manager_for_all`, `build_commander_for_all`, etc.).
+Helpers in the `helpers do` block are scoped to HTTP concerns only: HTML escape, CSRF token, format_hashrate, number_with_delimiter, time_ago_in_words, staleness_badge, get_stats_for (mis-spelled Rails-era helpers preserved for compatibility with the legacy partials), plus URL builders (`miner_url`, `manager_admin_path`, etc.), `dispatch_pool_action` (reads `params[:url]/:user/:pass` for the add-pool branch), and `render_admin_result` (renders haml partials).
+
+The pure view-model, fleet-factory, and admin-log-entry builders live in sibling modules. HttpApp keeps one-line delegating helpers so Haml templates that invoke `build_view_miner_pool(...)` etc. don't change.
 
 **Class-eval monkey patch** at the top of the file: `CgminerApiClient::Miner.class_eval { def to_s = "#{host}:#{port}" }`. Makes `FleetWriteEntry.miner` and `PoolManager::MinerEntry.miner` (populated from `miner.to_s`) display stable "host:port" identifiers. Safe because upstream `Miner#respond_to_missing?` excludes `to_*` names, so adding `to_s` doesn't collide with `method_missing`.
+
+### `CgminerManager::ViewModels`
+**File:** `lib/cgminer_manager/view_models.rb`
+
+Pure module. Functions take `monitor_client:`, `configured_miners:`, `stale_threshold_seconds:`, and `pool_thread_cap:` explicitly — no Sinatra dependency, so specs can exercise them without `Rack::Test`. Members: `build_view_miner_pool`, `build_view_miner_pool_from_yml`, `build_dashboard`, `build_miner_view_model`, `configured_labels_by_id`, `neighbor_ids`, `miner_configured?`, plus the private `fetch_snapshots_for` / `spawn_snapshot_worker` / `fetch_tile` / `safe_fetch` fan-out helpers.
+
+### `CgminerManager::FleetBuilders`
+**File:** `lib/cgminer_manager/fleet_builders.rb`
+
+Pure module. Four factory methods — `pool_manager_for_all`, `pool_manager_for`, `commander_for_all`, `commander_for` — each taking `thread_cap:` explicitly (defaults a nil cap to 1 so a caller that forgets to supply it doesn't blow up deep inside threaded fan-out). Builds `CgminerApiClient::Miner` instances from either `[host, port, _label]` tuples or `host:port` id strings.
+
+### `CgminerManager::AdminLogging`
+**File:** `lib/cgminer_manager/admin_logging.rb`
+
+Pure module. Three helpers: `session_id_hash(sid)` returns the 12-char SHA-256 slice used in audit logs; `command_log_entry(...)` and `result_log_entry(...)` build the two structured events (`admin.command` / `admin.raw_command` / `admin.result`) that `admin_spec.rb` asserts on. HttpApp threads request-scoped state (`request.env['cgminer_manager.admin_user']`, `request.ip`, etc.) in as kwargs.
 
 ### `CgminerManager::MonitorClient`
 **File:** `lib/cgminer_manager/monitor_client.rb`
@@ -227,9 +241,13 @@ Two Rack middlewares.
 
 **`AdminAuth`:**
 - Path regex `%r{\A/(manager|miner/[^/]+)/admin(/|\z)}` — only runs for admin routes.
-- Reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` from ENV **per-request**. Empty strings = unset. (Deliberate: lets dev harnesses toggle without restart.)
-- If not configured (either var empty), passes through (CSRF-only).
-- If configured: requires valid Basic Auth. On success, sets `env['cgminer_manager.admin_authed'] = true` and `env['cgminer_manager.admin_user']`. On failure, responds 401 with `WWW-Authenticate` header and logs `admin.auth_failed` with `reason` ∈ `{missing_creds, bad_creds, user_mismatch}`.
+- Reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` / `CGMINER_MANAGER_ADMIN_AUTH` from ENV **per-request**. Empty strings = unset. (Deliberate: lets dev harnesses toggle without restart.)
+- **Required by default as of 1.3.0.** Boot-time check in `Config.from_env` raises `ConfigError` unless creds are configured or `CGMINER_MANAGER_ADMIN_AUTH=off`.
+- Runtime dispatch (defense-in-depth for post-boot env tampering):
+  - Creds set → Basic Auth required. On success, sets `env['cgminer_manager.admin_authed'] = true` and `env['cgminer_manager.admin_user']`. On failure, responds 401 with `WWW-Authenticate` header and logs `admin.auth_failed` with `reason` ∈ `{missing_creds, bad_creds, user_mismatch}`.
+  - Creds unset AND `CGMINER_MANAGER_ADMIN_AUTH=off` → pass through (CSRF-only).
+  - Creds unset AND no escape hatch → 503 + `admin.auth_misconfigured`.
+- **Precedence:** the escape hatch only fires when creds are unset — creds-set always engages the gate, so rotating creds can't slip through a leftover `=off`.
 - Password comparison uses `Rack::Utils.secure_compare` (constant-time).
 
 **`ConditionalAuthenticityToken`:**

@@ -2,7 +2,26 @@
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-04-21
+
+### Changed (BREAKING)
+- **Admin Basic Auth is now required by default.** Set
+  `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD`
+  before boot, or set `CGMINER_MANAGER_ADMIN_AUTH=off` to deliberately
+  disable. The server fails to boot with a clear `ConfigError` when
+  neither is configured. The opt-in Basic Auth gate added in 1.2.0 is
+  now the default-required gate. See `MIGRATION.md`.
+
 ### Added
+- `CGMINER_MANAGER_ADMIN_AUTH=off` escape hatch for deployments that
+  genuinely want anonymous admin (dev loopback, isolated lab).
+- `admin.auth_misconfigured` structured log event +
+  `503 Service Unavailable` response on admin paths when boot-time
+  validation is bypassed at runtime (env tampering post-boot).
+- `bin/cgminer_manager doctor` reports the active admin-auth posture
+  (`required (credentials configured)`,
+  `DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)`, or
+  `misconfigured` as a failure).
 - AI-assistant knowledge base under `docs/` (architecture, components,
   interfaces, data models, workflows, dependencies, review notes,
   plus an `index.md` router) and a consolidated `AGENTS.md` at the
@@ -13,7 +32,38 @@
   linking to CHANGELOG, MIGRATION, AGENTS, docs/, and the two
   sibling repos.
 
+### Fixed
+- **Operator-configured `CGMINER_MANAGER_SESSION_SECRET` now actually
+  reaches `Rack::Session::Cookie`** (#10). The `use
+  Rack::Session::Cookie, secret: ...` middleware wiring previously
+  lived in a class-body `configure do … end` block. Sinatra captures
+  `use` args at call time — class-body eval — which happens before
+  `Server#configure_http_app` populates `settings.session_secret`, so
+  every boot silently fell through to `SecureRandom.hex(32)` and
+  invalidated all sessions across restarts regardless of env var.
+  Moved the middleware stack into a new `HttpApp.install_middleware!`
+  class method that Server (and `configure_for_test!`) call after
+  settings are populated. Idempotent — re-seeds `@middleware` each
+  call so repeated invocations in tests don't stack duplicates.
+
 ### Changed
+- **`HttpApp` split into routes + HTML/display helpers + three sibling
+  pure modules.** View-model construction moved to
+  `CgminerManager::ViewModels` (dashboard, per-miner, and miner-pool
+  builders, plus the threaded snapshot fan-out — all pure functions
+  taking `monitor_client:` / `configured_miners:` /
+  `stale_threshold_seconds:` / `pool_thread_cap:` explicitly). Fleet
+  adapter factories moved to `CgminerManager::FleetBuilders`
+  (`pool_manager_for_all` / `pool_manager_for` / `commander_for_all` /
+  `commander_for`). Admin audit-log plumbing moved to
+  `CgminerManager::AdminLogging` (`session_id_hash`,
+  `command_log_entry`, `result_log_entry`). `HttpApp` keeps one-line
+  delegating helpers so Haml templates and route blocks don't change;
+  `dispatch_pool_action` and `render_admin_result` stay on `HttpApp`
+  because they read Sinatra-scoped state (params for the add-pool
+  branch; haml partials). The `Metrics/ClassLength: Max 550` rubocop
+  override becomes per-file exclusions on `HttpApp` and `PoolManager`;
+  new classes go back to getting the 100-line default.
 - **`HttpApp` class-level state moved to Sinatra `settings`.** The
   `class << self` block that held `attr_accessor :monitor_url,
   :miners_file, :stale_threshold_seconds, :pool_thread_cap,

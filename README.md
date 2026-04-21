@@ -40,8 +40,7 @@ Open http://localhost:3000. The Admin tab at the top of the dashboard exposes
 fleet operations (version / stats / devs / zero / save / restart / quit) and a
 raw cgminer RPC form.
 
-To additionally require HTTP Basic Auth on Admin routes (strongly recommended
-if the UI is reachable beyond loopback), set both:
+Admin routes require HTTP Basic Auth **by default** as of 1.3.0. Set both:
 
 ```bash
 export CGMINER_MANAGER_ADMIN_USER=admin
@@ -49,8 +48,10 @@ export CGMINER_MANAGER_ADMIN_PASSWORD=$(ruby -rsecurerandom -e 'puts SecureRando
 docker compose up
 ```
 
-`docker-compose.yml` passes these through verbatim. Unset / empty strings = no
-Basic Auth gate (CSRF-only, same posture as the rest of the UI).
+Without credentials, `cgminer_manager run` fails to start with a `ConfigError`.
+To deliberately run the open/CSRF-only posture (e.g., developer loopback or an
+isolated lab network), set `CGMINER_MANAGER_ADMIN_AUTH=off`. `docker-compose.yml`
+defaults to this escape hatch for dev; the e2e stack requires a password.
 
 ## Manual install
 
@@ -77,8 +78,9 @@ All settings come from environment variables.
 | `PORT` | | `3000` | Listening port |
 | `BIND` | | `127.0.0.1` | Listening interface |
 | `SESSION_SECRET` | yes in production | generated in dev | Signs session cookies (CSRF) |
-| `CGMINER_MANAGER_ADMIN_USER` | | — | HTTP Basic Auth username for `/admin/*` routes; pair with `CGMINER_MANAGER_ADMIN_PASSWORD`. Empty strings = unset. |
-| `CGMINER_MANAGER_ADMIN_PASSWORD` | | — | HTTP Basic Auth password. When both this and `CGMINER_MANAGER_ADMIN_USER` are set, Admin POSTs require Basic Auth; valid credentials also bypass CSRF (intended for scripts / curl). |
+| `CGMINER_MANAGER_ADMIN_USER` | **yes by default** | — | HTTP Basic Auth username for `/admin/*` routes. Boot fails unless this and `CGMINER_MANAGER_ADMIN_PASSWORD` are both set, or `CGMINER_MANAGER_ADMIN_AUTH=off`. |
+| `CGMINER_MANAGER_ADMIN_PASSWORD` | **yes by default** | — | HTTP Basic Auth password. Valid credentials also bypass CSRF (intended for scripts / curl). |
+| `CGMINER_MANAGER_ADMIN_AUTH` | | unset | Set to `off` to deliberately disable admin auth (escape hatch for dev loopback / isolated lab networks). |
 | `LOG_FORMAT` | | `text` (dev), `json` (prod) | |
 | `LOG_LEVEL` | | `info` | `debug`, `info`, `warn`, `error` |
 | `STALE_THRESHOLD_SECONDS` | | `300` | Tile "updated Xm ago" warning threshold |
@@ -113,7 +115,7 @@ The gem's error taxonomy (all under `CgminerManager::Error < StandardError`):
 - `GET /graph_data/:metric` — aggregate graph data across all miners. Returns a JSON array of rows.
 - `GET /miner/:miner_id/graph_data/:metric` — per-miner graph data, same shape.
 - `POST /manager/manage_pools`, `POST /miner/:miner_id/manage_pools` — pool management commands (CSRF-protected).
-- `POST /manager/admin/:command` — typed fleet admin (`version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`). CSRF-protected; Basic Auth when configured.
+- `POST /manager/admin/:command` — typed fleet admin (`version`, `stats`, `devs`, `zero`, `save`, `restart`, `quit`). CSRF-protected; Basic Auth required by default (or `=off`).
 - `POST /miner/:miner_id/admin/:command` — per-miner variant of the above.
 - `POST /manager/admin/run` — raw cgminer RPC with `command` + `args` + `scope` params; `scope` is `all` or a configured `host:port`. Server-side rejects hardware-tuning verbs (`pgaset`, `ascset`, `pgarestart`, `ascrestart`, `pga{enable,disable}`, `asc{enable,disable}`) with `scope=all`.
 - `POST /miner/:miner_id/admin/run` — raw RPC against a single miner (no scope=all restriction).
@@ -137,15 +139,15 @@ bundle exec rake  # rubocop + rspec
 
 Default bind is `127.0.0.1`. The service is designed for secure local networks; to expose it beyond localhost, put it behind a reverse proxy that provides authentication.
 
-The Admin surface (`/manager/admin/*`, `/miner/:id/admin/*`) is CSRF-protected for the browser path and additionally gated by HTTP Basic Auth when `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are set. Valid Basic Auth bypasses CSRF — a static credential is strictly stronger proof than a session cookie + CSRF token, and this lets operators curl admin routes during incidents.
+The Admin surface (`/manager/admin/*`, `/miner/:id/admin/*`) is CSRF-protected for the browser path and **required to be gated by HTTP Basic Auth by default** as of 1.3.0. Boot fails unless `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are both set, or `CGMINER_MANAGER_ADMIN_AUTH=off` is set to deliberately disable. Valid Basic Auth bypasses CSRF — a static credential is strictly stronger proof than a session cookie + CSRF token, and this lets operators curl admin routes during incidents. `bin/cgminer_manager doctor` reports the active posture so audits can confirm which deployments are gated.
 
 The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`quit`) is **ergonomic, not defensive**: anyone who can reach `/manager/admin/run` can execute any cgminer verb. The defensive layers are:
 
 1. Basic Auth via the env vars above.
 2. Scope restrictions on hardware-tuning verbs (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) — the server refuses `scope=all` for these and the UI disables the `all` option when the command input matches.
-3. Per-command audit logging (`admin.command`, `admin.raw_command`, `admin.result`, `admin.auth_failed`, `admin.scope_rejected`) with a `request_id` UUID threading entry and exit events for any given POST.
+3. Per-command audit logging (`admin.command`, `admin.raw_command`, `admin.result`, `admin.auth_failed`, `admin.auth_misconfigured`, `admin.scope_rejected`) with a `request_id` UUID threading entry and exit events for any given POST.
 
-Strongly recommend setting `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` in any deployment where the UI is reachable beyond localhost. Basic Auth transmits credentials base64-encoded (reversible), so also terminate TLS at a reverse proxy in that case.
+Basic Auth transmits credentials base64-encoded (reversible), so terminate TLS at a reverse proxy in any deployment where the UI is reachable beyond localhost.
 
 ## Further Reading
 

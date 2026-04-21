@@ -49,6 +49,32 @@ RSpec.describe CgminerManager::CLI do
         expect(code).to eq(2)
         expect(stderr).to include('config error: missing thing')
       end
+
+      # End-to-end cover for the 1.3.0 admin-auth boot check. Uses the
+      # real from_env path so a regression that moves validate_admin_auth!
+      # (e.g., below record construction, or inside a rescue) still trips.
+      it 'surfaces the admin-auth remediation message with exit 2' do
+        miners_file = File.join(Dir.mktmpdir, 'miners.yml')
+        File.write(miners_file, "- host: 127.0.0.1\n  port: 4028\n")
+        keys = %w[
+          CGMINER_MONITOR_URL MINERS_FILE SESSION_SECRET
+          CGMINER_MANAGER_ADMIN_USER CGMINER_MANAGER_ADMIN_PASSWORD
+          CGMINER_MANAGER_ADMIN_AUTH
+        ]
+        saved = ENV.to_h.slice(*keys)
+        ENV['CGMINER_MONITOR_URL'] = 'http://localhost:9292'
+        ENV['MINERS_FILE'] = miners_file
+        ENV['SESSION_SECRET'] = 'x' * 64
+        %w[CGMINER_MANAGER_ADMIN_USER CGMINER_MANAGER_ADMIN_PASSWORD
+           CGMINER_MANAGER_ADMIN_AUTH].each { |k| ENV.delete(k) }
+
+        code, _stdout, stderr = capture_run(['run'])
+        expect(code).to eq(2)
+        expect(stderr).to include('admin auth is required')
+        expect(stderr).to include('MIGRATION.md')
+      ensure
+        keys.each { |k| saved.key?(k) ? ENV[k] = saved[k] : ENV.delete(k) }
+      end
     end
 
     context 'with run verb' do
@@ -97,6 +123,67 @@ RSpec.describe CgminerManager::CLI do
           code, stdout, _stderr = capture_run(['doctor'])
           expect(code).to eq(0)
           expect(stdout).to include('doctor: all checks passed')
+        end
+      end
+
+      context 'when reporting admin-auth posture' do
+        around do |example|
+          originals = ENV.to_h.slice(
+            'CGMINER_MANAGER_ADMIN_USER',
+            'CGMINER_MANAGER_ADMIN_PASSWORD',
+            'CGMINER_MANAGER_ADMIN_AUTH'
+          )
+          example.run
+        ensure
+          %w[CGMINER_MANAGER_ADMIN_USER CGMINER_MANAGER_ADMIN_PASSWORD CGMINER_MANAGER_ADMIN_AUTH].each do |k|
+            originals.key?(k) ? ENV[k] = originals[k] : ENV.delete(k)
+          end
+        end
+
+        before do
+          allow(client).to receive(:miners).and_return(miners: [{ id: '127.0.0.1:4028' }])
+          allow(miner).to receive(:available?).and_return(true)
+        end
+
+        it 'reports "required (credentials configured)" when creds are set' do
+          ENV['CGMINER_MANAGER_ADMIN_USER'] = 'operator'
+          ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = 's3cret'
+          ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+          code, stdout, _stderr = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('admin auth: required (credentials configured)')
+        end
+
+        it 'reports required even when a stale CGMINER_MANAGER_ADMIN_AUTH=off is present' do
+          # Mirrors AdminAuth#call precedence: creds-set wins over =off.
+          # A stale hatch must never lie about posture.
+          ENV['CGMINER_MANAGER_ADMIN_USER'] = 'operator'
+          ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = 's3cret'
+          ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
+          code, stdout, _stderr = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('admin auth: required (credentials configured)')
+          expect(stdout).not_to include('DISABLED')
+        end
+
+        it 'reports DISABLED when the hatch is set and no creds are present' do
+          ENV.delete('CGMINER_MANAGER_ADMIN_USER')
+          ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+          ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
+          code, stdout, _stderr = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('admin auth: DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)')
+        end
+
+        it 'fails with a misconfigured flag when neither creds nor hatch are set' do
+          # Unreachable from production boot (Config.from_env raises first),
+          # but doctor may be invoked in broken states; flag rather than lie.
+          ENV.delete('CGMINER_MANAGER_ADMIN_USER')
+          ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+          ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+          code, _stdout, stderr = capture_run(['doctor'])
+          expect(code).to eq(1)
+          expect(stderr).to include('FAIL: admin auth misconfigured')
         end
       end
 

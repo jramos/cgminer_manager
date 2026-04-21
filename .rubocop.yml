@@ -31,7 +31,12 @@ Metrics/MethodLength:
   Max: 25
 
 Metrics/ClassLength:
-  Max: 550
+  # HttpApp is still the fattest file post-split — 14 routes + error
+  # handlers + HTML/display helpers. PoolManager's body is mostly
+  # threaded fan-out boilerplate that splitting would obscure.
+  Exclude:
+    - 'lib/cgminer_manager/http_app.rb'
+    - 'lib/cgminer_manager/pool_manager.rb'
 
 Metrics/AbcSize:
   Max: 25

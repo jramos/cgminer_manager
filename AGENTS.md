@@ -48,7 +48,10 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 │   ├── errors.rb                   # Error, ConfigError, MonitorError { Connection, Api }, PoolManagerError::DidNotConverge
 │   ├── fleet_query_result.rb       # FleetQueryEntry + FleetQueryResult (Data.define)
 │   ├── fleet_write_result.rb       # FleetWriteEntry + FleetWriteResult (Data.define)
-│   ├── http_app.rb                 # Sinatra app: 14 routes, helpers, view-model builders (~700 LOC)
+│   ├── http_app.rb                 # Sinatra app: 14 routes + HTML/display helpers + middleware (~650 LOC)
+│   ├── view_models.rb              # Pure view-model builders — no Sinatra, no Rack::Test needed
+│   ├── fleet_builders.rb           # Pure PoolManager / CgminerCommander factories
+│   ├── admin_logging.rb            # Pure session-id hashing + admin log-entry construction
 │   ├── logger.rb                   # Structured JSON/text logger (module singleton, thread-safe)
 │   ├── monitor_client.rb           # HTTP client for cgminer_monitor /v2/*
 │   ├── pool_manager.rb             # PoolManager + MinerEntry + PoolActionResult (Data.define)
@@ -77,7 +80,7 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 ├── .github/workflows/
 │   ├── ci.yml                      # lint + test matrix (3.2/3.3/3.4) + integration jobs
 │   └── nightly.yml                 # Ruby 4.0 / head experimental
-├── .rubocop.yml                    # TargetRubyVersion 3.2; Metrics/ClassLength 550 for HttpApp
+├── .rubocop.yml                    # TargetRubyVersion 3.2; Metrics/ClassLength excluded for HttpApp + PoolManager
 ├── .rspec, .ruby-version
 ├── Rakefile                        # default: [rubocop, spec]
 ├── Dockerfile                      # multi-stage, ruby:3.4-slim
@@ -118,10 +121,10 @@ bin/cgminer_manager run
 1. **Two upstreams with different transports.** HTTP to `cgminer_monitor` for reads, TCP direct to cgminer for writes. The manager never reads cgminer directly for dashboard tiles (that's monitor's job) and never writes to Mongo.
 2. **Single-process, foreground, no background workers.** Supervisor-driven.
 3. **`HttpApp` state lives in Sinatra settings** set by `Server#configure_http_app` at boot: `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`, and `settings.configured_miners` (eagerly parsed at boot via `HttpApp.parse_miners_file`). Tests populate them in one call via `HttpApp.configure_for_test!(...)`.
-4. **`Config` is immutable** (`Data.define`). Validated at boot. **Exception:** `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER`/`_PASSWORD` per-request — deliberate, so dev harnesses can toggle auth without restart.
+4. **`Config` is immutable** (`Data.define`). Validated at boot. **Exception:** `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER`/`_PASSWORD`/`CGMINER_MANAGER_ADMIN_AUTH` per-request — deliberate, so dev harnesses can toggle auth without restart. Admin Basic Auth is required by default as of 1.3.0; `Config.from_env` raises `ConfigError` unless creds are configured or `CGMINER_MANAGER_ADMIN_AUTH=off` is set.
 5. **`CgminerApiClient::Miner.to_s` is monkey-patched** at the top of `http_app.rb` to return `"host:port"`. Upstream doesn't define it; `respond_to_missing?` excludes `to_*`, so it's a safe host-side addition. Makes `FleetWriteEntry.miner` and `MinerEntry.miner` display stable identifiers.
-6. **Admin surface has 4 defensive layers.** In order: (a) CSRF via `ConditionalAuthenticityToken`, (b) optional Basic Auth via `AdminAuth` — valid Basic Auth bypasses CSRF, (c) scope restrictions on hardware-tuning verbs (refuse `scope=all`), (d) per-request audit logging threaded by `request_id`. The typed-allowlist on `/manager/admin/:command` is **ergonomic** (UI buttons), not defensive — anyone who can reach `/admin/run` can run any cgminer verb.
-7. **Thread-cap fan-out pattern** appears three times: `HttpApp#fetch_snapshots_for`, `CgminerCommander#fan_out`, `PoolManager#run_each`. All three use `Queue` + fixed worker count + `Mutex`-protected results. Default cap is 8 via `POOL_THREAD_CAP`.
+6. **Admin surface has 4 defensive layers.** In order: (a) CSRF via `ConditionalAuthenticityToken`, (b) default-required Basic Auth via `AdminAuth` — valid Basic Auth bypasses CSRF; `CGMINER_MANAGER_ADMIN_AUTH=off` is the escape hatch, (c) scope restrictions on hardware-tuning verbs (refuse `scope=all`), (d) per-request audit logging threaded by `request_id`. The typed-allowlist on `/manager/admin/:command` is **ergonomic** (UI buttons), not defensive — anyone who can reach `/admin/run` can run any cgminer verb.
+7. **Thread-cap fan-out pattern** appears three times: `ViewModels.fetch_snapshots_for`, `CgminerCommander#fan_out`, `PoolManager#run_each`. All three use `Queue` + fixed worker count + `Mutex`-protected results. Default cap is 8 via `POOL_THREAD_CAP`.
 8. **No OpenAPI spec** (unlike `cgminer_monitor`). If you add one, also add a CI parity check.
 
 ## Conventions that matter when editing code
@@ -260,7 +263,7 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 2. **`CgminerApiClient::Miner#to_s` is monkey-patched at the top of `http_app.rb`** to return `"host:port"`. Upstream doesn't define it. If you see `Miner.to_s` returning something like `"#<CgminerApiClient::Miner:0x00007f...>"`, the monkey patch isn't loaded.
 
-3. **`AdminAuth` reads env per-request, not at boot.** Intentional — lets dev harnesses toggle auth without restart. Empty strings = unset. If you want Basic Auth enabled, both `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` must be non-empty.
+3. **`AdminAuth` reads env per-request, not at boot.** Intentional — lets dev harnesses toggle auth without restart. Empty strings = unset. As of 1.3.0 the gate is required by default: `Config.from_env` raises `ConfigError` at boot unless both `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are non-empty or `CGMINER_MANAGER_ADMIN_AUTH=off` is set. Runtime precedence: `=off` fires only when creds are unset — creds-set always engages the gate, so rotating creds doesn't slip through a leftover `=off`. Unconfigured runtime (env tampering post-boot) returns 503 + `admin.auth_misconfigured`.
 
 4. **`ConditionalAuthenticityToken` bypasses CSRF when Basic Auth passed.** Valid static Basic Auth is strictly stronger proof than session cookie + CSRF. This lets operators curl admin routes during incidents without scraping a token first. If you see admin POSTs inexplicably succeeding without a CSRF token, check whether Basic Auth is being sent.
 
@@ -274,7 +277,7 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 9. **`config/puma.rb` exists but is not used by `cgminer_manager run`.** `Server#build_puma_launcher` constructs its own `Puma::Configuration` inline. The file is there for direct `puma` / `rackup` invocations (dev harness, `config.ru`-based runs). Don't edit `config/puma.rb` expecting it to affect `run`.
 
-10. **Session cookie is `Secure` only in production.** `Rack::Session::Cookie` gets `secure: production?`, a Sinatra setting fed from `Config#production?` in `Server#configure_http_app`. Dev/test on `http://127.0.0.1` keeps working because `secure: false`; production deployments behind a TLS-terminating proxy get the Secure flag as belt-and-suspenders with the reverse-proxy posture. Integration specs default `production: false` via `HttpApp.configure_for_test!`. **Known bug:** the cookie's `secret:` is captured at class-body eval time, before `Server#configure_http_app` runs, so the operator-configured `CGMINER_MANAGER_SESSION_SECRET` currently doesn't reach the middleware — see issue #10.
+10. **Session cookie is `Secure` only in production.** `Rack::Session::Cookie` gets `secure: settings.production`, and `secret: settings.session_secret || SecureRandom.hex(32)`, both captured via `HttpApp.install_middleware!` which `Server#configure_http_app` (and `HttpApp.configure_for_test!`) calls **after** the Sinatra settings are populated — so the operator's `CGMINER_MANAGER_SESSION_SECRET` actually reaches the middleware. Do not move the `use Rack::Session::Cookie` call into a class-body `configure do … end` block: Sinatra freezes `use` args at call time, and class-body eval runs before Server populates settings, which was the bug fixed in #10.
 
 11. **Out-of-band git changes are normal.** Don't treat surprising git state (uncommitted changes you didn't make, an unfamiliar branch) as a tool malfunction — the maintainer works outside the assistant session.
 
