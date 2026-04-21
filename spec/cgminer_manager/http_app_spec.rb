@@ -78,4 +78,60 @@ RSpec.describe CgminerManager::HttpApp do
       expect(app_instance.send(:configured_miners)).to eq([%w[h 4028 label]])
     end
   end
+
+  describe '.install_middleware!' do
+    # Regression guard: the session-cookie middleware captures its
+    # `secret:` at `use`-call time. If `use Rack::Session::Cookie` is
+    # declared in a class-body `configure do … end` block, that capture
+    # happens before Server#configure_http_app has populated
+    # `settings.session_secret`, and the operator's configured secret
+    # is silently discarded in favor of a fresh SecureRandom. This
+    # spec pins the fix: the secret actually reaches the middleware
+    # after install_middleware! runs.
+    after do
+      described_class.set :session_secret, nil
+      described_class.set :production,     false
+      described_class.install_middleware!
+    end
+
+    it 'captures settings.session_secret on the Rack::Session::Cookie middleware' do
+      operator_secret = "operator-configured-secret-#{'x' * 40}"
+      described_class.set :session_secret, operator_secret
+      described_class.install_middleware!
+
+      session_middleware = described_class.middleware.find { |m| m.first == Rack::Session::Cookie }
+      expect(session_middleware).not_to be_nil
+      expect(session_middleware[1].first[:secret]).to eq(operator_secret)
+    end
+
+    it 'captures settings.production on the secure flag' do
+      described_class.set :production, true
+      described_class.install_middleware!
+
+      session_middleware = described_class.middleware.find { |m| m.first == Rack::Session::Cookie }
+      expect(session_middleware[1].first[:secure]).to be(true)
+    end
+
+    it 'falls back to SecureRandom when session_secret is nil (dev/test)' do
+      described_class.set :session_secret, nil
+      described_class.install_middleware!
+
+      session_middleware = described_class.middleware.find { |m| m.first == Rack::Session::Cookie }
+      captured_secret = session_middleware[1].first[:secret]
+      expect(captured_secret).to be_a(String)
+      expect(captured_secret.length).to be >= 32
+    end
+
+    it 'does not accumulate duplicate middleware across repeated calls' do
+      described_class.set :session_secret, 'a' * 64
+      described_class.install_middleware!
+      described_class.install_middleware!
+      described_class.install_middleware!
+
+      session_count = described_class.middleware.count { |m| m.first == Rack::Session::Cookie }
+      admin_auth_count = described_class.middleware.count { |m| m.first == CgminerManager::AdminAuth }
+      expect(session_count).to eq(1)
+      expect(admin_auth_count).to eq(1)
+    end
+  end
 end

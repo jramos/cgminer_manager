@@ -83,5 +83,15 @@ RSpec.describe CgminerManager::Server do
       expect { server.send(:configure_http_app) }
         .to raise_error(CgminerManager::ConfigError, /must be a YAML list/)
     end
+
+    # Regression guard — session-cookie middleware must be installed
+    # AFTER settings are populated so the operator's configured secret
+    # is the one captured by `use`.
+    it 'installs middleware with the operator-configured session secret' do
+      server.send(:configure_http_app)
+
+      session_middleware = CgminerManager::HttpApp.middleware.find { |m| m.first == Rack::Session::Cookie }
+      expect(session_middleware[1].first[:secret]).to eq('a' * 64)
+    end
   end
 end
