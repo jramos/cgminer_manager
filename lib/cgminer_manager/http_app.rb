@@ -314,11 +314,7 @@ module CgminerManager
       # either the live Hash list (with :available flag) or the fallback
       # array built when monitor is down (all :available=false).
       def build_view_miner_pool(monitor_miners)
-        labels_by_id = configured_labels_by_id
-        view_miners = (monitor_miners || []).map do |m|
-          build_view_miner_from_monitor(m, labels_by_id)
-        end
-        ViewMinerPool.new(miners: view_miners)
+        ViewModels.build_view_miner_pool(monitor_miners, configured_miners: configured_miners)
       end
 
       # Fail-loud accessor — an unconfigured App raises a clear error
@@ -334,169 +330,81 @@ module CgminerManager
       end
 
       def configured_labels_by_id
-        configured_miners.each_with_object({}) do |(host, port, label), acc|
-          acc["#{host}:#{port}"] = label
-        end
-      end
-
-      def build_view_miner_from_monitor(raw, labels_by_id)
-        host  = raw[:host] || raw['host']
-        port  = raw[:port] || raw['port']
-        avail = raw.fetch(:available) { raw['available'] || false }
-        ViewMiner.build(host, port, avail, labels_by_id["#{host}:#{port}"])
+        ViewModels.configured_labels_by_id(configured_miners)
       end
 
       # Variant for the per-miner page, where we only need to thread the
       # configured miner list into @miner_pool for any partial that reaches
       # for it. Monitor availability isn't fetched separately here.
       def build_view_miner_pool_from_yml
-        view_miners = configured_miners.map do |host, port, label|
-          ViewMiner.build(host, port, false, label)
-        end
-        ViewMinerPool.new(miners: view_miners)
+        ViewModels.build_view_miner_pool_from_yml(configured_miners: configured_miners)
       end
 
       def build_dashboard_view_model
-        begin
-          miners = monitor_client.miners[:miners]
-        rescue MonitorError => e
-          fallback_miners = configured_miners.map do |host, port|
-            { id: "#{host}:#{port}", host: host, port: port }
-          end
-          return { miners: fallback_miners, snapshots: {},
-                   banner: "data source unavailable (#{e.message})",
-                   stale_threshold: settings.stale_threshold_seconds }
-        end
-
-        snapshots = fetch_snapshots_for(miners)
-        { miners: miners, snapshots: snapshots, banner: nil,
-          stale_threshold: settings.stale_threshold_seconds }
-      end
-
-      def fetch_snapshots_for(miners)
-        queue = Queue.new
-        miners.each { |m| queue << m }
-        results = {}
-        mutex = Mutex.new
-
-        worker_count = [settings.pool_thread_cap, miners.size].min
-        worker_count = 1 if worker_count < 1
-        threads = worker_count.times.map { spawn_snapshot_worker(queue, results, mutex) }
-        threads.each(&:join)
-        results
-      end
-
-      def spawn_snapshot_worker(queue, results, mutex)
-        Thread.new do
-          loop do
-            miner = pop_or_break(queue) or break
-            miner_id = miner[:id] || miner['id']
-            tile = fetch_tile(miner_id)
-            mutex.synchronize { results[miner_id] = tile }
-          end
-        end
-      end
-
-      def pop_or_break(queue)
-        queue.pop(true)
-      rescue ThreadError
-        nil
-      end
-
-      def fetch_tile(miner_id)
-        {
-          summary: safe_fetch { monitor_client.summary(miner_id) },
-          devices: safe_fetch { monitor_client.devices(miner_id) },
-          pools: safe_fetch { monitor_client.pools(miner_id) },
-          stats: safe_fetch { monitor_client.stats(miner_id) }
-        }
-      end
-
-      def safe_fetch
-        yield
-      rescue MonitorError => e
-        { error: e.message }
+        ViewModels.build_dashboard(
+          monitor_client: monitor_client,
+          configured_miners: configured_miners,
+          stale_threshold_seconds: settings.stale_threshold_seconds,
+          pool_thread_cap: settings.pool_thread_cap
+        )
       end
 
       def miner_configured?(miner_id)
-        configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
+        ViewModels.miner_configured?(miner_id, configured_miners: configured_miners)
       end
 
       def neighbor_urls(miner_id)
-        ids = configured_miners.map { |host, port| "#{host}:#{port}" }
-        idx = ids.index(miner_id)
-        prev = idx&.positive? ? miner_url(ids[idx - 1]) : nil
-        nxt  = idx && idx < ids.size - 1 ? miner_url(ids[idx + 1]) : nil
-        [prev, nxt]
+        prev_id, next_id = ViewModels.neighbor_ids(miner_id, configured_miners: configured_miners)
+        [prev_id && miner_url(prev_id), next_id && miner_url(next_id)]
       end
 
       def build_miner_view_model(miner_id)
-        {
-          miner_id: miner_id,
-          snapshots: {
-            summary: safe_fetch { monitor_client.summary(miner_id) },
-            devices: safe_fetch { monitor_client.devices(miner_id) },
-            pools: safe_fetch { monitor_client.pools(miner_id) },
-            stats: safe_fetch { monitor_client.stats(miner_id) }
-          }
-        }
+        ViewModels.build_miner_view_model(miner_id: miner_id, monitor_client: monitor_client)
       end
 
       def build_pool_manager_for_all
-        miners = configured_miners.map do |host, port|
-          CgminerApiClient::Miner.new(host, port)
-        end
-        PoolManager.new(miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.pool_manager_for_all(
+          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+        )
       end
 
       def build_pool_manager_for(miner_ids)
-        miners = miner_ids.map do |id|
-          host, port = id.split(':', 2)
-          CgminerApiClient::Miner.new(host, port.to_i)
-        end
-        PoolManager.new(miners)
+        FleetBuilders.pool_manager_for(miner_ids)
       end
 
       def build_commander_for_all
-        miners = configured_miners.map do |host, port|
-          CgminerApiClient::Miner.new(host, port)
-        end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for_all(
+          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+        )
       end
 
       def build_commander_for(miner_ids)
-        miners = miner_ids.map do |id|
-          host, port = id.split(':', 2)
-          CgminerApiClient::Miner.new(host, port.to_i)
-        end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for(miner_ids, thread_cap: settings.pool_thread_cap)
       end
 
       def admin_session_id_hash
-        sid = request.env['rack.session']&.id || ''
-        Digest::SHA256.hexdigest(sid.to_s)[0..11]
+        AdminLogging.session_id_hash(request.env['rack.session']&.id)
       end
 
       def log_admin_command(event, **extra)
-        Logger.info(event: event,
-                    request_id: @request_id,
-                    user: request.env['cgminer_manager.admin_user'],
-                    remote_ip: request.ip,
-                    user_agent: request.user_agent,
-                    session_id_hash: admin_session_id_hash,
-                    **extra)
+        Logger.info(**AdminLogging.command_log_entry(
+          event: event,
+          command: extra.delete(:command),
+          scope: extra.delete(:scope),
+          request_id: @request_id,
+          session_id_hash: admin_session_id_hash,
+          remote_ip: request.ip,
+          user_agent: request.user_agent,
+          user: request.env['cgminer_manager.admin_user'],
+          **extra
+        ))
       end
 
       def log_admin_result(command, scope, result, started_at)
-        Logger.info(
-          event: 'admin.result',
-          request_id: @request_id,
-          command: command,
-          scope: scope,
-          ok_count: result.ok_count,
-          failed_count: result.failed_count,
-          elapsed_ms: ((Time.now - started_at) * 1000).round
-        )
+        Logger.info(**AdminLogging.result_log_entry(
+          command: command, scope: scope, result: result,
+          started_at: started_at, request_id: @request_id
+        ))
       end
 
       def render_admin_result(result)
