@@ -4,20 +4,25 @@ require 'rack/auth/basic'
 require 'rack/protection/authenticity_token'
 
 module CgminerManager
-  # Opt-in HTTP Basic Auth for admin routes. When the env vars
-  # CGMINER_MANAGER_ADMIN_USER and CGMINER_MANAGER_ADMIN_PASSWORD are both
-  # set (non-empty), admin POSTs require matching Basic Auth credentials.
-  # On successful auth, marks env['cgminer_manager.admin_authed'] so the
-  # downstream CSRF middleware can skip (a valid static credential is
-  # strictly stronger proof than a session cookie + CSRF token, and this
-  # lets operators curl admin routes during incidents).
+  # HTTP Basic Auth for admin routes. Required by default as of 1.3.0:
+  # `Config.from_env` raises `ConfigError` at boot unless both
+  # `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD` are
+  # set, or the operator opts into the open-admin posture with
+  # `CGMINER_MANAGER_ADMIN_AUTH=off`.
   #
-  # Admin configuration is read per-request via ENV rather than frozen at
-  # boot so tests and dev harnesses can toggle the gate without restart.
-  # Empty strings are treated as unset.
+  # Runtime dispatch (defense-in-depth for post-boot env tampering):
+  # - Creds set → Basic Auth required. On success marks
+  #   `env['cgminer_manager.admin_authed']` so CSRF bypass fires.
+  # - Creds unset AND `CGMINER_MANAGER_ADMIN_AUTH=off` → pass through.
+  # - Creds unset AND no escape hatch → 503 + `admin.auth_misconfigured`.
   #
-  # On failed auth: 401 with WWW-Authenticate, plus a structured
-  # admin.auth_failed log event.
+  # Precedence: the escape hatch only fires when creds are unset. If
+  # creds are set, the gate engages regardless of `=off` — rotating
+  # creds can't accidentally slip through a leftover `=off`.
+  #
+  # Admin configuration is read per-request via ENV rather than frozen
+  # at boot so tests and dev harnesses can toggle the gate without
+  # restart. Empty strings are treated as unset.
   class AdminAuth
     ADMIN_PATH = %r{\A/(manager|miner/[^/]+)/admin(/|\z)}
 
@@ -28,8 +33,15 @@ module CgminerManager
     def call(env)
       request = Rack::Request.new(env)
       return @app.call(env) unless ADMIN_PATH.match?(request.path_info)
-      return @app.call(env) unless configured?
+      return @app.call(env) if auth_disabled? && !configured?
+      return misconfigured(request) unless configured?
 
+      authenticate(env, request)
+    end
+
+    private
+
+    def authenticate(env, request)
       auth = Rack::Auth::Basic::Request.new(env)
       if auth.provided? && auth.basic? && valid?(auth.credentials)
         env['cgminer_manager.admin_authed'] = true
@@ -41,7 +53,9 @@ module CgminerManager
       unauthorized
     end
 
-    private
+    def auth_disabled?
+      ENV.fetch('CGMINER_MANAGER_ADMIN_AUTH', '') == 'off'
+    end
 
     def configured?
       !admin_user.empty? && !admin_password.empty?
@@ -82,6 +96,17 @@ module CgminerManager
        { 'Content-Type' => 'text/plain',
          'WWW-Authenticate' => 'Basic realm="cgminer_manager admin"' },
        ["Admin authentication required\n"]]
+    end
+
+    def misconfigured(request)
+      Logger.warn(event: 'admin.auth_misconfigured',
+                  path: request.path_info,
+                  remote_ip: request.ip,
+                  user_agent: request.user_agent)
+      body = 'admin authentication is misconfigured: set ' \
+             'CGMINER_MANAGER_ADMIN_USER + CGMINER_MANAGER_ADMIN_PASSWORD, ' \
+             "or CGMINER_MANAGER_ADMIN_AUTH=off to disable (see MIGRATION.md)\n"
+      [503, { 'Content-Type' => 'text/plain' }, [body]]
     end
   end
 

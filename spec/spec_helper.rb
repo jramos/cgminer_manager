@@ -32,4 +32,12 @@ RSpec.configure do |config|
   config.define_derived_metadata(file_path: %r{/spec/integration/}) do |meta|
     meta[:integration] = true
   end
+
+  # Default-required admin auth (1.3.0) would 503 every admin-path spec
+  # that doesn't set creds. Opt the whole suite into the escape hatch;
+  # the dedicated admin_auth_spec and admin_spec cases that exercise
+  # the gate delete or override this in their own hooks.
+  config.before(:suite) do
+    ENV['CGMINER_MANAGER_ADMIN_AUTH'] ||= 'off'
+  end
 end

@@ -16,23 +16,32 @@ RSpec.describe CgminerManager::AdminAuth do
   end
 
   around do |example|
-    original_user = ENV.fetch('CGMINER_MANAGER_ADMIN_USER', nil)
-    original_pass = ENV.fetch('CGMINER_MANAGER_ADMIN_PASSWORD', nil)
+    originals = ENV.to_h.slice(
+      'CGMINER_MANAGER_ADMIN_USER',
+      'CGMINER_MANAGER_ADMIN_PASSWORD',
+      'CGMINER_MANAGER_ADMIN_AUTH'
+    )
     example.run
   ensure
-    ENV['CGMINER_MANAGER_ADMIN_USER']     = original_user
-    ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = original_pass
+    %w[CGMINER_MANAGER_ADMIN_USER CGMINER_MANAGER_ADMIN_PASSWORD CGMINER_MANAGER_ADMIN_AUTH].each do |k|
+      originals.key?(k) ? ENV[k] = originals[k] : ENV.delete(k)
+    end
   end
 
-  context 'when admin creds are unset' do
+  context 'when admin auth is explicitly disabled (CGMINER_MANAGER_ADMIN_AUTH=off)' do
     before do
       ENV.delete('CGMINER_MANAGER_ADMIN_USER')
       ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+      ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
     end
 
-    it 'passes admin requests through without setting the authed flag' do
-      status, _h, body = middleware.call(request_env(path: '/manager/admin/version'))
+    it 'passes admin requests through without demanding credentials' do
+      status, = middleware.call(request_env(path: '/manager/admin/version'))
       expect(status).to eq(200)
+    end
+
+    it 'does not set the admin_authed env flag (still anonymous)' do
+      _s, _h, body = middleware.call(request_env(path: '/manager/admin/version'))
       expect(body.first).to eq('') # flag unset, to_s is ''
     end
 
@@ -42,13 +51,42 @@ RSpec.describe CgminerManager::AdminAuth do
     end
   end
 
-  context 'when admin creds are set to empty strings (treated as unset)' do
+  context 'when admin creds are missing and the escape hatch is NOT set' do
+    before do
+      ENV.delete('CGMINER_MANAGER_ADMIN_USER')
+      ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+      ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+    end
+
+    it 'returns 503 with an operator-facing misconfig body on admin paths' do
+      status, headers, body = middleware.call(request_env(path: '/manager/admin/version'))
+      expect(status).to eq(503)
+      expect(headers['Content-Type']).to eq('text/plain')
+      expect(body.first).to include('admin authentication is misconfigured')
+    end
+
+    it 'logs admin.auth_misconfigured with structured fields' do
+      allow(CgminerManager::Logger).to receive(:warn)
+      middleware.call(request_env(path: '/manager/admin/version'))
+      expect(CgminerManager::Logger).to have_received(:warn).with(
+        hash_including(event: 'admin.auth_misconfigured')
+      )
+    end
+
+    it 'still passes non-admin requests through' do
+      status, = middleware.call(request_env(path: '/manager/manage_pools'))
+      expect(status).to eq(200)
+    end
+  end
+
+  context 'when creds are empty strings and auth is disabled' do
     before do
       ENV['CGMINER_MANAGER_ADMIN_USER']     = ''
       ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = ''
+      ENV['CGMINER_MANAGER_ADMIN_AUTH']     = 'off'
     end
 
-    it 'does not require auth' do
+    it 'does not require auth (empty strings + explicit off)' do
       status, = middleware.call(request_env(path: '/manager/admin/version'))
       expect(status).to eq(200)
     end
