@@ -172,7 +172,7 @@ The pure view-model, fleet-factory, and admin-log-entry builders live in sibling
 ### `CgminerManager::ViewModels`
 **File:** `lib/cgminer_manager/view_models.rb`
 
-Pure module. Functions take `monitor_client:`, `configured_miners:`, `stale_threshold_seconds:`, and `pool_thread_cap:` explicitly — no Sinatra dependency, so specs can exercise them without `Rack::Test`. Members: `build_view_miner_pool`, `build_view_miner_pool_from_yml`, `build_dashboard`, `build_miner_view_model`, `configured_labels_by_id`, `neighbor_ids`, `miner_configured?`, plus the private `fetch_snapshots_for` / `spawn_snapshot_worker` / `fetch_tile` / `safe_fetch` fan-out helpers.
+Pure module. Functions take `monitor_client:`, `configured_miners:`, `stale_threshold_seconds:`, and `pool_thread_cap:` explicitly — no Sinatra dependency, so specs can exercise them without `Rack::Test`. Members: `build_view_miner_pool`, `build_view_miner_pool_from_yml`, `build_dashboard`, `build_miner_view_model`, `configured_labels_by_id`, `neighbor_ids`, `miner_configured?`, plus the private `fetch_snapshots_for` / `fetch_tile` / `safe_fetch` helpers. Thread-capped fan-out is delegated to `CgminerManager::ThreadedFanOut.map`.
 
 ### `CgminerManager::FleetBuilders`
 **File:** `lib/cgminer_manager/fleet_builders.rb`
@@ -216,7 +216,7 @@ Public surface:
 
 `raw!` splits `args` on `,` and passes the positional array to `Miner#query`. Any `CgminerApiClient::{ConnectionError, TimeoutError, ApiError}` gets captured into the entry's `error:` field rather than re-raised, so one bad miner doesn't fail the whole fan-out.
 
-Private `fan_out` helper: same pattern as `PoolManager#run_each` — `Queue` pre-loaded with miners, fixed worker count (`min(thread_cap, miners.size)`), results written into a fixed-size array under a `Mutex`, workers exit their loop when `queue.pop(true)` raises `ThreadError`.
+Private `fan_out_query` / `fan_out_write` wrappers delegate to `CgminerManager::ThreadedFanOut.map` for the thread-capped Queue + Mutex plumbing; each wrapper's block handles the `CgminerApiClient` error capture and Entry construction.
 
 ### `CgminerManager::PoolManager`
 **File:** `lib/cgminer_manager/pool_manager.rb`

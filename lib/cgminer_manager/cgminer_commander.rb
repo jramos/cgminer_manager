@@ -38,7 +38,7 @@ module CgminerManager
     private
 
     def fan_out_query(command)
-      entries = fan_out do |miner|
+      entries = ThreadedFanOut.map(@miners, thread_cap: @thread_cap) do |miner|
         response = miner.query(command)
         FleetQueryEntry.new(miner: miner.to_s, ok: true, response: response, error: nil)
       rescue CgminerApiClient::ConnectionError,
@@ -50,7 +50,7 @@ module CgminerManager
     end
 
     def fan_out_write(&block)
-      entries = fan_out do |miner|
+      entries = ThreadedFanOut.map(@miners, thread_cap: @thread_cap) do |miner|
         response = block.call(miner)
         FleetWriteEntry.new(miner: miner.to_s, status: :ok, response: response, error: nil)
       rescue CgminerApiClient::ConnectionError,
@@ -59,35 +59,6 @@ module CgminerManager
         FleetWriteEntry.new(miner: miner.to_s, status: :failed, response: nil, error: e)
       end
       FleetWriteResult.new(entries: entries)
-    end
-
-    def fan_out
-      queue = Queue.new
-      @miners.each { |m| queue << m }
-
-      results = Array.new(@miners.size)
-      index_of = @miners.each_with_index.to_h
-      mutex = Mutex.new
-
-      worker_count = [@thread_cap, @miners.size].min
-      worker_count = 1 if worker_count < 1
-
-      workers = Array.new(worker_count) do
-        Thread.new do
-          loop do
-            miner =
-              begin
-                queue.pop(true)
-              rescue ThreadError
-                break
-              end
-            entry = yield(miner)
-            mutex.synchronize { results[index_of[miner]] = entry }
-          end
-        end
-      end
-      workers.each(&:join)
-      results
     end
   end
 end

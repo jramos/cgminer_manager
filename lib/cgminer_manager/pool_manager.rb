@@ -68,34 +68,9 @@ module CgminerManager
 
     private
 
-    def run_each(&block)
-      queue = Queue.new
-      @miners.each { |m| queue << m }
-
-      results = Array.new(@miners.size)
-      index_of = @miners.each_with_index.to_h
-      mutex = Mutex.new
-
-      worker_count = [@thread_cap, @miners.size].min
-      worker_count = 1 if worker_count < 1
-
-      workers = worker_count.times.map do
-        Thread.new do
-          loop do
-            miner =
-              begin
-                queue.pop(true)
-              rescue ThreadError
-                break
-              end
-            entry = block.call(miner)
-            mutex.synchronize { results[index_of[miner]] = entry }
-          end
-        end
-      end
-      workers.each(&:join)
-
-      PoolActionResult.new(entries: results)
+    def run_each(&)
+      entries = ThreadedFanOut.map(@miners, thread_cap: @thread_cap, &)
+      PoolActionResult.new(entries: entries)
     end
 
     def run_verified(miner, &)
