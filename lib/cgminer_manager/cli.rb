@@ -37,6 +37,7 @@ module CgminerManager
 
       monitor_miners = check_monitor(config, failures)
       check_miners(config, monitor_miners, failures)
+      report_admin_auth_posture
 
       if failures.empty?
         puts 'doctor: all checks passed'
@@ -44,6 +45,14 @@ module CgminerManager
       else
         failures.each { |f| warn "  FAIL: #{f}" }
         1
+      end
+    end
+
+    def report_admin_auth_posture
+      if ENV['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
+        puts '  admin auth: DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)'
+      else
+        puts '  admin auth: required (credentials configured)'
       end
     end
 

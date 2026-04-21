@@ -100,6 +100,31 @@ RSpec.describe CgminerManager::CLI do
         end
       end
 
+      context 'when reporting admin-auth posture' do
+        before do
+          allow(client).to receive(:miners).and_return(miners: [{ id: '127.0.0.1:4028' }])
+          allow(miner).to receive(:available?).and_return(true)
+        end
+
+        it 'reports DISABLED when CGMINER_MANAGER_ADMIN_AUTH=off' do
+          original = ENV.fetch('CGMINER_MANAGER_ADMIN_AUTH', nil)
+          ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
+          _code, stdout, _stderr = capture_run(['doctor'])
+          expect(stdout).to include('admin auth: DISABLED')
+        ensure
+          original ? ENV['CGMINER_MANAGER_ADMIN_AUTH'] = original : ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+        end
+
+        it 'reports "required (credentials configured)" when the hatch is absent' do
+          original = ENV.fetch('CGMINER_MANAGER_ADMIN_AUTH', nil)
+          ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+          _code, stdout, _stderr = capture_run(['doctor'])
+          expect(stdout).to include('admin auth: required (credentials configured)')
+        ensure
+          original ? ENV['CGMINER_MANAGER_ADMIN_AUTH'] = original : ENV.delete('CGMINER_MANAGER_ADMIN_AUTH')
+        end
+      end
+
       context 'when monitor is unreachable' do
         it 'reports the failure and returns 1' do
           allow(client).to receive(:miners)
