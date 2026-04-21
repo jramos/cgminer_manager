@@ -49,10 +49,11 @@ module CgminerManager
     def fetch_snapshots_for(monitor_client, miners, pool_thread_cap)
       # `|| 1` stays at the call site so ThreadedFanOut.map can stay
       # strict (raises on nil cap).
-      tiles = ThreadedFanOut.map(miners, thread_cap: pool_thread_cap || 1) do |miner|
-        fetch_tile(monitor_client, miner[:id] || miner['id'])
+      pairs = ThreadedFanOut.map(miners, thread_cap: pool_thread_cap || 1) do |miner|
+        id = miner[:id] || miner['id']
+        [id, fetch_tile(monitor_client, id)]
       end
-      miners.zip(tiles).to_h { |miner, tile| [miner[:id] || miner['id'], tile] }
+      pairs.to_h
     end
 
     def fetch_tile(monitor_client, miner_id)
