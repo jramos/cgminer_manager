@@ -84,9 +84,9 @@ RSpec.describe CgminerManager::Server do
         .to raise_error(CgminerManager::ConfigError, /must be a YAML list/)
     end
 
-    # Regression guard for #10 — session-cookie middleware must be
-    # installed AFTER settings are populated so the operator's
-    # configured secret is the one captured by `use`.
+    # Regression guard — session-cookie middleware must be installed
+    # AFTER settings are populated so the operator's configured secret
+    # is the one captured by `use`.
     it 'installs middleware with the operator-configured session secret' do
       server.send(:configure_http_app)
 

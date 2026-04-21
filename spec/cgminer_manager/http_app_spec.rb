@@ -80,10 +80,10 @@ RSpec.describe CgminerManager::HttpApp do
   end
 
   describe '.install_middleware!' do
-    # Regression guard for #10. The session-cookie middleware captures
-    # its `secret:` at `use`-call time. If `use Rack::Session::Cookie`
-    # is declared in a class-body `configure do … end` block, that
-    # capture happens before Server#configure_http_app has populated
+    # Regression guard: the session-cookie middleware captures its
+    # `secret:` at `use`-call time. If `use Rack::Session::Cookie` is
+    # declared in a class-body `configure do … end` block, that capture
+    # happens before Server#configure_http_app has populated
     # `settings.session_secret`, and the operator's configured secret
     # is silently discarded in favor of a fresh SecureRandom. This
     # spec pins the fix: the secret actually reaches the middleware
