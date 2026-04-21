@@ -56,6 +56,7 @@ module CgminerManager
 
       raise ConfigError, "#{path} must be a YAML list of {host, port} entries"
     end
+    private_class_method :validate_miners_shape!
 
     # Spec harness. Preserves the existing public signature so no spec
     # file needs to change. Eagerly parses miners_file into the setting
@@ -125,6 +126,9 @@ module CgminerManager
           key: 'cgminer_manager.session',
           # NOTE: `session_secret` resolves at class-body eval time, which
           # is before Server#configure_http_app has populated the setting.
+          # Net effect: operator-configured CGMINER_MANAGER_SESSION_SECRET
+          # is silently ignored and the middleware uses the SecureRandom
+          # fallback each boot (sessions invalidate across restarts).
           # See https://github.com/jramos/cgminer_manager/issues/10 —
           # tracked for a follow-up PR that moves this `use` call into
           # Server#configure_http_app so the operator's configured secret
@@ -308,9 +312,12 @@ module CgminerManager
 
       # Fail-loud accessor — an unconfigured App raises a clear error
       # rather than silently returning an empty miners list or NoMethodError
-      # when routes try to iterate it.
+      # when routes try to iterate it. Raises ConfigError so it routes
+      # through the CLI's exit-2 path (cli.rb) like every other
+      # config-time invariant in this codebase.
       def configured_miners
         settings.configured_miners || raise(
+          CgminerManager::ConfigError,
           'HttpApp not configured; call Server#configure_http_app or configure_for_test!'
         )
       end
@@ -347,12 +354,12 @@ module CgminerManager
           end
           return { miners: fallback_miners, snapshots: {},
                    banner: "data source unavailable (#{e.message})",
-                   stale_threshold: settings.stale_threshold_seconds || 300 }
+                   stale_threshold: settings.stale_threshold_seconds }
         end
 
         snapshots = fetch_snapshots_for(miners)
         { miners: miners, snapshots: snapshots, banner: nil,
-          stale_threshold: settings.stale_threshold_seconds || 300 }
+          stale_threshold: settings.stale_threshold_seconds }
       end
 
       def fetch_snapshots_for(miners)
@@ -361,7 +368,7 @@ module CgminerManager
         results = {}
         mutex = Mutex.new
 
-        worker_count = [settings.pool_thread_cap || 8, miners.size].min
+        worker_count = [settings.pool_thread_cap, miners.size].min
         worker_count = 1 if worker_count < 1
         threads = worker_count.times.map { spawn_snapshot_worker(queue, results, mutex) }
         threads.each(&:join)
@@ -428,7 +435,7 @@ module CgminerManager
         miners = configured_miners.map do |host, port|
           CgminerApiClient::Miner.new(host, port)
         end
-        PoolManager.new(miners, thread_cap: settings.pool_thread_cap || 8)
+        PoolManager.new(miners, thread_cap: settings.pool_thread_cap)
       end
 
       def build_pool_manager_for(miner_ids)
@@ -443,7 +450,7 @@ module CgminerManager
         miners = configured_miners.map do |host, port|
           CgminerApiClient::Miner.new(host, port)
         end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap || 8)
+        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
       end
 
       def build_commander_for(miner_ids)
@@ -451,7 +458,7 @@ module CgminerManager
           host, port = id.split(':', 2)
           CgminerApiClient::Miner.new(host, port.to_i)
         end
-        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap || 8)
+        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
       end
 
       def admin_session_id_hash
@@ -727,7 +734,7 @@ module CgminerManager
 
     def monitor_client
       @monitor_client ||= MonitorClient.new(base_url: settings.monitor_url,
-                                            timeout_ms: settings.monitor_timeout_ms || 2000)
+                                            timeout_ms: settings.monitor_timeout_ms)
     end
   end
 end
