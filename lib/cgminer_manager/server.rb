@@ -42,19 +42,17 @@ module CgminerManager
     private
 
     def configure_http_app
-      HttpApp.monitor_url             = @config.monitor_url
-      HttpApp.miners_file             = @config.miners_file
-      HttpApp.stale_threshold_seconds = @config.stale_threshold_seconds
-      HttpApp.pool_thread_cap         = @config.pool_thread_cap
-      HttpApp.monitor_timeout_ms      = @config.monitor_timeout
-      HttpApp.session_secret          = @config.session_secret
-      HttpApp.production              = @config.production?
-      HttpApp.reset_configured_miners! if HttpApp.respond_to?(:reset_configured_miners!)
-
-      # Force-evaluate the memoized miners list so a malformed miners.yml
-      # surfaces as a ConfigError at boot (CLI exit 2), not as an HTTP 500
-      # on the first request after Puma binds the listener.
-      HttpApp.configured_miners
+      HttpApp.set :monitor_url,             @config.monitor_url
+      HttpApp.set :miners_file,             @config.miners_file
+      HttpApp.set :stale_threshold_seconds, @config.stale_threshold_seconds
+      HttpApp.set :pool_thread_cap,         @config.pool_thread_cap
+      HttpApp.set :monitor_timeout_ms,      @config.monitor_timeout
+      HttpApp.set :session_secret,          @config.session_secret
+      HttpApp.set :production,              @config.production?
+      # Eagerly parse miners.yml so a malformed file surfaces as a
+      # ConfigError at boot (CLI exit 2), not as an HTTP 500 on the first
+      # request after Puma binds the listener.
+      HttpApp.set :configured_miners,       HttpApp.parse_miners_file(@config.miners_file)
     end
 
     def start_puma_thread(launcher)

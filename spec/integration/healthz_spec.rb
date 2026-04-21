@@ -42,15 +42,18 @@ RSpec.describe 'GET /healthz', type: :integration do
   end
 
   context 'when miners.yml is unparseable' do
-    it 'returns 503' do
+    # Eager-loading moved the failure site: unparseable miners.yml now
+    # raises ConfigError during `configure_for_test!` (and during
+    # `Server#configure_http_app`), preventing the app from booting at
+    # all instead of letting requests hit it and return 503.
+    it 'raises ConfigError during configure_for_test! rather than serving a 503' do
       path = File.join(Dir.mktmpdir, 'miners.yml')
-      File.write(path, 'not: valid: yaml: colons')
-      CgminerManager::HttpApp.configure_for_test!(
-        monitor_url: 'http://localhost:9292', miners_file: path
-      )
-      stub_monitor_healthz
-      get '/healthz'
-      expect(last_response.status).to eq(503)
+      File.write(path, '- just_a_string')
+      expect do
+        CgminerManager::HttpApp.configure_for_test!(
+          monitor_url: 'http://localhost:9292', miners_file: path
+        )
+      end.to raise_error(CgminerManager::ConfigError, /must be a YAML list of/)
     end
   end
 end
