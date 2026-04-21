@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Changed
+- **Thread-cap fan-out extracted to `CgminerManager::ThreadedFanOut.map`.**
+  The Queue + fixed-worker + Mutex pattern previously duplicated across
+  `CgminerCommander#fan_out`, `PoolManager#run_each`, and
+  `ViewModels.fetch_snapshots_for` is now a single pure helper. Callers
+  supply a block that returns the per-item result (and handles any
+  site-specific error capture); `ThreadedFanOut.map` returns an ordered
+  array matching input order. Public API of `CgminerCommander`,
+  `PoolManager`, and `ViewModels` is unchanged; the private
+  `CgminerCommander#fan_out` and `PoolManager#run_each` helpers (plus
+  the `ViewModels` worker helpers `spawn_snapshot_worker` /
+  `pop_or_break`) are removed — external monkey-patches of these will
+  break.
+
 ## [1.3.0] — 2026-04-21
 
 ### Changed (BREAKING)
