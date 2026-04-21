@@ -81,7 +81,7 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 
 ## 3. `miners.yml`
 
-YAML array of miner descriptors. Loaded by `HttpApp.configured_miners` (memoized at first access) and by `Config#load_miners` (used by `doctor`).
+YAML array of miner descriptors. Loaded into `settings.configured_miners` by `Server#configure_http_app` via `HttpApp.parse_miners_file`, and by `Config#load_miners` (used by `doctor`).
 
 ```yaml
 - host: 192.168.1.10
@@ -183,7 +183,7 @@ Endpoints consumed (via `MonitorClient`):
 - `GET /v2/graph_data/:metric` — time-series for graphs.
 - `GET /v2/healthz` — used by our own `/healthz`.
 
-Manager speaks to monitor over plain HTTP with a timeout controlled by `MONITOR_TIMEOUT_MS` (default 2000ms), flowing through `Config#monitor_timeout` → `HttpApp.monitor_timeout_ms` → `MonitorClient.new(timeout_ms:)`. Manager does **not** speak monitor's Prometheus `/metrics` or use its OpenAPI spec; we have our own OpenAPI gap (see `review_notes.md`).
+Manager speaks to monitor over plain HTTP with a timeout controlled by `MONITOR_TIMEOUT_MS` (default 2000ms), flowing through `Config#monitor_timeout` → `settings.monitor_timeout_ms` → `MonitorClient.new(timeout_ms:)`. Manager does **not** speak monitor's Prometheus `/metrics` or use its OpenAPI spec; we have our own OpenAPI gap (see `review_notes.md`).
 
 Manager requires `cgminer_monitor` 1.0+ (the release that introduced `/v2/*`). The 0.x Rails-engine monitor has no `/v2/*` and will fail manager's startup `doctor` check.
 

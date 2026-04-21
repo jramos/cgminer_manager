@@ -188,7 +188,7 @@ All methods return the parsed JSON body with `symbolize_names: true` on success.
 
 Every call logs `monitor.call` with url, status, and `duration_ms`. Failures log `monitor.call.failed` with error class + message.
 
-The `timeout_ms:` argument flows from `MONITOR_TIMEOUT_MS` env → `Config#monitor_timeout` → `HttpApp.monitor_timeout_ms` (set in `Server#configure_http_app`) → `MonitorClient.new` in `HttpApp#monitor_client`.
+The `timeout_ms:` argument flows from `MONITOR_TIMEOUT_MS` env → `Config#monitor_timeout` → `settings.monitor_timeout_ms` (written in `Server#configure_http_app`) → `MonitorClient.new` in `HttpApp#monitor_client`.
 
 ### `CgminerManager::CgminerCommander`
 **File:** `lib/cgminer_manager/cgminer_commander.rb`

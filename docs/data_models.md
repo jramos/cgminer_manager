@@ -268,7 +268,7 @@ Built by `HttpApp`'s dashboard and per-miner routes via `SnapshotAdapter.build_m
 ]
 ```
 
-Index in the outer array = index in `HttpApp.configured_miners` = stable order from `miners.yml`.
+Index in the outer array = index in `settings.configured_miners` = stable order from `miners.yml`.
 
 ### `@miner_pool` (ViewMinerPool)
 
