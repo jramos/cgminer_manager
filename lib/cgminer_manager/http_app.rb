@@ -337,96 +337,29 @@ module CgminerManager
       # configured miner list into @miner_pool for any partial that reaches
       # for it. Monitor availability isn't fetched separately here.
       def build_view_miner_pool_from_yml
-        view_miners = configured_miners.map do |host, port, label|
-          ViewMiner.build(host, port, false, label)
-        end
-        ViewMinerPool.new(miners: view_miners)
+        ViewModels.build_view_miner_pool_from_yml(configured_miners: configured_miners)
       end
 
       def build_dashboard_view_model
-        begin
-          miners = monitor_client.miners[:miners]
-        rescue MonitorError => e
-          fallback_miners = configured_miners.map do |host, port|
-            { id: "#{host}:#{port}", host: host, port: port }
-          end
-          return { miners: fallback_miners, snapshots: {},
-                   banner: "data source unavailable (#{e.message})",
-                   stale_threshold: settings.stale_threshold_seconds }
-        end
-
-        snapshots = fetch_snapshots_for(miners)
-        { miners: miners, snapshots: snapshots, banner: nil,
-          stale_threshold: settings.stale_threshold_seconds }
-      end
-
-      def fetch_snapshots_for(miners)
-        queue = Queue.new
-        miners.each { |m| queue << m }
-        results = {}
-        mutex = Mutex.new
-
-        worker_count = [settings.pool_thread_cap, miners.size].min
-        worker_count = 1 if worker_count < 1
-        threads = worker_count.times.map { spawn_snapshot_worker(queue, results, mutex) }
-        threads.each(&:join)
-        results
-      end
-
-      def spawn_snapshot_worker(queue, results, mutex)
-        Thread.new do
-          loop do
-            miner = pop_or_break(queue) or break
-            miner_id = miner[:id] || miner['id']
-            tile = fetch_tile(miner_id)
-            mutex.synchronize { results[miner_id] = tile }
-          end
-        end
-      end
-
-      def pop_or_break(queue)
-        queue.pop(true)
-      rescue ThreadError
-        nil
-      end
-
-      def fetch_tile(miner_id)
-        {
-          summary: safe_fetch { monitor_client.summary(miner_id) },
-          devices: safe_fetch { monitor_client.devices(miner_id) },
-          pools: safe_fetch { monitor_client.pools(miner_id) },
-          stats: safe_fetch { monitor_client.stats(miner_id) }
-        }
-      end
-
-      def safe_fetch
-        yield
-      rescue MonitorError => e
-        { error: e.message }
+        ViewModels.build_dashboard(
+          monitor_client: monitor_client,
+          configured_miners: configured_miners,
+          stale_threshold_seconds: settings.stale_threshold_seconds,
+          pool_thread_cap: settings.pool_thread_cap
+        )
       end
 
       def miner_configured?(miner_id)
-        configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
+        ViewModels.miner_configured?(miner_id, configured_miners: configured_miners)
       end
 
       def neighbor_urls(miner_id)
-        ids = configured_miners.map { |host, port| "#{host}:#{port}" }
-        idx = ids.index(miner_id)
-        prev = idx&.positive? ? miner_url(ids[idx - 1]) : nil
-        nxt  = idx && idx < ids.size - 1 ? miner_url(ids[idx + 1]) : nil
-        [prev, nxt]
+        prev_id, next_id = ViewModels.neighbor_ids(miner_id, configured_miners: configured_miners)
+        [prev_id && miner_url(prev_id), next_id && miner_url(next_id)]
       end
 
       def build_miner_view_model(miner_id)
-        {
-          miner_id: miner_id,
-          snapshots: {
-            summary: safe_fetch { monitor_client.summary(miner_id) },
-            devices: safe_fetch { monitor_client.devices(miner_id) },
-            pools: safe_fetch { monitor_client.pools(miner_id) },
-            stats: safe_fetch { monitor_client.stats(miner_id) }
-          }
-        }
+        ViewModels.build_miner_view_model(miner_id: miner_id, monitor_client: monitor_client)
       end
 
       def build_pool_manager_for_all
