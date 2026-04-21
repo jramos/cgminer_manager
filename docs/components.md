@@ -241,9 +241,13 @@ Two Rack middlewares.
 
 **`AdminAuth`:**
 - Path regex `%r{\A/(manager|miner/[^/]+)/admin(/|\z)}` — only runs for admin routes.
-- Reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` from ENV **per-request**. Empty strings = unset. (Deliberate: lets dev harnesses toggle without restart.)
-- If not configured (either var empty), passes through (CSRF-only).
-- If configured: requires valid Basic Auth. On success, sets `env['cgminer_manager.admin_authed'] = true` and `env['cgminer_manager.admin_user']`. On failure, responds 401 with `WWW-Authenticate` header and logs `admin.auth_failed` with `reason` ∈ `{missing_creds, bad_creds, user_mismatch}`.
+- Reads `CGMINER_MANAGER_ADMIN_USER` / `CGMINER_MANAGER_ADMIN_PASSWORD` / `CGMINER_MANAGER_ADMIN_AUTH` from ENV **per-request**. Empty strings = unset. (Deliberate: lets dev harnesses toggle without restart.)
+- **Required by default as of 1.3.0.** Boot-time check in `Config.from_env` raises `ConfigError` unless creds are configured or `CGMINER_MANAGER_ADMIN_AUTH=off`.
+- Runtime dispatch (defense-in-depth for post-boot env tampering):
+  - Creds set → Basic Auth required. On success, sets `env['cgminer_manager.admin_authed'] = true` and `env['cgminer_manager.admin_user']`. On failure, responds 401 with `WWW-Authenticate` header and logs `admin.auth_failed` with `reason` ∈ `{missing_creds, bad_creds, user_mismatch}`.
+  - Creds unset AND `CGMINER_MANAGER_ADMIN_AUTH=off` → pass through (CSRF-only).
+  - Creds unset AND no escape hatch → 503 + `admin.auth_misconfigured`.
+- **Precedence:** the escape hatch only fires when creds are unset — creds-set always engages the gate, so rotating creds can't slip through a leftover `=off`.
 - Password comparison uses `Rack::Utils.secure_compare` (constant-time).
 
 **`ConditionalAuthenticityToken`:**

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.0] — 2026-04-21
+
+### Changed (BREAKING)
+- **Admin Basic Auth is now required by default.** Set
+  `CGMINER_MANAGER_ADMIN_USER` and `CGMINER_MANAGER_ADMIN_PASSWORD`
+  before boot, or set `CGMINER_MANAGER_ADMIN_AUTH=off` to deliberately
+  disable. The server fails to boot with a clear `ConfigError` when
+  neither is configured. The opt-in Basic Auth gate added in 1.2.0 is
+  now the default-required gate. See `MIGRATION.md`.
+
+### Added
+- `CGMINER_MANAGER_ADMIN_AUTH=off` escape hatch for deployments that
+  genuinely want anonymous admin (dev loopback, isolated lab).
+- `admin.auth_misconfigured` structured log event +
+  `503 Service Unavailable` response on admin paths when boot-time
+  validation is bypassed at runtime (env tampering post-boot).
+- `bin/cgminer_manager doctor` reports the active admin-auth posture
+  (`required (credentials configured)` or
+  `DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)`).
+
 ## [Unreleased]
 
 ### Added

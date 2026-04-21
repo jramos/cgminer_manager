@@ -67,8 +67,9 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 | `PORT` | Puma bind port. Default `3000`. |
 | `BIND` | Puma bind address. Default `127.0.0.1`. |
 | `SESSION_SECRET` | Signs session cookies. **Required in production**; dev generates an ephemeral one with a stderr warning. |
-| `CGMINER_MANAGER_ADMIN_USER` | Basic Auth username for admin routes. Read per-request by `AdminAuth`. Empty = unset. |
-| `CGMINER_MANAGER_ADMIN_PASSWORD` | Basic Auth password. Paired with `_USER`. Both must be set (non-empty) to enable the gate. |
+| `CGMINER_MANAGER_ADMIN_USER` | Basic Auth username for admin routes. Read per-request by `AdminAuth`. **Required by default** — boot fails unless this + `_PASSWORD` are both set, or `CGMINER_MANAGER_ADMIN_AUTH=off`. |
+| `CGMINER_MANAGER_ADMIN_PASSWORD` | Basic Auth password. Paired with `_USER`. **Required by default** (see above). |
+| `CGMINER_MANAGER_ADMIN_AUTH` | Set to `off` to deliberately disable admin auth (escape hatch). Default unset. |
 | `LOG_FORMAT` | `json` (default in prod) or `text` (default in dev). |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error`. Default `info`. |
 | `STALE_THRESHOLD_SECONDS` | UI staleness badge threshold. Default `300`. |
@@ -77,7 +78,7 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 | `POOL_THREAD_CAP` | Thread cap for `CgminerCommander` + `PoolManager` + dashboard snapshot fan-out. Default `8`. |
 | `RACK_ENV` | Passed to Puma and used to gate dev vs. production defaults. Default `development`. |
 
-`Config#validate!` fails hard (raises `ConfigError`, CLI maps to exit 2) on: missing `CGMINER_MONITOR_URL`, missing `miners_file`, unknown `log_format`, unknown `log_level`. Integer parsing errors name the offending env var.
+`Config#validate!` fails hard (raises `ConfigError`, CLI maps to exit 2) on: missing `CGMINER_MONITOR_URL`, missing `miners_file`, unknown `log_format`, unknown `log_level`. Integer parsing errors name the offending env var. `Config.from_env` additionally raises `ConfigError` when admin auth is unconfigured (neither creds set nor `CGMINER_MANAGER_ADMIN_AUTH=off`).
 
 ## 3. `miners.yml`
 
@@ -115,8 +116,8 @@ Base URL: `http://<BIND>:<PORT>/` (default `http://127.0.0.1:3000/`).
 | GET | `/miner/:miner_id/graph_data/:metric` | Per-miner graph data. Same metric set. | `application/json` |
 | POST | `/manager/manage_pools` | Fleet-wide pool op. Params: `action_name` ∈ `{enable, disable, remove, add}`, `pool_index` (for enable/disable/remove), `url`/`user`/`pass` (for add). CSRF-protected. Returns a rendered partial. | `text/html` |
 | POST | `/miner/:miner_id/manage_pools` | Per-miner pool op. Same params. CSRF-protected. | `text/html` |
-| POST | `/manager/admin/:command` | Typed fleet admin. `:command` ∈ `{version, stats, devs, zero, save, restart, quit}`. CSRF-protected; Basic Auth when configured. | `text/html` |
-| POST | `/manager/admin/run` | Raw fleet admin. Params: `command` (matches `ADMIN_RAW_COMMAND_PATTERN`), `args` (comma-separated positional), `scope` (`all` or a configured `host:port`). 422 on pattern mismatch or scope rejection. CSRF-protected; Basic Auth when configured. | `text/html` |
+| POST | `/manager/admin/:command` | Typed fleet admin. `:command` ∈ `{version, stats, devs, zero, save, restart, quit}`. CSRF-protected; Basic Auth required by default (or `=off`). | `text/html` |
+| POST | `/manager/admin/run` | Raw fleet admin. Params: `command` (matches `ADMIN_RAW_COMMAND_PATTERN`), `args` (comma-separated positional), `scope` (`all` or a configured `host:port`). 422 on pattern mismatch or scope rejection. CSRF-protected; Basic Auth required by default (or `=off`). | `text/html` |
 | POST | `/miner/:miner_id/admin/:command` | Typed per-miner admin. Same `:command` set. | `text/html` |
 | POST | `/miner/:miner_id/admin/run` | Raw per-miner admin. `scope=all` restriction does not apply (scope is already the one miner). | `text/html` |
 | GET | `/api/v1/ping.json` | Legacy probe. Returns `{timestamp, available_miners, unavailable_miners}` from cgminer-direct probes (independent of monitor). | `application/json` |
@@ -128,10 +129,12 @@ Sinatra route order matches the file order in `http_app.rb`. Named captures (`:m
 
 All `POST /manager/*` and `POST /miner/*` routes are CSRF-protected via `ConditionalAuthenticityToken`.
 
-Admin routes (`/manager/admin/*`, `/miner/:id/admin/*`) additionally pass through `AdminAuth`:
+Admin routes (`/manager/admin/*`, `/miner/:id/admin/*`) additionally pass through `AdminAuth`. Admin Basic Auth is **required by default as of 1.3.0** (`Config.from_env` fails boot unless configured):
 
 - If `CGMINER_MANAGER_ADMIN_USER` *and* `CGMINER_MANAGER_ADMIN_PASSWORD` are both set (non-empty): require valid Basic Auth. Valid Basic Auth sets `env['cgminer_manager.admin_authed'] = true`, which `ConditionalAuthenticityToken` checks to bypass the token check.
-- Otherwise (either var empty/unset): `AdminAuth` passes through. CSRF still applies (browser path).
+- If creds unset *and* `CGMINER_MANAGER_ADMIN_AUTH=off`: `AdminAuth` passes through. CSRF still applies (browser path).
+- If creds unset *and* no escape hatch (post-boot env tampering): 503 `Service Unavailable` with `Content-Type: text/plain` + `admin.auth_misconfigured` log event.
+- Precedence: the `=off` escape hatch only fires when creds are unset — creds-set always engages the gate.
 
 Browser clients get the token via `csrf_meta_tag` in the layout and submit it via the `authenticity_token` hidden field. XHR clients can read the token from the meta tag and send it via the `X-CSRF-Token` header. Scripts/curl with valid Basic Auth skip CSRF.
 
@@ -221,3 +224,4 @@ Notable events (non-exhaustive):
 | `admin.result` | HttpApp admin routes | `request_id`, `command`, `scope`, `ok_count`, `failed_count`, `elapsed_ms` |
 | `admin.scope_rejected` | HttpApp `/admin/run` | `request_id`, `command`, `scope` |
 | `admin.auth_failed` | AdminAuth | `reason`, `path`, `remote_ip`, `user_agent` |
+| `admin.auth_misconfigured` | AdminAuth | `path`, `remote_ip`, `user_agent` — admin path hit with neither creds nor `=off` (defense-in-depth for post-boot env tampering; boot-time `Config.from_env` should have caught it first). Emits a `503` response. |

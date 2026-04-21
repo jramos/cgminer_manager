@@ -7,7 +7,7 @@
 3. **Thread-capped parallel fan-out.** A dashboard render with 10 miners fires 4 monitor requests per miner = 40 requests; a pool operation across 10 miners fires 10 TCP RPCs plus a save per miner = 20. Both paths bound concurrency via a `Queue + Mutex` worker pool to avoid thundering herds against upstream services (default 8 threads, tunable via `POOL_THREAD_CAP`).
 4. **Structural error recovery for reads, explicit confirmation for writes.** A monitor tile that 5xx's renders "data source unavailable" banner without failing the whole dashboard. A pool operation returns a per-miner result envelope (`:ok`/`:failed`/`:indeterminate`) so the operator can see exactly what happened to each miner.
 5. **`Config` is immutable at boot.** `Data.define`, validated once. Changing anything requires a restart. (One exception: the `AdminAuth` middleware reads its env vars per-request — see below.)
-6. **Admin surface is defensive in depth.** CSRF + optional Basic Auth + scope restrictions + audit logging. Anyone who reaches `/manager/admin/run` can run any cgminer verb — the allowlist is *ergonomic* UI copy, not a security boundary.
+6. **Admin surface is defensive in depth.** CSRF + default-required Basic Auth (with `CGMINER_MANAGER_ADMIN_AUTH=off` escape hatch) + scope restrictions + audit logging. Anyone who reaches `/manager/admin/run` can run any cgminer verb — the allowlist is *ergonomic* UI copy, not a security boundary.
 
 ## The single-thread HTTP execution model
 
@@ -131,8 +131,11 @@ sequenceDiagram
     else Basic Auth configured but invalid
         AA->>AA: Logger.warn 'admin.auth_failed'
         AA-->>Browser: 401 + WWW-Authenticate
-    else Basic Auth not configured
+    else Creds unset AND CGMINER_MANAGER_ADMIN_AUTH=off
         AA-->>CSRF: pass through (admin_authed = false)
+    else Creds unset AND no escape hatch (misconfigured)
+        AA->>AA: Logger.warn 'admin.auth_misconfigured'
+        AA-->>Browser: 503 + text body
     end
 
     CSRF->>CSRF: admin_authed? → skip token check : validate token
@@ -158,7 +161,7 @@ sequenceDiagram
 
 **Key observations on the write path:**
 
-- Every admin POST gets a `request_id = SecureRandom.uuid` in the `before` filter. That ID threads through the entry event (`admin.command` or `admin.raw_command`), any rejection events (`admin.scope_rejected`, `admin.auth_failed`), and the exit event (`admin.result`). Grep the structured log by `request_id` to see the full story for one operation.
+- Every admin POST gets a `request_id = SecureRandom.uuid` in the `before` filter. That ID threads through the entry event (`admin.command` or `admin.raw_command`), any rejection events (`admin.scope_rejected`, `admin.auth_failed`, `admin.auth_misconfigured`), and the exit event (`admin.result`). Grep the structured log by `request_id` to see the full story for one operation.
 - `ADMIN_RAW_COMMAND_PATTERN = /\A[a-z][a-z0-9_+]*\z/` is the regex applied to the `command` param before anything else. No whitespace, no null bytes, no path traversal — but still permits every real cgminer verb.
 - `SCOPE_RESTRICTED_VERBS` (`pgaset`/`ascset`/`pgarestart`/`ascrestart`/`pga{enable,disable}`/`asc{enable,disable}`) refuse `scope=all` with 422 + `admin.scope_rejected` log. The UI also disables the "all" option in the scope dropdown when the command input matches one of these, but the server-side check is the defensive layer.
 - `args` is split on `,` before hitting `cgminer_api_client`'s own escape logic. That means commas inside argument values are not escapable through the form. Noted in the README.
