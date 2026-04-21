@@ -117,7 +117,7 @@ bin/cgminer_manager run
 
 1. **Two upstreams with different transports.** HTTP to `cgminer_monitor` for reads, TCP direct to cgminer for writes. The manager never reads cgminer directly for dashboard tiles (that's monitor's job) and never writes to Mongo.
 2. **Single-process, foreground, no background workers.** Supervisor-driven.
-3. **`HttpApp` has class-level state** set by `Server#configure_http_app` at boot: `.monitor_url`, `.miners_file`, `.stale_threshold_seconds`, `.pool_thread_cap`, plus a memoized `.configured_miners` cache. Tests must reset the cache between examples.
+3. **`HttpApp` state lives in Sinatra settings** set by `Server#configure_http_app` at boot: `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`, and `settings.configured_miners` (eagerly parsed at boot via `HttpApp.parse_miners_file`). Tests populate them in one call via `HttpApp.configure_for_test!(...)`.
 4. **`Config` is immutable** (`Data.define`). Validated at boot. **Exception:** `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER`/`_PASSWORD` per-request — deliberate, so dev harnesses can toggle auth without restart.
 5. **`CgminerApiClient::Miner.to_s` is monkey-patched** at the top of `http_app.rb` to return `"host:port"`. Upstream doesn't define it; `respond_to_missing?` excludes `to_*`, so it's a safe host-side addition. Makes `FleetWriteEntry.miner` and `MinerEntry.miner` display stable identifiers.
 6. **Admin surface has 4 defensive layers.** In order: (a) CSRF via `ConditionalAuthenticityToken`, (b) optional Basic Auth via `AdminAuth` — valid Basic Auth bypasses CSRF, (c) scope restrictions on hardware-tuning verbs (refuse `scope=all`), (d) per-request audit logging threaded by `request_id`. The typed-allowlist on `/manager/admin/:command` is **ergonomic** (UI buttons), not defensive — anyone who can reach `/admin/run` can run any cgminer verb.
@@ -162,7 +162,7 @@ bin/cgminer_manager run
 - **Integration specs at `spec/integration/`**, tagged `:integration`. They use `Rack::Test::Methods` against `HttpApp` — no Puma spin-up.
 - **Monitor calls are stubbed with WebMock**. See `spec/support/monitor_stubs.rb` for helpers that stub `/v2/*` with fixture JSON.
 - **cgminer calls use `FakeCgminer`** (the shared in-process TCP server from `spec/support/fake_cgminer.rb`).
-- **Between examples that touch `HttpApp.configured_miners`, call `HttpApp.reset_configured_miners!`** — or use `HttpApp.configure_for_test!(...)` which does that for you.
+- **Specs that render routes call `HttpApp.configure_for_test!(monitor_url:, miners_file:, ...)`** in a `before` block. It populates every Sinatra setting (including eagerly parsing `miners_file` into `settings.configured_miners`) so the suite is order-independent without a separate reset step.
 - **Warnings are deliberately on** in `.rspec`. Keep the suite warning-clean.
 - `config.order = :random` — specs must be order-independent.
 - `mocks.verify_partial_doubles = true` — doubles must match real signatures.
@@ -266,7 +266,7 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 5. **`SnapshotAdapter.sanitize_key` preserves `%`.** It does `downcase.tr(' ', '_').to_sym` only. `"Device Hardware%"` → `:'device_hardware%'`. That matches `cgminer_api_client::Miner#sanitized` (what the legacy partials expect), **not** monitor's Poller normalization (which maps `%` → `_pct` for time-series sample metadata). Don't "fix" the adapter to match the Poller; the partials will break.
 
-6. **`HttpApp.configured_miners` is memoized on the class, eager-evaluated at boot.** `Server#configure_http_app` forces the evaluation after setting class attrs, so miners.yml shape errors (bad YAML, non-Array, entries missing `host`) surface as `ConfigError` → CLI exit 2 rather than as HTTP 500 on first request. Tests and dev harnesses that mutate `miners_file` must still call `HttpApp.reset_configured_miners!` between examples to clear the memo.
+6. **`settings.configured_miners` is eager-parsed at boot via `HttpApp.parse_miners_file`.** `Server#configure_http_app` runs it after setting the other Sinatra settings, so miners.yml shape errors (bad YAML, non-Array, entries missing `host`) surface as `ConfigError` → CLI exit 2 rather than as HTTP 500 on first request. Tests that mutate `miners_file` call `HttpApp.configure_for_test!(...)` to re-parse and re-populate the setting in one step.
 
 7. **Raw admin RPC splits `args` on comma before escaping.** `CgminerCommander#raw!` does `args.to_s.split(',')` and passes the positional array to `Miner#query`. Commas inside argument values are not escapable through this form. Not a practical limitation for any real cgminer verb. Matches the README "raw RPC arg escaping caveat".
 
@@ -274,7 +274,7 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 9. **`config/puma.rb` exists but is not used by `cgminer_manager run`.** `Server#build_puma_launcher` constructs its own `Puma::Configuration` inline. The file is there for direct `puma` / `rackup` invocations (dev harness, `config.ru`-based runs). Don't edit `config/puma.rb` expecting it to affect `run`.
 
-10. **Session cookie is `Secure` only in production.** `Rack::Session::Cookie` gets `secure: HttpApp.production == true`, set from `Config#production?` in `Server#configure_http_app`. Dev/test on `http://127.0.0.1` keeps working because `secure: false`; production deployments behind a TLS-terminating proxy get the Secure flag as belt-and-suspenders with the reverse-proxy posture. Integration specs default `production: false` via `HttpApp.configure_for_test!`.
+10. **Session cookie is `Secure` only in production.** `Rack::Session::Cookie` gets `secure: production?`, a Sinatra setting fed from `Config#production?` in `Server#configure_http_app`. Dev/test on `http://127.0.0.1` keeps working because `secure: false`; production deployments behind a TLS-terminating proxy get the Secure flag as belt-and-suspenders with the reverse-proxy posture. Integration specs default `production: false` via `HttpApp.configure_for_test!`. **Known bug:** the cookie's `secret:` is captured at class-body eval time, before `Server#configure_http_app` runs, so the operator-configured `CGMINER_MANAGER_SESSION_SECRET` currently doesn't reach the middleware — see issue #10.
 
 11. **Out-of-band git changes are normal.** Don't treat surprising git state (uncommitted changes you didn't make, an unfamiliar branch) as a tool malfunction — the maintainer works outside the assistant session.
 

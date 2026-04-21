@@ -28,48 +28,53 @@ module CgminerManager
     # /views load from their actual locations.
     set :root, File.expand_path('../..', __dir__)
 
-    class << self
-      attr_accessor :monitor_url, :miners_file, :stale_threshold_seconds,
-                    :pool_thread_cap, :monitor_timeout_ms, :session_secret,
-                    :production
+    # App state written by Server#configure_http_app before Puma accepts
+    # its first request. Defaults intentionally `nil` / false for things
+    # whose absence would silently lie to a caller; the `configured_miners`
+    # instance helper raises if read before the setting is populated.
+    set :monitor_url,             nil
+    set :miners_file,             nil
+    set :configured_miners,       nil
+    set :stale_threshold_seconds, 300
+    set :pool_thread_cap,         8
+    set :monitor_timeout_ms,      2000
+    set :session_secret,          nil
+    set :production,              false
 
-      def configure_for_test!(monitor_url:, miners_file:, # rubocop:disable Metrics/ParameterLists
-                              stale_threshold_seconds: 300,
-                              pool_thread_cap: 8,
-                              monitor_timeout_ms: 2000,
-                              session_secret: 'x' * 64,
-                              production: false)
-        self.monitor_url             = monitor_url
-        self.miners_file             = miners_file
-        self.stale_threshold_seconds = stale_threshold_seconds
-        self.pool_thread_cap         = pool_thread_cap
-        self.monitor_timeout_ms      = monitor_timeout_ms
-        self.session_secret          = session_secret
-        self.production              = production
-        reset_configured_miners! if respond_to?(:reset_configured_miners!)
-      end
+    # Parses miners.yml into the frozen `[host, port, label]` tuple list
+    # consumed by routes. Server#configure_http_app and
+    # `configure_for_test!` both use it to eagerly populate
+    # `settings.configured_miners`; nothing lazy-loads on first request.
+    def self.parse_miners_file(path)
+      raw = YAML.safe_load_file(path) || []
+      validate_miners_shape!(path, raw)
+      raw.map { |m| [m['host'], m['port'] || 4028, m['label']].freeze }.freeze
+    end
 
-      def configured_miners
-        @configured_miners ||= parse_miners_file
-      end
+    def self.validate_miners_shape!(path, raw)
+      return if raw.is_a?(Array) && raw.all? { |m| m.is_a?(Hash) && m['host'] }
 
-      def reset_configured_miners!
-        @configured_miners = nil
-      end
+      raise ConfigError, "#{path} must be a YAML list of {host, port} entries"
+    end
+    private_class_method :validate_miners_shape!
 
-      private
-
-      def parse_miners_file
-        raw = YAML.safe_load_file(miners_file) || []
-        validate_miners_shape!(raw)
-        raw.map { |m| [m['host'], m['port'] || 4028, m['label']].freeze }.freeze
-      end
-
-      def validate_miners_shape!(raw)
-        return if raw.is_a?(Array) && raw.all? { |m| m.is_a?(Hash) && m['host'] }
-
-        raise ConfigError, "#{miners_file} must be a YAML list of {host, port} entries"
-      end
+    # Spec harness. Preserves the existing public signature so no spec
+    # file needs to change. Eagerly parses miners_file into the setting
+    # so specs don't rely on a later lazy load.
+    def self.configure_for_test!(monitor_url:, miners_file:, # rubocop:disable Metrics/ParameterLists
+                                 stale_threshold_seconds: 300,
+                                 pool_thread_cap: 8,
+                                 monitor_timeout_ms: 2000,
+                                 session_secret: 'x' * 64,
+                                 production: false)
+      set :monitor_url,             monitor_url
+      set :miners_file,             miners_file
+      set :configured_miners,       parse_miners_file(miners_file)
+      set :stale_threshold_seconds, stale_threshold_seconds
+      set :pool_thread_cap,         pool_thread_cap
+      set :monitor_timeout_ms,      monitor_timeout_ms
+      set :session_secret,          session_secret
+      set :production,              production
     end
 
     helpers Sinatra::ContentFor
@@ -119,14 +124,23 @@ module CgminerManager
     configure do
       use Rack::Session::Cookie,
           key: 'cgminer_manager.session',
-          secret: CgminerManager::HttpApp.session_secret || SecureRandom.hex(32),
+          # NOTE: `session_secret` resolves at class-body eval time, which
+          # is before Server#configure_http_app has populated the setting.
+          # Net effect: operator-configured CGMINER_MANAGER_SESSION_SECRET
+          # is silently ignored and the middleware uses the SecureRandom
+          # fallback each boot (sessions invalidate across restarts).
+          # See https://github.com/jramos/cgminer_manager/issues/10 —
+          # tracked for a follow-up PR that moves this `use` call into
+          # Server#configure_http_app so the operator's configured secret
+          # actually reaches the middleware.
+          secret: session_secret || SecureRandom.hex(32),
           same_site: :lax,
           # Gate on production so dev/test over plain HTTP on 127.0.0.1
           # keeps working. Operators running in production are expected
           # to terminate TLS at a reverse proxy per the README security
           # posture; this prevents the session cookie from being sent
           # back over a non-HTTPS hop.
-          secure: CgminerManager::HttpApp.production == true
+          secure: production?
       use CgminerManager::AdminAuth
       use CgminerManager::ConditionalAuthenticityToken
     end
@@ -296,8 +310,20 @@ module CgminerManager
         ViewMinerPool.new(miners: view_miners)
       end
 
+      # Fail-loud accessor — an unconfigured App raises a clear error
+      # rather than silently returning an empty miners list or NoMethodError
+      # when routes try to iterate it. Raises ConfigError so it routes
+      # through the CLI's exit-2 path (cli.rb) like every other
+      # config-time invariant in this codebase.
+      def configured_miners
+        settings.configured_miners || raise(
+          CgminerManager::ConfigError,
+          'HttpApp not configured; call Server#configure_http_app or configure_for_test!'
+        )
+      end
+
       def configured_labels_by_id
-        self.class.configured_miners.each_with_object({}) do |(host, port, label), acc|
+        configured_miners.each_with_object({}) do |(host, port, label), acc|
           acc["#{host}:#{port}"] = label
         end
       end
@@ -313,7 +339,7 @@ module CgminerManager
       # configured miner list into @miner_pool for any partial that reaches
       # for it. Monitor availability isn't fetched separately here.
       def build_view_miner_pool_from_yml
-        view_miners = self.class.configured_miners.map do |host, port, label|
+        view_miners = configured_miners.map do |host, port, label|
           ViewMiner.build(host, port, false, label)
         end
         ViewMinerPool.new(miners: view_miners)
@@ -323,17 +349,17 @@ module CgminerManager
         begin
           miners = monitor_client.miners[:miners]
         rescue MonitorError => e
-          fallback_miners = self.class.configured_miners.map do |host, port|
+          fallback_miners = configured_miners.map do |host, port|
             { id: "#{host}:#{port}", host: host, port: port }
           end
           return { miners: fallback_miners, snapshots: {},
                    banner: "data source unavailable (#{e.message})",
-                   stale_threshold: self.class.stale_threshold_seconds || 300 }
+                   stale_threshold: settings.stale_threshold_seconds }
         end
 
         snapshots = fetch_snapshots_for(miners)
         { miners: miners, snapshots: snapshots, banner: nil,
-          stale_threshold: self.class.stale_threshold_seconds || 300 }
+          stale_threshold: settings.stale_threshold_seconds }
       end
 
       def fetch_snapshots_for(miners)
@@ -342,7 +368,7 @@ module CgminerManager
         results = {}
         mutex = Mutex.new
 
-        worker_count = [self.class.pool_thread_cap || 8, miners.size].min
+        worker_count = [settings.pool_thread_cap, miners.size].min
         worker_count = 1 if worker_count < 1
         threads = worker_count.times.map { spawn_snapshot_worker(queue, results, mutex) }
         threads.each(&:join)
@@ -382,11 +408,11 @@ module CgminerManager
       end
 
       def miner_configured?(miner_id)
-        self.class.configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
+        configured_miners.any? { |host, port| "#{host}:#{port}" == miner_id }
       end
 
       def neighbor_urls(miner_id)
-        ids = self.class.configured_miners.map { |host, port| "#{host}:#{port}" }
+        ids = configured_miners.map { |host, port| "#{host}:#{port}" }
         idx = ids.index(miner_id)
         prev = idx&.positive? ? miner_url(ids[idx - 1]) : nil
         nxt  = idx && idx < ids.size - 1 ? miner_url(ids[idx + 1]) : nil
@@ -406,10 +432,10 @@ module CgminerManager
       end
 
       def build_pool_manager_for_all
-        miners = self.class.configured_miners.map do |host, port|
+        miners = configured_miners.map do |host, port|
           CgminerApiClient::Miner.new(host, port)
         end
-        PoolManager.new(miners, thread_cap: self.class.pool_thread_cap || 8)
+        PoolManager.new(miners, thread_cap: settings.pool_thread_cap)
       end
 
       def build_pool_manager_for(miner_ids)
@@ -421,10 +447,10 @@ module CgminerManager
       end
 
       def build_commander_for_all
-        miners = self.class.configured_miners.map do |host, port|
+        miners = configured_miners.map do |host, port|
           CgminerApiClient::Miner.new(host, port)
         end
-        CgminerCommander.new(miners: miners, thread_cap: self.class.pool_thread_cap || 8)
+        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
       end
 
       def build_commander_for(miner_ids)
@@ -432,7 +458,7 @@ module CgminerManager
           host, port = id.split(':', 2)
           CgminerApiClient::Miner.new(host, port.to_i)
         end
-        CgminerCommander.new(miners: miners, thread_cap: self.class.pool_thread_cap || 8)
+        CgminerCommander.new(miners: miners, thread_cap: settings.pool_thread_cap)
       end
 
       def admin_session_id_hash
@@ -500,7 +526,7 @@ module CgminerManager
     get '/' do
       @view               = build_dashboard_view_model
       @miner_pool         = build_view_miner_pool(@view[:miners])
-      @miner_data         = SnapshotAdapter.build_miner_data(self.class.configured_miners,
+      @miner_data         = SnapshotAdapter.build_miner_data(configured_miners,
                                                              @view[:snapshots])
       @bad_chain_elements = []
       haml :'manager/index'
@@ -510,9 +536,9 @@ module CgminerManager
       miner_host_port = CGI.unescape(params[:miner_id])
       halt 404 unless miner_configured?(miner_host_port)
 
-      miner_index = self.class.configured_miners
-                        .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
-      host, port, label = self.class.configured_miners[miner_index]
+      miner_index = configured_miners
+                    .map { |h, p| "#{h}:#{p}" }.index(miner_host_port)
+      host, port, label = configured_miners[miner_index]
 
       @view        = build_miner_view_model(miner_host_port)
       snap_summary = @view[:snapshots][:summary]
@@ -525,7 +551,7 @@ module CgminerManager
       @miner              = ViewMiner.build(host, port, snap_ok ? true : false, label)
       @miner_pool         = build_view_miner_pool_from_yml
       @miner_data         = SnapshotAdapter.build_miner_data(
-        self.class.configured_miners, miner_host_port => @view[:snapshots]
+        configured_miners, miner_host_port => @view[:snapshots]
       )
       @bad_chain_elements = []
       haml :'miner/show'
@@ -662,7 +688,7 @@ module CgminerManager
       reasons = []
 
       begin
-        self.class.configured_miners
+        configured_miners
       rescue StandardError => e
         reasons << "miners.yml unparseable: #{e.message}"
       end
@@ -688,7 +714,7 @@ module CgminerManager
 
       available = 0
       unavailable = 0
-      self.class.configured_miners.each do |host, port, _label|
+      configured_miners.each do |host, port, _label|
         miner = CgminerApiClient::Miner.new(host, port)
         if miner.available?
           available += 1
@@ -707,8 +733,8 @@ module CgminerManager
     private
 
     def monitor_client
-      @monitor_client ||= MonitorClient.new(base_url: self.class.monitor_url,
-                                            timeout_ms: self.class.monitor_timeout_ms || 2000)
+      @monitor_client ||= MonitorClient.new(base_url: settings.monitor_url,
+                                            timeout_ms: settings.monitor_timeout_ms)
     end
   end
 end

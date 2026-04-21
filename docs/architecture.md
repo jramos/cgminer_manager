@@ -205,8 +205,8 @@ flowchart TD
 ### Queue-driven shutdown
 A shared `@stop: Queue` is the rendezvous point for "time to stop." Signal handlers push to it; Puma thread crashes push to it (`@stop << 'puma_crash'`); main thread blocks on it. Same pattern as `cgminer_monitor`.
 
-### Class-level state on `HttpApp`
-Sinatra routes are class-level blocks; passing per-request context from the orchestrator is awkward. The compromise: `Server#configure_http_app` sets `HttpApp.monitor_url`, `.miners_file`, `.stale_threshold_seconds`, `.pool_thread_cap` before spawning Puma. Tests use `HttpApp.configure_for_test!(...)` or call `HttpApp.reset_configured_miners!` between examples.
+### App state in Sinatra settings
+`Server#configure_http_app` populates `HttpApp` state via `HttpApp.set :key, value` for each of `monitor_url`, `miners_file`, `stale_threshold_seconds`, `pool_thread_cap`, `monitor_timeout_ms`, `session_secret`, `production`, and `configured_miners` (the last is eager-parsed via `HttpApp.parse_miners_file`). Routes read via `settings.foo`. Tests populate all of them in one call via `HttpApp.configure_for_test!(...)`. Sinatra settings are the idiomatic answer to "per-app configuration on class-level route blocks" — same singleton-per-class semantics as the class accessors they replaced, but with a consistent declaration shape.
 
 ### Thread-capped fan-out (two places)
 Both `CgminerCommander` and `PoolManager` use the same pattern: a `Queue` pre-loaded with all miners, a fixed number of worker threads (min of `thread_cap` and `miners.size`), each popping with `queue.pop(true)` and writing to a shared `results` array under a `Mutex`. When the queue is drained, `queue.pop(true)` raises `ThreadError` and the worker breaks out of its loop.

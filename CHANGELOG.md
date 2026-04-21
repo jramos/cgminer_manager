@@ -14,6 +14,23 @@
   sibling repos.
 
 ### Changed
+- **`HttpApp` class-level state moved to Sinatra `settings`.** The
+  `class << self` block that held `attr_accessor :monitor_url,
+  :miners_file, :stale_threshold_seconds, :pool_thread_cap,
+  :monitor_timeout_ms, :session_secret, :production` plus the lazy
+  `configured_miners` memo is replaced with eight `set :key, default`
+  declarations. `Server#configure_http_app` writes them via
+  `HttpApp.set :key, value` (including eagerly parsing miners.yml into
+  `settings.configured_miners` via the new
+  `HttpApp.parse_miners_file(path)` class method). Routes read via
+  `settings.foo`; `configured_miners` has a fail-loud instance helper
+  that raises if the setting was never populated. Public
+  `HttpApp.configure_for_test!(monitor_url:, miners_file:, ...)`
+  preserves its signature so no spec file needed changes.
+  Removed: `HttpApp.monitor_url=` / `HttpApp.miners_file=` /
+  `HttpApp.stale_threshold_seconds=` / `HttpApp.pool_thread_cap=` /
+  `HttpApp.monitor_timeout_ms=` / `HttpApp.session_secret=` /
+  `HttpApp.production=` / `HttpApp.reset_configured_miners!`.
 - **Frontend purged of jQuery, jQuery UI, and jquery.cookie.** Drops
   ~390 KB (~80 KB gzipped) of vendored JS and the last jQuery-family
   dep surface. Replacements:

@@ -10,7 +10,7 @@ I cross-referenced the following claims across files and found no contradictions
 |---|---|---|
 | Read path goes through `cgminer_monitor` over HTTP; write path goes direct to cgminer via `cgminer_api_client` over TCP | `codebase_info.md`, `architecture.md`, `components.md`, `workflows.md`, `interfaces.md` | consistent |
 | `Config` is an immutable `Data.define` | `codebase_info.md`, `architecture.md`, `components.md`, `data_models.md` | consistent |
-| `HttpApp` class-level state (monitor_url, miners_file, stale_threshold_seconds, pool_thread_cap, configured_miners) set by `Server#configure_http_app` | `codebase_info.md`, `architecture.md`, `components.md` | consistent |
+| `HttpApp` state lives in Sinatra settings (monitor_url, miners_file, stale_threshold_seconds, pool_thread_cap, monitor_timeout_ms, session_secret, production, configured_miners) set by `Server#configure_http_app` | `codebase_info.md`, `architecture.md`, `components.md` | consistent |
 | CLI exit codes 0 / 1 / 2 / 64 | `interfaces.md`, `components.md`, `workflows.md` | consistent |
 | `Data.define` value objects for `ViewMiner`, `FleetQueryResult`, `FleetWriteResult`, `PoolActionResult` | `codebase_info.md`, `components.md`, `data_models.md` | consistent |
 | Admin surface is ergonomic-vs-defensive (allowlist is UI, defense is Basic Auth + scope restrictions + audit logging) | `architecture.md`, `components.md`, `interfaces.md` | consistent |
