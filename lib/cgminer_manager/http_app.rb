@@ -314,11 +314,7 @@ module CgminerManager
       # either the live Hash list (with :available flag) or the fallback
       # array built when monitor is down (all :available=false).
       def build_view_miner_pool(monitor_miners)
-        labels_by_id = configured_labels_by_id
-        view_miners = (monitor_miners || []).map do |m|
-          build_view_miner_from_monitor(m, labels_by_id)
-        end
-        ViewMinerPool.new(miners: view_miners)
+        ViewModels.build_view_miner_pool(monitor_miners, configured_miners: configured_miners)
       end
 
       # Fail-loud accessor — an unconfigured App raises a clear error
@@ -334,16 +330,7 @@ module CgminerManager
       end
 
       def configured_labels_by_id
-        configured_miners.each_with_object({}) do |(host, port, label), acc|
-          acc["#{host}:#{port}"] = label
-        end
-      end
-
-      def build_view_miner_from_monitor(raw, labels_by_id)
-        host  = raw[:host] || raw['host']
-        port  = raw[:port] || raw['port']
-        avail = raw.fetch(:available) { raw['available'] || false }
-        ViewMiner.build(host, port, avail, labels_by_id["#{host}:#{port}"])
+        ViewModels.configured_labels_by_id(configured_miners)
       end
 
       # Variant for the per-miner page, where we only need to thread the
