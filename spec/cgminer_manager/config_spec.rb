@@ -90,10 +90,30 @@ RSpec.describe CgminerManager::Config do
       end.not_to raise_error
     end
 
-    it 'raises ConfigError when only one of user/pass is set' do
+    it 'raises ConfigError when only user is set' do
       expect do
         described_class.from_env(auth_env_base.merge('CGMINER_MANAGER_ADMIN_USER' => 'operator'))
       end.to raise_error(CgminerManager::ConfigError, /admin auth is required/i)
+    end
+
+    it 'raises ConfigError when only password is set' do
+      expect do
+        described_class.from_env(auth_env_base.merge('CGMINER_MANAGER_ADMIN_PASSWORD' => 's3cret'))
+      end.to raise_error(CgminerManager::ConfigError, /admin auth is required/i)
+    end
+
+    # Boot-time: =off short-circuits before the creds check, so creds-set
+    # + stale =off passes boot. Runtime (AdminAuth#call) ignores =off
+    # when creds are set — the gate engages. Both behaviors are correct;
+    # boot's job is "posture is configured," not "=off was removed."
+    it 'accepts creds AND CGMINER_MANAGER_ADMIN_AUTH=off at boot (runtime engages the gate on creds-set)' do
+      expect do
+        described_class.from_env(auth_env_base.merge(
+                                   'CGMINER_MANAGER_ADMIN_USER' => 'operator',
+                                   'CGMINER_MANAGER_ADMIN_PASSWORD' => 's3cret',
+                                   'CGMINER_MANAGER_ADMIN_AUTH' => 'off'
+                                 ))
+      end.not_to raise_error
     end
   end
 

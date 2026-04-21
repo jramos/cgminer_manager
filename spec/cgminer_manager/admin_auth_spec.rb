@@ -65,12 +65,22 @@ RSpec.describe CgminerManager::AdminAuth do
       expect(body.first).to include('admin authentication is misconfigured')
     end
 
-    it 'logs admin.auth_misconfigured with structured fields' do
+    it 'logs admin.auth_misconfigured with path + remote_ip + user_agent for forensics' do
       allow(CgminerManager::Logger).to receive(:warn)
       middleware.call(request_env(path: '/manager/admin/version'))
       expect(CgminerManager::Logger).to have_received(:warn).with(
-        hash_including(event: 'admin.auth_misconfigured')
+        hash_including(
+          event: 'admin.auth_misconfigured',
+          path: '/manager/admin/version',
+          remote_ip: anything,
+          user_agent: anything
+        )
       )
+    end
+
+    it 'returns 503 without a WWW-Authenticate header (config failure, not auth challenge)' do
+      _status, headers, = middleware.call(request_env(path: '/manager/admin/version'))
+      expect(headers).not_to have_key('WWW-Authenticate')
     end
 
     it 'still passes non-admin requests through' do
@@ -141,6 +151,23 @@ RSpec.describe CgminerManager::AdminAuth do
       expect(CgminerManager::Logger).to have_received(:warn).with(
         hash_including(event: 'admin.auth_failed', reason: :bad_creds)
       )
+    end
+
+    # Precedence rule: a stale =off must not bypass rotated-in creds.
+    # Pins the `auth_disabled? && !configured?` guard in AdminAuth#call.
+    context 'when CGMINER_MANAGER_ADMIN_AUTH=off is also set (stale hatch)' do
+      before { ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off' }
+
+      it 'still requires credentials (creds-set wins over =off)' do
+        status, headers, = middleware.call(request_env(path: '/manager/admin/version'))
+        expect(status).to eq(401)
+        expect(headers['WWW-Authenticate']).to include('Basic')
+      end
+
+      it 'still accepts valid credentials' do
+        status, = middleware.call(request_env(path: '/manager/admin/version', auth: 'admin:s3cret'))
+        expect(status).to eq(200)
+      end
     end
   end
 end

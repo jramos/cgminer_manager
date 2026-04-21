@@ -37,7 +37,7 @@ module CgminerManager
 
       monitor_miners = check_monitor(config, failures)
       check_miners(config, monitor_miners, failures)
-      report_admin_auth_posture
+      report_admin_auth_posture(failures)
 
       if failures.empty?
         puts 'doctor: all checks passed'
@@ -48,11 +48,18 @@ module CgminerManager
       end
     end
 
-    def report_admin_auth_posture
-      if ENV['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
+    # Mirrors AdminAuth#call's precedence: creds-set always engages the
+    # gate, so a stale =off with creds set is still "required" — not
+    # "disabled". Without this symmetry, doctor would lie to audits.
+    def report_admin_auth_posture(failures)
+      user = ENV['CGMINER_MANAGER_ADMIN_USER'].to_s
+      pass = ENV['CGMINER_MANAGER_ADMIN_PASSWORD'].to_s
+      if !user.empty? && !pass.empty?
+        puts '  admin auth: required (credentials configured)'
+      elsif ENV['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
         puts '  admin auth: DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)'
       else
-        puts '  admin auth: required (credentials configured)'
+        failures << 'admin auth misconfigured: no credentials and no escape hatch'
       end
     end
 

@@ -106,6 +106,9 @@ module CgminerManager
       body = 'admin authentication is misconfigured: set ' \
              'CGMINER_MANAGER_ADMIN_USER + CGMINER_MANAGER_ADMIN_PASSWORD, ' \
              "or CGMINER_MANAGER_ADMIN_AUTH=off to disable (see MIGRATION.md)\n"
+      # Deliberately no WWW-Authenticate header: this is a server-config
+      # failure, not an auth challenge. Prompting a browser for creds it
+      # can't produce would just loop.
       [503, { 'Content-Type' => 'text/plain' }, [body]]
     end
   end

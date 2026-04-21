@@ -61,6 +61,12 @@ module CgminerManager
     # per-request so tests/dev can toggle without restart. This
     # boot-time check only asserts the posture is configured; the
     # runtime middleware still handles post-boot ENV mutation.
+    #
+    # Boot accepts `=off` regardless of creds (short-circuits on the
+    # first line). Runtime (AdminAuth#call) only honors `=off` when
+    # creds are unset — creds-set wins at request time. Intentional
+    # asymmetry: boot's job is "posture is configured," runtime's job
+    # is "don't let a stale hatch bypass rotated creds."
     def validate_admin_auth!(env)
       return if env['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
 

@@ -36,8 +36,10 @@ RSpec.configure do |config|
   # Default-required admin auth (1.3.0) would 503 every admin-path spec
   # that doesn't set creds. Opt the whole suite into the escape hatch;
   # the dedicated admin_auth_spec and admin_spec cases that exercise
-  # the gate delete or override this in their own hooks.
+  # the gate delete or override this in their own hooks. Unconditional
+  # assignment (not `||=`) so an ambient env var from the shell
+  # running rspec can't silently override the suite's posture.
   config.before(:suite) do
-    ENV['CGMINER_MANAGER_ADMIN_AUTH'] ||= 'off'
+    ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
   end
 end
