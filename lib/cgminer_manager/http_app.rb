@@ -383,30 +383,28 @@ module CgminerManager
       end
 
       def admin_session_id_hash
-        sid = request.env['rack.session']&.id || ''
-        Digest::SHA256.hexdigest(sid.to_s)[0..11]
+        AdminLogging.session_id_hash(request.env['rack.session']&.id)
       end
 
       def log_admin_command(event, **extra)
-        Logger.info(event: event,
-                    request_id: @request_id,
-                    user: request.env['cgminer_manager.admin_user'],
-                    remote_ip: request.ip,
-                    user_agent: request.user_agent,
-                    session_id_hash: admin_session_id_hash,
-                    **extra)
+        Logger.info(**AdminLogging.command_log_entry(
+          event: event,
+          command: extra.delete(:command),
+          scope: extra.delete(:scope),
+          request_id: @request_id,
+          session_id_hash: admin_session_id_hash,
+          remote_ip: request.ip,
+          user_agent: request.user_agent,
+          user: request.env['cgminer_manager.admin_user'],
+          **extra
+        ))
       end
 
       def log_admin_result(command, scope, result, started_at)
-        Logger.info(
-          event: 'admin.result',
-          request_id: @request_id,
-          command: command,
-          scope: scope,
-          ok_count: result.ok_count,
-          failed_count: result.failed_count,
-          elapsed_ms: ((Time.now - started_at) * 1000).round
-        )
+        Logger.info(**AdminLogging.result_log_entry(
+          command: command, scope: scope, result: result,
+          started_at: started_at, request_id: @request_id
+        ))
       end
 
       def render_admin_result(result)
