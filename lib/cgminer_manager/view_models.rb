@@ -6,7 +6,7 @@ module CgminerManager
   # HttpApp threads settings / configured_miners / a MonitorClient in
   # explicitly. This lets specs exercise view-model logic without
   # Rack::Test.
-  module ViewModels # rubocop:disable Metrics/ModuleLength
+  module ViewModels
     module_function
 
     def build_view_miner_pool(monitor_miners, configured_miners:)
@@ -47,36 +47,12 @@ module CgminerManager
     end
 
     def fetch_snapshots_for(monitor_client, miners, pool_thread_cap)
-      queue = Queue.new
-      miners.each { |m| queue << m }
-      results = {}
-      mutex = Mutex.new
-
-      # Guard a nil cap. Callable from anywhere in the codebase now that
-      # this is a pure function.
-      cap = pool_thread_cap || 1
-      worker_count = [cap, miners.size].min
-      worker_count = 1 if worker_count < 1
-      threads = Array.new(worker_count) { spawn_snapshot_worker(monitor_client, queue, results, mutex) }
-      threads.each(&:join)
-      results
-    end
-
-    def spawn_snapshot_worker(monitor_client, queue, results, mutex)
-      Thread.new do
-        loop do
-          miner = pop_or_break(queue) or break
-          miner_id = miner[:id] || miner['id']
-          tile = fetch_tile(monitor_client, miner_id)
-          mutex.synchronize { results[miner_id] = tile }
-        end
+      # `|| 1` stays at the call site so ThreadedFanOut.map can stay
+      # strict (raises on nil cap).
+      tiles = ThreadedFanOut.map(miners, thread_cap: pool_thread_cap || 1) do |miner|
+        fetch_tile(monitor_client, miner[:id] || miner['id'])
       end
-    end
-
-    def pop_or_break(queue)
-      queue.pop(true)
-    rescue ThreadError
-      nil
+      miners.zip(tiles).to_h { |miner, tile| [miner[:id] || miner['id'], tile] }
     end
 
     def fetch_tile(monitor_client, miner_id)
