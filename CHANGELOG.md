@@ -13,6 +13,20 @@
   linking to CHANGELOG, MIGRATION, AGENTS, docs/, and the two
   sibling repos.
 
+### Fixed
+- **Operator-configured `CGMINER_MANAGER_SESSION_SECRET` now actually
+  reaches `Rack::Session::Cookie`** (#10). The `use
+  Rack::Session::Cookie, secret: ...` middleware wiring previously
+  lived in a class-body `configure do … end` block. Sinatra captures
+  `use` args at call time — class-body eval — which happens before
+  `Server#configure_http_app` populates `settings.session_secret`, so
+  every boot silently fell through to `SecureRandom.hex(32)` and
+  invalidated all sessions across restarts regardless of env var.
+  Moved the middleware stack into a new `HttpApp.install_middleware!`
+  class method that Server (and `configure_for_test!`) call after
+  settings are populated. Idempotent — re-seeds `@middleware` each
+  call so repeated invocations in tests don't stack duplicates.
+
 ### Changed
 - **`HttpApp` class-level state moved to Sinatra `settings`.** The
   `class << self` block that held `attr_accessor :monitor_url,

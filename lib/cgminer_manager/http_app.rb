@@ -75,6 +75,7 @@ module CgminerManager
       set :monitor_timeout_ms,      monitor_timeout_ms
       set :session_secret,          session_secret
       set :production,              production
+      install_middleware!
     end
 
     helpers Sinatra::ContentFor
@@ -121,26 +122,36 @@ module CgminerManager
                   render_ms: ((Time.now - @request_started_at) * 1000).round)
     end
 
-    configure do
+    # Wires the session-cookie + admin-auth + CSRF middleware stack.
+    # Server#configure_http_app (and configure_for_test!) calls this
+    # AFTER the Sinatra settings are populated, so
+    # `settings.session_secret` and `settings.production` actually
+    # reflect the operator's configuration when captured by `use`
+    # middleware. Sinatra's `use` stores args by value at call time;
+    # declaring this stack in a class-body `configure do … end` block
+    # would freeze `nil` / `false` before Server#configure_http_app ever
+    # runs, silently discarding CGMINER_MANAGER_SESSION_SECRET. Idempotent:
+    # @middleware is re-seeded each call so repeated invocations in
+    # tests (configure_for_test!) don't pile up duplicate middleware.
+    def self.install_middleware!
+      # Reset the middleware stack. Sinatra appends to `@middleware`
+      # each `use` call and builds the Rack stack lazily on first
+      # request; if we `use` on every configure_for_test! without
+      # resetting, every test example stacks another copy of the
+      # session + auth + CSRF middleware, turning each request into
+      # an ever-deeper onion.
+      @middleware = []
+
       use Rack::Session::Cookie,
           key: 'cgminer_manager.session',
-          # NOTE: `session_secret` resolves at class-body eval time, which
-          # is before Server#configure_http_app has populated the setting.
-          # Net effect: operator-configured CGMINER_MANAGER_SESSION_SECRET
-          # is silently ignored and the middleware uses the SecureRandom
-          # fallback each boot (sessions invalidate across restarts).
-          # See https://github.com/jramos/cgminer_manager/issues/10 —
-          # tracked for a follow-up PR that moves this `use` call into
-          # Server#configure_http_app so the operator's configured secret
-          # actually reaches the middleware.
-          secret: session_secret || SecureRandom.hex(32),
+          secret: settings.session_secret || SecureRandom.hex(32),
           same_site: :lax,
           # Gate on production so dev/test over plain HTTP on 127.0.0.1
           # keeps working. Operators running in production are expected
           # to terminate TLS at a reverse proxy per the README security
           # posture; this prevents the session cookie from being sent
           # back over a non-HTTPS hop.
-          secure: production?
+          secure: settings.production
       use CgminerManager::AdminAuth
       use CgminerManager::ConditionalAuthenticityToken
     end
