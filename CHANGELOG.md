@@ -1,5 +1,7 @@
 # Changelog
 
+## [Unreleased]
+
 ## [1.3.0] — 2026-04-21
 
 ### Changed (BREAKING)
@@ -17,12 +19,9 @@
   `503 Service Unavailable` response on admin paths when boot-time
   validation is bypassed at runtime (env tampering post-boot).
 - `bin/cgminer_manager doctor` reports the active admin-auth posture
-  (`required (credentials configured)` or
-  `DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)`).
-
-## [Unreleased]
-
-### Added
+  (`required (credentials configured)`,
+  `DISABLED (CGMINER_MANAGER_ADMIN_AUTH=off)`, or
+  `misconfigured` as a failure).
 - AI-assistant knowledge base under `docs/` (architecture, components,
   interfaces, data models, workflows, dependencies, review notes,
   plus an `index.md` router) and a consolidated `AGENTS.md` at the
