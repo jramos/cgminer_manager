@@ -13,7 +13,8 @@ RSpec.describe CgminerManager::Config do
     {
       'CGMINER_MONITOR_URL' => 'http://localhost:9292',
       'MINERS_FILE' => miners_file,
-      'SESSION_SECRET' => 'x' * 64
+      'SESSION_SECRET' => 'x' * 64,
+      'CGMINER_MANAGER_ADMIN_AUTH' => 'off'
     }
   end
 
@@ -64,6 +65,55 @@ RSpec.describe CgminerManager::Config do
     it 'raises ConfigError when PORT is not an integer' do
       expect { described_class.from_env(env_base.merge('PORT' => 'abc')) }
         .to raise_error(CgminerManager::ConfigError, /PORT/)
+    end
+  end
+
+  describe '.from_env boot-time admin-auth enforcement' do
+    let(:auth_env_base) { env_base.except('CGMINER_MANAGER_ADMIN_AUTH') }
+
+    it 'raises ConfigError when admin creds are missing and the escape hatch is unset' do
+      expect { described_class.from_env(auth_env_base) }
+        .to raise_error(CgminerManager::ConfigError, /admin auth is required/i)
+    end
+
+    it 'accepts the escape hatch set via CGMINER_MANAGER_ADMIN_AUTH=off' do
+      expect { described_class.from_env(auth_env_base.merge('CGMINER_MANAGER_ADMIN_AUTH' => 'off')) }
+        .not_to raise_error
+    end
+
+    it 'accepts credentials via CGMINER_MANAGER_ADMIN_USER + CGMINER_MANAGER_ADMIN_PASSWORD' do
+      expect do
+        described_class.from_env(auth_env_base.merge(
+                                   'CGMINER_MANAGER_ADMIN_USER' => 'operator',
+                                   'CGMINER_MANAGER_ADMIN_PASSWORD' => 's3cret'
+                                 ))
+      end.not_to raise_error
+    end
+
+    it 'raises ConfigError when only user is set' do
+      expect do
+        described_class.from_env(auth_env_base.merge('CGMINER_MANAGER_ADMIN_USER' => 'operator'))
+      end.to raise_error(CgminerManager::ConfigError, /admin auth is required/i)
+    end
+
+    it 'raises ConfigError when only password is set' do
+      expect do
+        described_class.from_env(auth_env_base.merge('CGMINER_MANAGER_ADMIN_PASSWORD' => 's3cret'))
+      end.to raise_error(CgminerManager::ConfigError, /admin auth is required/i)
+    end
+
+    # Boot-time: =off short-circuits before the creds check, so creds-set
+    # + stale =off passes boot. Runtime (AdminAuth#call) ignores =off
+    # when creds are set — the gate engages. Both behaviors are correct;
+    # boot's job is "posture is configured," not "=off was removed."
+    it 'accepts creds AND CGMINER_MANAGER_ADMIN_AUTH=off at boot (runtime engages the gate on creds-set)' do
+      expect do
+        described_class.from_env(auth_env_base.merge(
+                                   'CGMINER_MANAGER_ADMIN_USER' => 'operator',
+                                   'CGMINER_MANAGER_ADMIN_PASSWORD' => 's3cret',
+                                   'CGMINER_MANAGER_ADMIN_AUTH' => 'off'
+                                 ))
+      end.not_to raise_error
     end
   end
 

@@ -21,10 +21,12 @@ services:
       CGMINER_MONITOR_URL: http://monitor:9292
       BIND: 0.0.0.0
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in your environment}
-      # Admin surface (/manager/admin/*, /miner/:id/admin/*) is always mounted
-      # and CSRF-protected. Set BOTH env vars below (non-empty) to additionally
-      # require HTTP Basic Auth; valid credentials also bypass CSRF so scripts
-      # can curl admin routes. Leave unset to keep CSRF-only posture.
+      # Admin routes require Basic Auth as of 1.3.0. This dev stack
+      # defaults to the =off escape hatch (CSRF-only posture). Set
+      # CGMINER_MANAGER_ADMIN_USER + CGMINER_MANAGER_ADMIN_PASSWORD to
+      # engage the default-required gate — valid credentials also bypass
+      # CSRF so scripts can curl admin routes. See MIGRATION.md#1.3.0.
+      CGMINER_MANAGER_ADMIN_AUTH: ${CGMINER_MANAGER_ADMIN_AUTH:-off}
       CGMINER_MANAGER_ADMIN_USER: ${CGMINER_MANAGER_ADMIN_USER:-}
       CGMINER_MANAGER_ADMIN_PASSWORD: ${CGMINER_MANAGER_ADMIN_PASSWORD:-}
     volumes:
