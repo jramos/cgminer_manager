@@ -18,6 +18,10 @@ module CgminerManager
       PoolManager.new(miners, thread_cap: thread_cap)
     end
 
+    # Deliberately no `thread_cap:` kwarg. Callers use this for
+    # single-miner or handful-of-miners pool ops (triggered by a specific
+    # admin UI click), so `PoolManager`'s own default of 8 is fine and
+    # the cap is never the bottleneck. Keeps the call site terse.
     def pool_manager_for(miner_ids)
       miners = miner_ids.map { |id| miner_from_id(id) }
       PoolManager.new(miners)

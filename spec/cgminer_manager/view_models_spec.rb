@@ -74,6 +74,56 @@ RSpec.describe CgminerManager::ViewModels do
     end
   end
 
+  describe '.build_dashboard with multiple miners (threaded fan-out)' do
+    # Pins the Queue-drain + Mutex-protected-results behavior of
+    # fetch_snapshots_for. A refactor that changed the per-tile
+    # `{summary:, devices:, pools:, stats:}` shape, or that regressed
+    # the `{error: msg}` single-tile-failure path, would fail this
+    # spec rather than slipping through with only the 1-miner
+    # coverage the dashboard spec above provides.
+    let(:monitor_client) { instance_double(CgminerManager::MonitorClient) }
+    let(:three_miners) do
+      [
+        { id: 'a:1', host: 'a', port: 1, available: true },
+        { id: 'b:2', host: 'b', port: 2, available: true },
+        { id: 'c:3', host: 'c', port: 3, available: true }
+      ]
+    end
+
+    before do
+      allow(monitor_client).to receive(:miners).and_return(miners: three_miners)
+      allow(monitor_client).to receive_messages(devices: [], pools: [], stats: {})
+      allow(monitor_client).to receive(:summary) do |miner_id|
+        raise CgminerManager::MonitorError, 'boom' if miner_id == 'b:2'
+
+        { ghs_5s: miner_id }
+      end
+    end
+
+    it 'returns a complete tile per miner, populating every command key' do
+      result = described_class.build_dashboard(
+        monitor_client: monitor_client,
+        configured_miners: [['a', 1, nil], ['b', 2, nil], ['c', 3, nil]].freeze,
+        stale_threshold_seconds: 300,
+        pool_thread_cap: 4
+      )
+      expect(result[:snapshots].keys).to contain_exactly('a:1', 'b:2', 'c:3')
+      expect(result[:snapshots]['a:1']).to include(:summary, :devices, :pools, :stats)
+    end
+
+    it 'captures a per-tile raise as {error: msg} without failing sibling tiles' do
+      result = described_class.build_dashboard(
+        monitor_client: monitor_client,
+        configured_miners: [['a', 1, nil], ['b', 2, nil], ['c', 3, nil]].freeze,
+        stale_threshold_seconds: 300,
+        pool_thread_cap: 4
+      )
+      expect(result[:snapshots]['b:2'][:summary]).to eq(error: 'boom')
+      expect(result[:snapshots]['a:1'][:summary]).to eq(ghs_5s: 'a:1')
+      expect(result[:snapshots]['c:3'][:summary]).to eq(ghs_5s: 'c:3')
+    end
+  end
+
   describe '.build_miner_view_model' do
     let(:monitor_client) { instance_double(CgminerManager::MonitorClient) }
 
