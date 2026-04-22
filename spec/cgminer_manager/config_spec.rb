@@ -66,6 +66,16 @@ RSpec.describe CgminerManager::Config do
       expect { described_class.from_env(env_base.merge('PORT' => 'abc')) }
         .to raise_error(CgminerManager::ConfigError, /PORT/)
     end
+
+    it 'reads CGMINER_MANAGER_PID_FILE when set' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_PID_FILE' => '/tmp/cm.pid'))
+      expect(config.pid_file).to eq('/tmp/cm.pid')
+    end
+
+    it 'leaves pid_file nil when CGMINER_MANAGER_PID_FILE unset' do
+      config = described_class.from_env(env_base)
+      expect(config.pid_file).to be_nil
+    end
   end
 
   describe '.from_env boot-time admin-auth enforcement' do

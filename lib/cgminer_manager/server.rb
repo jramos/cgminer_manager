@@ -8,8 +8,8 @@ require 'rack'
 module CgminerManager
   class Server
     def initialize(config)
-      @config = config
-      @stop   = Queue.new
+      @config  = config
+      @signals = Queue.new
     end
 
     def run
@@ -19,24 +19,30 @@ module CgminerManager
                   bind: @config.bind, port: @config.port)
 
       @booted = Queue.new
-      launcher = build_puma_launcher
+      launcher    = build_puma_launcher
       puma_thread = start_puma_thread(launcher)
 
       # Puma's setup_signals runs on its thread during launcher.run and
-      # overwrites any SIGTERM/SIGINT traps we installed earlier. Wait for
-      # Puma to finish booting (signals already installed, listener already
-      # bound) before reinstalling ours so signals land back in our @stop
-      # queue.
+      # overwrites any traps we installed earlier. Wait for Puma to
+      # finish booting (signals already installed, listener bound)
+      # before reinstalling ours so signals land back in our @signals
+      # queue. Covers SIGHUP too — Puma's default HUP handler calls
+      # stop() when stdout_redirect is unset, which would shut us down
+      # instead of triggering a reload.
       @booted.pop
       install_signal_handlers
 
-      signal = @stop.pop
-      Logger.info(event: 'server.stopping', signal: signal)
+      write_pid_file
+
+      dispatch_signals_until_stop
+      Logger.info(event: 'server.stopping')
 
       launcher.stop
       puma_thread.join(@config.shutdown_timeout)
       Logger.info(event: 'server.stopped')
       0
+    ensure
+      unlink_pid_file
     end
 
     private
@@ -64,14 +70,50 @@ module CgminerManager
       Thread.new do
         launcher.run
       rescue Exception => e # rubocop:disable Lint/RescueException
-        Logger.error(event: 'puma.crash', error: e.class.to_s, message: e.message)
+        Logger.error(event: 'puma.crash', error: e.class.to_s,
+                     message: e.message, backtrace: e.backtrace&.first(10))
         @booted << true # unblock main if we died before booting
-        @stop << 'puma_crash'
+        @signals << :stop
       end
     end
 
     def install_signal_handlers
-      %w[INT TERM].each { |s| trap(s) { @stop << s } }
+      Signal.trap('INT')  { @signals << :stop }
+      Signal.trap('TERM') { @signals << :stop }
+      Signal.trap('HUP')  { @signals << :reload }
+    end
+
+    def dispatch_signals_until_stop
+      loop do
+        case @signals.pop
+        when :reload then perform_reload
+        when :stop   then break
+        end
+      end
+    end
+
+    # Single-swap reload: HttpApp holds the only live reference to the
+    # miner list. No partial-failure window — either the new list
+    # parses and lands, or it doesn't and the old list stays.
+    def perform_reload
+      Logger.info(event: 'reload.signal_received')
+      count = HttpApp.reload_miners!
+      Logger.info(event: 'reload.ok', miners: count) if count
+    end
+
+    def write_pid_file
+      return unless @config.pid_file
+
+      File.write(@config.pid_file, "#{Process.pid}\n")
+      Logger.info(event: 'server.pid_file_written', path: @config.pid_file)
+    end
+
+    def unlink_pid_file
+      return unless @config.pid_file
+
+      File.unlink(@config.pid_file)
+    rescue Errno::ENOENT
+      # already gone — shutdown raced with external cleanup; fine
     end
 
     def build_puma_launcher
