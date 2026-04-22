@@ -61,4 +61,13 @@ RSpec.describe CgminerManager::CLI, 'reload' do # rubocop:disable RSpec/Describe
     expect { expect(described_class.run(['reload'])).to eq(1) }
       .to output(/pid file is not an integer/).to_stderr
   end
+
+  it 'returns 2 with a miners-file-specific message when miners.yml is missing' do
+    File.unlink(miners_path)
+    File.write(pid_path, "#{Process.pid}\n")
+    # Regression: a previously-ambiguous Errno::ENOENT rescue printed
+    # "pid file not found" whenever the miners file was missing too.
+    expect { expect(described_class.run(['reload'])).to eq(2) }
+      .to output(/miners_file not found/).to_stderr
+  end
 end
