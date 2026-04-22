@@ -14,6 +14,7 @@ module CgminerManager
     :shutdown_timeout,
     :monitor_timeout,
     :pool_thread_cap,
+    :pid_file,
     :rack_env
   ) do
     def validate!
@@ -50,6 +51,7 @@ module CgminerManager
         shutdown_timeout: parse_int(env, 'SHUTDOWN_TIMEOUT', '10'),
         monitor_timeout: parse_int(env, 'MONITOR_TIMEOUT_MS', '2000'),
         pool_thread_cap: parse_int(env, 'POOL_THREAD_CAP', '8'),
+        pid_file: env['CGMINER_MANAGER_PID_FILE'],
         rack_env: rack_env
       ).validate!
     end

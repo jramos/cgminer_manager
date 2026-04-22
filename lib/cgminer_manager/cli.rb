@@ -11,10 +11,11 @@ module CgminerManager
       case verb
       when 'run'     then cmd_run
       when 'doctor'  then cmd_doctor
+      when 'reload'  then cmd_reload
       when 'version' then cmd_version
       else
         warn "unknown verb: #{verb.inspect}"
-        warn 'usage: cgminer_manager {run|doctor|version}'
+        warn 'usage: cgminer_manager {run|doctor|reload|version}'
         64
       end
     rescue ConfigError => e
@@ -38,6 +39,7 @@ module CgminerManager
       monitor_miners = check_monitor(config, failures)
       check_miners(config, monitor_miners, failures)
       report_admin_auth_posture(failures)
+      report_pid_file_posture(failures)
 
       if failures.empty?
         puts 'doctor: all checks passed'
@@ -63,9 +65,77 @@ module CgminerManager
       end
     end
 
+    # Same audit-honest treatment as admin-auth posture: explicitly
+    # report whether the PID file exists and whether the recorded PID
+    # is alive, so an operator reading `doctor` output knows whether
+    # `cgminer_manager reload` will work. A configured-but-missing or
+    # stale file is a failure (exit 1).
+    def report_pid_file_posture(failures)
+      path = ENV.fetch('CGMINER_MANAGER_PID_FILE', nil)
+      if path.nil? || path.empty?
+        puts '  pid file: not configured'
+        return
+      end
+
+      unless File.exist?(path)
+        failures << "pid file configured but missing: #{path}"
+        return
+      end
+
+      pid = Integer(File.read(path).strip)
+      Process.kill(0, pid)
+      puts "  pid file: OK (pid #{pid})"
+    rescue ArgumentError
+      failures << "pid file is not an integer: #{path}"
+    rescue Errno::ESRCH
+      failures << "pid file: STALE (pid in #{path} not running)"
+    rescue Errno::EPERM
+      failures << "pid file: pid in #{path} exists but is not owned by us"
+    end
+
     def cmd_version
       puts CgminerManager::VERSION
       0
+    end
+
+    # Dry-run-parses miners.yml locally so typos surface at the
+    # operator's terminal (exit 2 via ConfigError rescue above) instead
+    # of in the server's logs, then sends SIGHUP to the PID recorded
+    # by a running `cgminer_manager run`. Operators can also skip this
+    # verb and `kill -HUP <pid>` directly.
+    def cmd_reload # rubocop:disable Metrics/MethodLength
+      config   = Config.from_env
+      pid_path = config.pid_file
+      if pid_path.nil? || pid_path.empty?
+        raise ConfigError,
+              'CGMINER_MANAGER_PID_FILE not set; cannot locate running server'
+      end
+
+      begin
+        HttpApp.parse_miners_file(config.miners_file)
+      rescue Psych::SyntaxError => e
+        raise ConfigError, "miners_file is not valid YAML: #{e.message}"
+      end
+
+      pid = Integer(File.read(pid_path).strip)
+      Process.kill(0, pid) # probe alive; raises Errno::ESRCH if dead
+      Process.kill('HUP', pid)
+      puts "SIGHUP sent to pid #{pid}; check server logs for reload.ok"
+      0
+    rescue Errno::ENOENT
+      warn "pid file not found: #{pid_path} " \
+           '(server may still be starting — pid file is written after Puma boots)'
+      1
+    rescue Errno::ESRCH
+      warn "stale pid file (pid not running): #{pid_path}"
+      1
+    rescue Errno::EPERM
+      warn "pid #{pid} exists but is not owned by us " \
+           "(stale pid file from a different user? #{pid_path})"
+      1
+    rescue ArgumentError
+      warn "pid file is not an integer: #{pid_path}"
+      1
     end
 
     def check_monitor(config, failures)

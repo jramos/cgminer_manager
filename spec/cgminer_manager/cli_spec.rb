@@ -21,7 +21,7 @@ RSpec.describe CgminerManager::CLI do
         code, _stdout, stderr = capture_run(['banana'])
         expect(code).to eq(64)
         expect(stderr).to include('unknown verb: "banana"')
-        expect(stderr).to include('usage: cgminer_manager {run|doctor|version}')
+        expect(stderr).to include('usage: cgminer_manager {run|doctor|reload|version}')
       end
     end
 
@@ -218,6 +218,64 @@ RSpec.describe CgminerManager::CLI do
           code, _stdout, stderr = capture_run(['doctor'])
           expect(code).to eq(1)
           expect(stderr).to include('FAIL: miner 127.0.0.1:4028 in miners.yml but not in monitor')
+        end
+      end
+
+      context 'when reporting pid-file posture' do
+        around do |example|
+          saved = ENV.to_h.slice('CGMINER_MANAGER_PID_FILE')
+          example.run
+        ensure
+          if saved.key?('CGMINER_MANAGER_PID_FILE')
+            ENV['CGMINER_MANAGER_PID_FILE'] =
+              saved['CGMINER_MANAGER_PID_FILE']
+          else
+            ENV.delete('CGMINER_MANAGER_PID_FILE')
+          end
+        end
+
+        before do
+          allow(client).to receive(:miners).and_return(miners: [{ id: '127.0.0.1:4028' }])
+          allow(miner).to receive(:available?).and_return(true)
+        end
+
+        it 'reports "not configured" when CGMINER_MANAGER_PID_FILE is unset' do
+          ENV.delete('CGMINER_MANAGER_PID_FILE')
+          code, stdout, _stderr = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('pid file: not configured')
+        end
+
+        it 'reports OK when the pid file exists and the pid is alive' do
+          Dir.mktmpdir do |dir|
+            pid_path = File.join(dir, 'cm.pid')
+            File.write(pid_path, "#{Process.pid}\n")
+            ENV['CGMINER_MANAGER_PID_FILE'] = pid_path
+
+            code, stdout, _stderr = capture_run(['doctor'])
+            expect(code).to eq(0)
+            expect(stdout).to include("pid file: OK (pid #{Process.pid})")
+          end
+        end
+
+        it 'reports STALE when the pid is not running' do
+          Dir.mktmpdir do |dir|
+            pid_path = File.join(dir, 'cm.pid')
+            File.write(pid_path, "9999999\n")
+            ENV['CGMINER_MANAGER_PID_FILE'] = pid_path
+            allow(Process).to receive(:kill).with(0, 9_999_999).and_raise(Errno::ESRCH)
+
+            code, _stdout, stderr = capture_run(['doctor'])
+            expect(code).to eq(1)
+            expect(stderr).to include('pid file: STALE')
+          end
+        end
+
+        it 'reports missing when configured but absent' do
+          ENV['CGMINER_MANAGER_PID_FILE'] = '/tmp/cgminer-manager-nope.pid'
+          code, _stdout, stderr = capture_run(['doctor'])
+          expect(code).to eq(1)
+          expect(stderr).to include('pid file configured but missing')
         end
       end
     end

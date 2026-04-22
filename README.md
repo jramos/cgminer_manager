@@ -96,12 +96,24 @@ All settings come from environment variables.
 | `LOG_LEVEL` | | `info` | `debug`, `info`, `warn`, `error` |
 | `STALE_THRESHOLD_SECONDS` | | `300` | Tile "updated Xm ago" warning threshold |
 | `SHUTDOWN_TIMEOUT` | | `10` | Seconds to wait for Puma to stop |
+| `CGMINER_MANAGER_PID_FILE` | | unset | Path where `run` writes the server PID on boot and unlinks on shutdown. Required for `bin/cgminer_manager reload`; operators who prefer can still `kill -HUP <pid>` directly. |
 
 ## CLI
 
 - `bin/cgminer_manager run` — start the server.
 - `bin/cgminer_manager doctor` — verify `miners.yml`, cgminer reachability, and monitor `/v2/miners`.
+- `bin/cgminer_manager reload` — dry-run-parse `miners.yml`, then SIGHUP the running server (requires `CGMINER_MANAGER_PID_FILE`).
 - `bin/cgminer_manager version` — print version.
+
+### Hot reload
+
+`miners.yml` is hot-reloadable — add, remove, or re-label a miner, then
+either `kill -HUP $(cat $CGMINER_MANAGER_PID_FILE)` or
+`bin/cgminer_manager reload`. The server logs `event=reload.ok` on
+success or `event=reload.failed` (and keeps the old list) if the new
+file fails to parse. Only `settings.configured_miners` reloads; other
+`Config` fields (`CGMINER_MONITOR_URL`, `SESSION_SECRET`, log level,
+etc.) still require a full restart to change.
 
 ### Errors and Exit Codes
 
