@@ -23,6 +23,16 @@ jobs:
       - run: bundle install --jobs 1
       - run: bundle exec rubocop
 
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      - run: bundle install --jobs 1
+      - run: bundle exec bundle-audit check --update
+
   test:
     runs-on: ubuntu-latest
     strategy:

@@ -13,6 +13,11 @@ RuboCop::RakeTask.new
 
 task default: %i[rubocop spec]
 
+desc 'Check Gemfile.lock against the ruby-advisory-db for known CVEs'
+task :audit do
+  sh 'bundle exec bundle-audit check --update'
+end
+
 namespace :spec do
   desc 'Capture /v2/* responses from $CGMINER_MONITOR_URL into spec/fixtures/monitor/'
   task :refresh_monitor_fixtures do

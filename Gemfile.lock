@@ -18,6 +18,9 @@ GEM
     ast (2.4.3)
     base64 (0.3.0)
     bigdecimal (4.1.1)
+    bundler-audit (0.9.3)
+      bundler (>= 1.2.0)
+      thor (~> 1.0)
     cgminer_api_client (0.3.0)
     crack (1.0.1)
       bigdecimal
@@ -163,6 +166,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  bundler-audit (>= 0.9)
   cgminer_manager!
   parallel (< 2.0)
   rack-test (>= 2.1)
@@ -179,6 +183,7 @@ CHECKSUMS
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (4.1.1) sha256=1c09efab961da45203c8316b0cdaec0ff391dfadb952dd459584b63ebf8054ca
+  bundler-audit (0.9.3) sha256=81c8766c71e47d0d28a0f98c7eed028539f21a6ea3cd8f685eb6f42333c9b4e9
   cgminer_api_client (0.3.0) sha256=89a7cbec7b66338a3b21d71967b4e42b3f9f1fafacc2ded58263a8127d98876e
   cgminer_manager (1.4.0)
   crack (1.0.1) sha256=ff4a10390cd31d66440b7524eb1841874db86201d5b70032028553130b6d4c7e

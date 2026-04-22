@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- **`bundle-audit` in CI** (`.github/workflows/ci.yml`). New `audit`
+  job runs `bundle exec bundle-audit check --update` on every push
+  and PR, gating merges on known CVEs in `Gemfile.lock`. Also
+  available locally as `bundle exec rake audit`.
 - **Dependabot config** (`.github/dependabot.yml`). Weekly bump PRs
   for Bundler, GitHub Actions, and Docker `FROM` base images, with
   `open-pull-requests-limit: 3` per ecosystem. `versioning-strategy:
