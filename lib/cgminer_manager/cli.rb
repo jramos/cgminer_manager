@@ -40,6 +40,8 @@ module CgminerManager
       check_miners(config, monitor_miners, failures)
       report_admin_auth_posture(failures)
       report_pid_file_posture(failures)
+      report_rate_limit_posture(config)
+      report_trusted_proxies_posture(config)
 
       if failures.empty?
         puts 'doctor: all checks passed'
@@ -91,6 +93,25 @@ module CgminerManager
       failures << "pid file: STALE (pid in #{path} not running)"
     rescue Errno::EPERM
       failures << "pid file: pid in #{path} exists but is not owned by us"
+    end
+
+    def report_rate_limit_posture(config)
+      if config.rate_limit_enabled
+        puts "  rate-limit: enabled (#{config.rate_limit_requests} req / " \
+             "#{config.rate_limit_window_seconds}s per IP)"
+      else
+        puts '  rate-limit: DISABLED (CGMINER_MANAGER_RATE_LIMIT=off)'
+      end
+    end
+
+    def report_trusted_proxies_posture(config)
+      if config.trusted_proxies.empty?
+        puts '  trusted-proxies: none (X-Forwarded-For ignored)'
+      else
+        # IPAddr#to_s drops the prefix; format "addr/prefix" for operator clarity.
+        display = config.trusted_proxies.map { |cidr| "#{cidr}/#{cidr.prefix}" }
+        puts "  trusted-proxies: #{display.join(', ')}"
+      end
     end
 
     def cmd_version

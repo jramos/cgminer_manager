@@ -127,6 +127,71 @@ RSpec.describe CgminerManager::Config do
     end
   end
 
+  describe '.from_env rate-limit fields' do
+    it 'defaults rate_limit_enabled to true' do
+      config = described_class.from_env(env_base)
+      expect(config.rate_limit_enabled).to be(true)
+    end
+
+    it 'disables rate_limit_enabled via CGMINER_MANAGER_RATE_LIMIT=off' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_RATE_LIMIT' => 'off'))
+      expect(config.rate_limit_enabled).to be(false)
+    end
+
+    it 'defaults rate_limit_requests to 60' do
+      config = described_class.from_env(env_base)
+      expect(config.rate_limit_requests).to eq(60)
+    end
+
+    it 'defaults rate_limit_window_seconds to 60' do
+      config = described_class.from_env(env_base)
+      expect(config.rate_limit_window_seconds).to eq(60)
+    end
+
+    it 'parses CGMINER_MANAGER_RATE_LIMIT_REQUESTS when set' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_RATE_LIMIT_REQUESTS' => '120'))
+      expect(config.rate_limit_requests).to eq(120)
+    end
+
+    it 'parses CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS when set' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS' => '30'))
+      expect(config.rate_limit_window_seconds).to eq(30)
+    end
+
+    it 'raises ConfigError when CGMINER_MANAGER_RATE_LIMIT_REQUESTS is not an integer' do
+      expect { described_class.from_env(env_base.merge('CGMINER_MANAGER_RATE_LIMIT_REQUESTS' => 'many')) }
+        .to raise_error(CgminerManager::ConfigError, /CGMINER_MANAGER_RATE_LIMIT_REQUESTS/)
+    end
+  end
+
+  describe '.from_env trusted_proxies' do
+    it 'defaults to an empty list when unset' do
+      config = described_class.from_env(env_base)
+      expect(config.trusted_proxies).to eq([])
+    end
+
+    it 'defaults to an empty list when set to the empty string' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_TRUSTED_PROXIES' => ''))
+      expect(config.trusted_proxies).to eq([])
+    end
+
+    it 'parses comma-separated CIDRs into IPAddr objects' do
+      config = described_class.from_env(
+        env_base.merge('CGMINER_MANAGER_TRUSTED_PROXIES' => '127.0.0.1/32, 10.0.0.0/8')
+      )
+      expect(config.trusted_proxies).to eq([IPAddr.new('127.0.0.1/32'), IPAddr.new('10.0.0.0/8')])
+    end
+
+    it 'raises ConfigError with the offending CIDR + env-var key on invalid input' do
+      expect do
+        described_class.from_env(env_base.merge('CGMINER_MANAGER_TRUSTED_PROXIES' => 'not-a-cidr'))
+      end.to raise_error(
+        CgminerManager::ConfigError,
+        /CGMINER_MANAGER_TRUSTED_PROXIES.*not-a-cidr/
+      )
+    end
+  end
+
   describe '#load_miners' do
     it 'yields [host, port] pairs' do
       config = described_class.from_env(env_base)
