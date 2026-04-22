@@ -33,10 +33,14 @@ Metrics/MethodLength:
 Metrics/ClassLength:
   # HttpApp is still the fattest file post-split — 14 routes + error
   # handlers + HTML/display helpers. PoolManager's body is mostly
-  # threaded fan-out boilerplate that splitting would obscure.
+  # threaded fan-out boilerplate that splitting would obscure. CLI
+  # now hosts run/doctor/reload/version plus five posture-report
+  # helpers; extracting a Doctor service would hide the linear
+  # one-screen read of what each verb does.
   Exclude:
     - 'lib/cgminer_manager/http_app.rb'
     - 'lib/cgminer_manager/pool_manager.rb'
+    - 'lib/cgminer_manager/cli.rb'
 
 Metrics/AbcSize:
   Max: 25

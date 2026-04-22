@@ -21,7 +21,7 @@ RSpec.describe CgminerManager::CLI do
         code, _stdout, stderr = capture_run(['banana'])
         expect(code).to eq(64)
         expect(stderr).to include('unknown verb: "banana"')
-        expect(stderr).to include('usage: cgminer_manager {run|doctor|version}')
+        expect(stderr).to include('usage: cgminer_manager {run|doctor|reload|version}')
       end
     end
 
