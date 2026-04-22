@@ -55,15 +55,23 @@ module CgminerManager
       HttpApp.set :monitor_timeout_ms,      @config.monitor_timeout
       HttpApp.set :session_secret,          @config.session_secret
       HttpApp.set :production,              @config.production?
+      configure_rate_limit
       # Eagerly parse miners.yml so a malformed file surfaces as a
       # ConfigError at boot (CLI exit 2), not as an HTTP 500 on the first
       # request after Puma binds the listener.
-      HttpApp.set :configured_miners,       HttpApp.parse_miners_file(@config.miners_file)
-      # Wire the session + auth + CSRF middleware AFTER settings are
-      # populated — otherwise `use Rack::Session::Cookie, secret: ...`
-      # would freeze a nil/random secret before the operator's
-      # CGMINER_MANAGER_SESSION_SECRET ever reached the middleware.
+      HttpApp.set :configured_miners, HttpApp.parse_miners_file(@config.miners_file)
+      # Wire the rate-limit + session + auth + CSRF middleware AFTER
+      # settings are populated — otherwise `use` would freeze nil /
+      # false / random values before the operator's config reached the
+      # middleware.
       HttpApp.install_middleware!
+    end
+
+    def configure_rate_limit
+      HttpApp.set :rate_limit_enabled,        @config.rate_limit_enabled
+      HttpApp.set :rate_limit_requests,       @config.rate_limit_requests
+      HttpApp.set :rate_limit_window_seconds, @config.rate_limit_window_seconds
+      HttpApp.set :trusted_proxies,           @config.trusted_proxies
     end
 
     def start_puma_thread(launcher)

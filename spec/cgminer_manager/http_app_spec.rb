@@ -133,5 +133,34 @@ RSpec.describe CgminerManager::HttpApp do
       expect(session_count).to eq(1)
       expect(admin_auth_count).to eq(1)
     end
+
+    # RateLimiter must sit above Session + AdminAuth so 401-probe
+    # attacks are throttled before they consume auth resources. Any
+    # future middleware reshuffle that drops the limiter below auth
+    # regresses the 5.2 threat model; fail loudly.
+    it 'installs RateLimiter above Rack::Session::Cookie and AdminAuth when enabled' do
+      described_class.set :rate_limit_enabled, true
+      described_class.set :rate_limit_requests, 60
+      described_class.set :rate_limit_window_seconds, 60
+      described_class.set :trusted_proxies, []
+      described_class.install_middleware!
+
+      classes = described_class.middleware.map(&:first)
+      rate_index = classes.index(CgminerManager::RateLimiter)
+      session_index = classes.index(Rack::Session::Cookie)
+      auth_index = classes.index(CgminerManager::AdminAuth)
+
+      expect(rate_index).not_to be_nil
+      expect(rate_index).to be < session_index
+      expect(rate_index).to be < auth_index
+    end
+
+    it 'omits RateLimiter from the stack when disabled' do
+      described_class.set :rate_limit_enabled, false
+      described_class.install_middleware!
+
+      expect(described_class.middleware.map(&:first))
+        .not_to include(CgminerManager::RateLimiter)
+    end
   end
 end
