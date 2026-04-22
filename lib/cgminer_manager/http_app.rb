@@ -58,6 +58,23 @@ module CgminerManager
     end
     private_class_method :validate_miners_shape!
 
+    # Re-parses `settings.miners_file` and atomically swaps
+    # `settings.configured_miners`. Returns the new miner count on
+    # success, nil on parse/validation/IO failure — on failure the
+    # old setting is untouched so in-flight readers never see a torn
+    # state. Callers distinguish success from no-op by the return
+    # value.
+    def self.reload_miners!
+      path = settings.miners_file
+      new_miners = parse_miners_file(path)
+      set :configured_miners, new_miners
+      new_miners.size
+    rescue ConfigError, Errno::ENOENT, Psych::SyntaxError => e
+      Logger.warn(event: 'reload.failed',
+                  error: e.class.to_s, message: e.message)
+      nil
+    end
+
     # Spec harness. Preserves the existing public signature so no spec
     # file needs to change. Eagerly parses miners_file into the setting
     # so specs don't rely on a later lazy load.
