@@ -89,6 +89,8 @@ module CgminerManager
       failures << "pid file is not an integer: #{path}"
     rescue Errno::ESRCH
       failures << "pid file: STALE (pid in #{path} not running)"
+    rescue Errno::EPERM
+      failures << "pid file: pid in #{path} exists but is not owned by us"
     end
 
     def cmd_version
@@ -126,6 +128,10 @@ module CgminerManager
       1
     rescue Errno::ESRCH
       warn "stale pid file (pid not running): #{pid_path}"
+      1
+    rescue Errno::EPERM
+      warn "pid #{pid} exists but is not owned by us " \
+           "(stale pid file from a different user? #{pid_path})"
       1
     rescue ArgumentError
       warn "pid file is not an integer: #{pid_path}"

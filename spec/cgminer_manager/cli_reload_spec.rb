@@ -62,6 +62,13 @@ RSpec.describe CgminerManager::CLI, 'reload' do # rubocop:disable RSpec/Describe
       .to output(/pid file is not an integer/).to_stderr
   end
 
+  it 'returns 1 with a clear message when the pid belongs to another user (EPERM)' do
+    File.write(pid_path, "#{Process.pid}\n")
+    allow(Process).to receive(:kill).with(0, Process.pid).and_raise(Errno::EPERM)
+    expect { expect(described_class.run(['reload'])).to eq(1) }
+      .to output(/pid .* not owned|stale pid file|permission/i).to_stderr
+  end
+
   it 'returns 2 with a miners-file-specific message when miners.yml is missing' do
     File.unlink(miners_path)
     File.write(pid_path, "#{Process.pid}\n")
