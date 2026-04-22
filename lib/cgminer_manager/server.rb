@@ -70,7 +70,8 @@ module CgminerManager
       Thread.new do
         launcher.run
       rescue Exception => e # rubocop:disable Lint/RescueException
-        Logger.error(event: 'puma.crash', error: e.class.to_s, message: e.message)
+        Logger.error(event: 'puma.crash', error: e.class.to_s,
+                     message: e.message, backtrace: e.backtrace&.first(10))
         @booted << true # unblock main if we died before booting
         @signals << :stop
       end
