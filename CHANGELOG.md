@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- **`miners.yml` hot reload via SIGHUP.** Add, remove, or re-label a
+  miner without restarting. The Server traps SIGHUP, atomically
+  re-parses `settings.miners_file`, and swaps `settings.configured_miners`
+  — `PoolManager`, `CgminerCommander`, and the dashboard/per-miner
+  routes all read the new list on the next request. Parse or
+  validation failures log `event=reload.failed` and keep the previous
+  list so a typo can't crash a running server. New CLI verb
+  `bin/cgminer_manager reload` reads `CGMINER_MANAGER_PID_FILE`,
+  dry-run-parses miners.yml locally (surfacing typos at exit 2 before
+  signaling), and sends SIGHUP; `doctor` reports the PID file's
+  posture (`not configured` / `OK (pid N)` / `STALE` / `missing`).
 - **CI publishes multi-arch container images on `v*` tag push.** New
   `.github/workflows/release.yml` builds `linux/amd64` + `linux/arm64`
   images on native GitHub-hosted runners and pushes to
