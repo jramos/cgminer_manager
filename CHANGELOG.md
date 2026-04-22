@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+- **Dependabot config** (`.github/dependabot.yml`). Weekly bump PRs
+  for Bundler, GitHub Actions, and Docker `FROM` base images, with
+  `open-pull-requests-limit: 3` per ecosystem. `versioning-strategy:
+  lockfile-only` on bundler keeps gemspec `~>` bounds stable — the
+  lockfile moves forward automatically, but a human widens bounds
+  when intent is to adopt a new line. PRs target `develop`.
+
 ## [1.4.0] — 2026-04-22
 
 ### Added
