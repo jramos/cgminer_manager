@@ -5,6 +5,7 @@ source 'https://rubygems.org'
 gemspec
 
 group :development, :test do
+  gem 'brakeman', '>= 7.0'
   gem 'bundler-audit', '>= 0.9'
   # parallel 2.x requires Ruby >= 3.3; pin to 1.x so our Ruby 3.2 matrix entry
   # can still bundle. Transitive dep of rubocop / rubocop-ast.

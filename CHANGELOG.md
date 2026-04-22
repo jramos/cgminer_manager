@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- **`brakeman` in CI** (`.github/workflows/ci.yml`,
+  `config/brakeman.yml`). New `brakeman` job runs
+  `bundle exec brakeman --force --no-summary --quiet --exit-on-warn`
+  on every push and PR, failing CI on any static security warning.
+  Brakeman 8.x is Rails-focused; `force_scan: true` in
+  `config/brakeman.yml` makes it scan this Sinatra app anyway. The
+  Rails-specific checks (Controllers / Models) report zero by design,
+  but the ~79 generic-Ruby checks (Execute, Evaluation, Send,
+  Deserialize, JSONParsing, TemplateInjection, XSS, etc.) still run
+  against `lib/` and the Haml views, covering the admin dashboard
+  surface. Also available locally as `bundle exec rake brakeman`.
+  First-run result: zero warnings; `config/brakeman.ignore` not
+  created.
 - **`bundle-audit` in CI** (`.github/workflows/ci.yml`). New `audit`
   job runs `bundle exec bundle-audit check --update` on every push
   and PR, gating merges on known CVEs in `Gemfile.lock`. Also

@@ -18,6 +18,11 @@ task :audit do
   sh 'bundle exec bundle-audit check --update'
 end
 
+desc 'Static security analysis via brakeman'
+task :brakeman do
+  sh 'bundle exec brakeman --force --no-summary --quiet --exit-on-warn'
+end
+
 namespace :spec do
   desc 'Capture /v2/* responses from $CGMINER_MONITOR_URL into spec/fixtures/monitor/'
   task :refresh_monitor_fixtures do
