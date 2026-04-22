@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-04-22
+
 ### Added
 - **`miners.yml` hot reload via SIGHUP.** Add, remove, or re-label a
   miner without restarting. The Server traps SIGHUP, atomically
@@ -14,6 +16,11 @@
   dry-run-parses miners.yml locally (surfacing typos at exit 2 before
   signaling), and sends SIGHUP; `doctor` reports the PID file's
   posture (`not configured` / `OK (pid N)` / `STALE` / `missing`).
+  Failure modes `cmd_reload` now surfaces with clean exit 1 instead
+  of a stack trace: garbage pid-file contents (`ArgumentError`),
+  pid owned by another user (`Errno::EPERM`), stale pid, and
+  missing pid file. `puma.crash` logs now include the first 10
+  backtrace frames (parity with `cgminer_monitor`).
 - **CI publishes multi-arch container images on `v*` tag push.** New
   `.github/workflows/release.yml` builds `linux/amd64` + `linux/arm64`
   images on native GitHub-hosted runners and pushes to
