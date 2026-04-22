@@ -39,6 +39,7 @@ module CgminerManager
       monitor_miners = check_monitor(config, failures)
       check_miners(config, monitor_miners, failures)
       report_admin_auth_posture(failures)
+      report_pid_file_posture(failures)
 
       if failures.empty?
         puts 'doctor: all checks passed'
@@ -62,6 +63,32 @@ module CgminerManager
       else
         failures << 'admin auth misconfigured: no credentials and no escape hatch'
       end
+    end
+
+    # Same audit-honest treatment as admin-auth posture: explicitly
+    # report whether the PID file exists and whether the recorded PID
+    # is alive, so an operator reading `doctor` output knows whether
+    # `cgminer_manager reload` will work. A configured-but-missing or
+    # stale file is a failure (exit 1).
+    def report_pid_file_posture(failures)
+      path = ENV.fetch('CGMINER_MANAGER_PID_FILE', nil)
+      if path.nil? || path.empty?
+        puts '  pid file: not configured'
+        return
+      end
+
+      unless File.exist?(path)
+        failures << "pid file configured but missing: #{path}"
+        return
+      end
+
+      pid = Integer(File.read(path).strip)
+      Process.kill(0, pid)
+      puts "  pid file: OK (pid #{pid})"
+    rescue ArgumentError
+      failures << "pid file is not an integer: #{path}"
+    rescue Errno::ESRCH
+      failures << "pid file: STALE (pid in #{path} not running)"
     end
 
     def cmd_version
