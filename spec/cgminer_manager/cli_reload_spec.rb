@@ -55,4 +55,10 @@ RSpec.describe CgminerManager::CLI, 'reload' do # rubocop:disable RSpec/Describe
     expect { expect(described_class.run(['reload'])).to eq(2) }
       .to output(/CGMINER_MANAGER_PID_FILE not set/).to_stderr
   end
+
+  it 'returns 1 with a clear message when the pid file contains garbage' do
+    File.write(pid_path, "not-a-number\n")
+    expect { expect(described_class.run(['reload'])).to eq(1) }
+      .to output(/pid file is not an integer/).to_stderr
+  end
 end

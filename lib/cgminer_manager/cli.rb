@@ -101,7 +101,7 @@ module CgminerManager
     # of in the server's logs, then sends SIGHUP to the PID recorded
     # by a running `cgminer_manager run`. Operators can also skip this
     # verb and `kill -HUP <pid>` directly.
-    def cmd_reload
+    def cmd_reload # rubocop:disable Metrics/MethodLength
       config   = Config.from_env
       pid_path = config.pid_file
       if pid_path.nil? || pid_path.empty?
@@ -126,6 +126,9 @@ module CgminerManager
       1
     rescue Errno::ESRCH
       warn "stale pid file (pid not running): #{pid_path}"
+      1
+    rescue ArgumentError
+      warn "pid file is not an integer: #{pid_path}"
       1
     end
 
