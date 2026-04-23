@@ -95,7 +95,7 @@ sequenceDiagram
     HttpApp->>HAML: haml :'manager/index' with @miner_pool, @miner_data, @bad_chain_elements, @view
     HAML->>HAML: render layout, _header, manager/index (Summary/Miner Pool/Admin tabs),
     HAML-->>HttpApp: HTML
-    HttpApp->>Logger: after-filter: 'http.request' path=/ status=200 render_ms=...
+    HttpApp->>Logger: after-filter: 'http.request' path=/ status=200 duration_ms=...
     HttpApp-->>Puma: 200 HTML
     Puma-->>Browser: response
 ```
@@ -216,7 +216,7 @@ sequenceDiagram
     end
     Cmdr-->>HttpApp: FleetWriteResult
 
-    HttpApp->>Logger: 'admin.result' request_id=... ok_count=N failed_count=M elapsed_ms=...
+    HttpApp->>Logger: 'admin.result' request_id=... ok_count=N failed_count=M duration_ms=...
     HttpApp->>HAML: render_admin_result(result)
     HAML-->>HttpApp: HTML fragment (shared/_fleet_write)
     HttpApp-->>Puma: 200 HTML

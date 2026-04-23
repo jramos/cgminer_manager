@@ -152,7 +152,7 @@ module CgminerManager
                   path: request.path,
                   method: request.request_method,
                   status: response.status,
-                  render_ms: ((Time.now - @request_started_at) * 1000).round)
+                  duration_ms: ((Time.now - @request_started_at) * 1000).round)
     end
 
     # Wires the session-cookie + admin-auth + CSRF middleware stack.

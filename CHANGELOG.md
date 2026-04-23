@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Changed
+- **Log-key consistency — `duration_ms` everywhere.** The
+  `admin.result` and `http.request` log events previously emitted
+  their timing under `elapsed_ms` and `render_ms` respectively;
+  both now emit `duration_ms` to match `monitor.call` and the
+  house-wide standard. No Ruby API change — `AdminLogging.result_log_entry`
+  and the `http.request` after-filter still accept the same inputs.
+  **Log consumers that keyed off `elapsed_ms` or `render_ms` must
+  update their queries to `duration_ms`.** The `cgminer_monitor`
+  canonical log-schema doc (`cgminer_monitor/docs/log_schema.md`)
+  pins `duration_ms` as the standardized reserved key.
+- `docs/interfaces.md`, `docs/workflows.md`, and `docs/architecture.md`
+  updated to name `duration_ms` in their event tables and Mermaid
+  sequence diagrams.
+
 ## [1.5.0] — 2026-04-22
 
 ### Added
