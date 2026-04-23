@@ -2,6 +2,7 @@
 
 require 'yaml'
 require 'securerandom'
+require 'ipaddr'
 
 module CgminerManager
   Config = Data.define(
@@ -15,6 +16,10 @@ module CgminerManager
     :monitor_timeout,
     :pool_thread_cap,
     :pid_file,
+    :rate_limit_enabled,
+    :rate_limit_requests,
+    :rate_limit_window_seconds,
+    :trusted_proxies,
     :rack_env
   ) do
     def validate!
@@ -52,6 +57,10 @@ module CgminerManager
         monitor_timeout: parse_int(env, 'MONITOR_TIMEOUT_MS', '2000'),
         pool_thread_cap: parse_int(env, 'POOL_THREAD_CAP', '8'),
         pid_file: env['CGMINER_MANAGER_PID_FILE'],
+        rate_limit_enabled: env['CGMINER_MANAGER_RATE_LIMIT'] != 'off',
+        rate_limit_requests: parse_int(env, 'CGMINER_MANAGER_RATE_LIMIT_REQUESTS', '60'),
+        rate_limit_window_seconds: parse_int(env, 'CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS', '60'),
+        trusted_proxies: parse_cidr_list(env, 'CGMINER_MANAGER_TRUSTED_PROXIES'),
         rack_env: rack_env
       ).validate!
     end
@@ -86,6 +95,17 @@ module CgminerManager
       Integer(env.fetch(key, default))
     rescue ArgumentError
       raise ConfigError, "#{key} must be an integer, got: #{env[key].inspect}"
+    end
+
+    def parse_cidr_list(env, key)
+      raw = env[key]
+      return [] if raw.nil? || raw.strip.empty?
+
+      raw.split(',').map(&:strip).reject(&:empty?).map do |cidr|
+        IPAddr.new(cidr)
+      rescue IPAddr::Error => e
+        raise ConfigError, "#{key} contains invalid CIDR '#{cidr}': #{e.message}"
+      end
     end
 
     def resolve_session_secret(env, rack_env)

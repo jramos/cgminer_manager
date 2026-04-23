@@ -172,6 +172,30 @@ The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`q
 
 Basic Auth transmits credentials base64-encoded (reversible), so terminate TLS at a reverse proxy in any deployment where the UI is reachable beyond localhost.
 
+### Rate limiting
+
+As of 1.5.0, POSTs to admin + write paths (`/manager/admin/*`, `/miner/:id/admin/*`, `/manager/manage_pools`, `/miner/:id/manage_pools`) are throttled to 60 requests / 60 seconds per client IP. Anything over the limit receives `429 Too Many Requests` with a `Retry-After` header. The limiter sits above Basic Auth, so 401-probing attackers are throttled before `AdminAuth` ever runs.
+
+Tuning env vars:
+
+-   `CGMINER_MANAGER_RATE_LIMIT=off` — disable entirely (escape hatch; mirrors the admin-auth pattern).
+-   `CGMINER_MANAGER_RATE_LIMIT_REQUESTS` — default `60`.
+-   `CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS` — default `60`.
+
+`bin/cgminer_manager doctor` reports the active limits.
+
+**Behind nginx / a reverse proxy:** without proxy-trust config, every request appears to come from the proxy's IP and the limiter throttles the whole site globally. Set `CGMINER_MANAGER_TRUSTED_PROXIES` to the proxy's IP or CIDR (comma-separated list, e.g. `127.0.0.1/32,10.0.0.0/8`); the limiter then consults `X-Forwarded-For` and keys the bucket on the leftmost untrusted hop (the actual client). Pair with nginx config:
+
+    location / {
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+Implementation is a single-Puma-process in-memory bucket (Hash + Mutex). Cluster-mode Puma deployments would need a shared store (Redis or similar) that the bundled middleware intentionally does not include.
+
 ## Further Reading
 
 -   [`CHANGELOG.md`](CHANGELOG.md) — release history: 1.0 Sinatra rewrite, 1.1 rich UI restoration, 1.2 admin surface restoration.

@@ -39,7 +39,11 @@ RSpec.configure do |config|
   # the gate delete or override this in their own hooks. Unconditional
   # assignment (not `||=`) so an ambient env var from the shell
   # running rspec can't silently override the suite's posture.
+  #
+  # Rate-limit defaults enabled at the same release — same escape-hatch
+  # pattern. Dedicated rate-limit specs flip the posture on explicitly.
   config.before(:suite) do
     ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
+    ENV['CGMINER_MANAGER_RATE_LIMIT'] = 'off'
   end
 end

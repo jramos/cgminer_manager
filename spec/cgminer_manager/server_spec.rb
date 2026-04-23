@@ -26,21 +26,29 @@ RSpec.describe CgminerManager::Server do
       pool_thread_cap: 8,
       monitor_timeout: 2500,
       session_secret: 'a' * 64,
-      production?: false
+      production?: false,
+      rate_limit_enabled: true,
+      rate_limit_requests: 60,
+      rate_limit_window_seconds: 60,
+      trusted_proxies: []
     )
   end
 
   before do
     # Reset HttpApp settings to known state so ordering across examples
     # doesn't muddy the assertions.
-    CgminerManager::HttpApp.set :monitor_url,             nil
-    CgminerManager::HttpApp.set :miners_file,             nil
-    CgminerManager::HttpApp.set :configured_miners,       nil
-    CgminerManager::HttpApp.set :stale_threshold_seconds, 300
-    CgminerManager::HttpApp.set :pool_thread_cap,         8
-    CgminerManager::HttpApp.set :monitor_timeout_ms,      2000
-    CgminerManager::HttpApp.set :session_secret,          nil
-    CgminerManager::HttpApp.set :production,              false
+    CgminerManager::HttpApp.set :monitor_url,               nil
+    CgminerManager::HttpApp.set :miners_file,               nil
+    CgminerManager::HttpApp.set :configured_miners,         nil
+    CgminerManager::HttpApp.set :stale_threshold_seconds,   300
+    CgminerManager::HttpApp.set :pool_thread_cap,           8
+    CgminerManager::HttpApp.set :monitor_timeout_ms,        2000
+    CgminerManager::HttpApp.set :session_secret,            nil
+    CgminerManager::HttpApp.set :production,                false
+    CgminerManager::HttpApp.set :rate_limit_enabled,        false
+    CgminerManager::HttpApp.set :rate_limit_requests,       60
+    CgminerManager::HttpApp.set :rate_limit_window_seconds, 60
+    CgminerManager::HttpApp.set :trusted_proxies,           []
   end
 
   after do
