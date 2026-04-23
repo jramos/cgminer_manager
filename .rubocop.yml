@@ -71,6 +71,8 @@ RSpec/DescribeClass:
   Exclude:
     # Integration specs describe HTTP routes/behaviors, not Ruby classes.
     - 'spec/integration/**/*_spec.rb'
+    # Contract specs describe cross-repo shape contracts, not classes.
+    - 'spec/contract/**/*_spec.rb'
 
 RSpec/MultipleDescribes:
   Exclude:

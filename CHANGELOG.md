@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- **Contract test against monitor's OpenAPI spec**
+  (`spec/contract/monitor_openapi_contract_spec.rb`). Asserts that
+  every envelope key `MonitorClient` + view-models read from
+  cgminer_monitor's `/v2/*` responses is declared in the monitor-
+  shipped OpenAPI (`lib/cgminer_monitor/openapi.yml`). Catches
+  field-rename or envelope-reshape drift at CI time instead of at
+  page-load. Scope is envelope-only (`miners`, `host`, `port`,
+  `available`, `id`, `ok`, `response`, `error`, `fields`, `data`,
+  `status`); cgminer-payload drift stays in api_client territory.
+  Monitor is added as a CI-only dev dep in `Gemfile` pinned to
+  `tag: 'v1.2.0'` under a `GIT` source — bumping the tag is a
+  deliberate reviewable event that surfaces OpenAPI revisions in
+  manager's PR history.
 - **`docs/logging.md`** — short stub naming the manager-owned log
   event namespaces (`admin.*`, `rate_limit.*`, `monitor.*`, `http.*`),
   the shared namespaces (`server.*`, `reload.*`, `puma.*`), and the
