@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-04-22
+
 ### Added
 - **Rate limiting on admin + write POSTs** (`lib/cgminer_manager/rate_limiter.rb`).
   New Rack middleware throttles POSTs to `/manager/admin/*`,
