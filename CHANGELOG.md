@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+- **`docs/logging.md`** — short stub naming the manager-owned log
+  event namespaces (`admin.*`, `rate_limit.*`, `monitor.*`, `http.*`),
+  the shared namespaces (`server.*`, `reload.*`, `puma.*`), and the
+  house conventions. Links to `cgminer_monitor/docs/log_schema.md`
+  as the cross-repo source of truth for reserved keys, the full
+  event catalog, and evolution rules.
+
 ### Changed
 - **Log-key consistency — `duration_ms` everywhere.** The
   `admin.result` and `http.request` log events previously emitted
