@@ -173,7 +173,7 @@ If monitor's response is missing a column (e.g., per-miner availability), the pr
 
 ### Request logging
 
-Every HTTP request emits an `http.request` log line in the `after` filter with `path`, `method`, `status`, `render_ms`. For admin routes the `before` filter generates a `request_id = SecureRandom.uuid` which threads through the admin audit events (see `architecture.md` → admin audit log schema).
+Every HTTP request emits an `http.request` log line in the `after` filter with `path`, `method`, `status`, `duration_ms`. For admin routes the `before` filter generates a `request_id = SecureRandom.uuid` which threads through the admin audit events (see `architecture.md` → admin audit log schema).
 
 ## 5. Upstream: `cgminer_monitor` `/v2/*`
 
@@ -216,12 +216,12 @@ Notable events (non-exhaustive):
 |---|---|---|
 | `server.start`, `server.stopping`, `server.stopped` | Server | standard |
 | `puma.crash` | Server | `error`, `message` |
-| `http.request` | HttpApp (after filter) | `path`, `method`, `status`, `render_ms` |
+| `http.request` | HttpApp (after filter) | `path`, `method`, `status`, `duration_ms` |
 | `http.500` | HttpApp error handler | `error`, `message`, `backtrace` (first 10) |
 | `monitor.call` | MonitorClient | `url`, `status`, `duration_ms` |
 | `monitor.call.failed` | MonitorClient | `url`, `error`, `message` |
 | `admin.command`, `admin.raw_command` | HttpApp admin routes | `request_id`, `user`, `remote_ip`, `user_agent`, `session_id_hash`, `command`, `scope`, `args` |
-| `admin.result` | HttpApp admin routes | `request_id`, `command`, `scope`, `ok_count`, `failed_count`, `elapsed_ms` |
+| `admin.result` | HttpApp admin routes | `request_id`, `command`, `scope`, `ok_count`, `failed_count`, `duration_ms` |
 | `admin.scope_rejected` | HttpApp `/admin/run` | `request_id`, `command`, `scope` |
 | `admin.auth_failed` | AdminAuth | `reason`, `path`, `remote_ip`, `user_agent` |
 | `admin.auth_misconfigured` | AdminAuth | `path`, `remote_ip`, `user_agent` — admin path hit with neither creds nor `=off` (defense-in-depth for post-boot env tampering; boot-time `Config.from_env` should have caught it first). Emits a `503` response. |

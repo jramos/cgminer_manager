@@ -54,7 +54,7 @@ RSpec.describe CgminerManager::AdminLogging do
         ok_count: 3,
         failed_count: 1
       )
-      expect(entry[:elapsed_ms]).to be_between(200, 2000)
+      expect(entry[:duration_ms]).to be_between(200, 2000)
     end
   end
 end

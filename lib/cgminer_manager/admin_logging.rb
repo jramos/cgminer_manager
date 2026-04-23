@@ -42,7 +42,7 @@ module CgminerManager
         scope: scope,
         ok_count: result.ok_count,
         failed_count: result.failed_count,
-        elapsed_ms: ((Time.now - started_at) * 1000).round
+        duration_ms: ((Time.now - started_at) * 1000).round
       }
     end
   end
