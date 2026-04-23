@@ -103,7 +103,11 @@ RSpec.describe CgminerManager::CLI do
       let(:config) do
         instance_double(CgminerManager::Config,
                         monitor_url: 'http://monitor:9292',
-                        monitor_timeout: 2000)
+                        monitor_timeout: 2000,
+                        rate_limit_enabled: true,
+                        rate_limit_requests: 60,
+                        rate_limit_window_seconds: 60,
+                        trusted_proxies: [])
       end
       let(:miner) { instance_double(CgminerApiClient::Miner) }
       let(:client) { instance_double(CgminerManager::MonitorClient) }
@@ -184,6 +188,53 @@ RSpec.describe CgminerManager::CLI do
           code, _stdout, stderr = capture_run(['doctor'])
           expect(code).to eq(1)
           expect(stderr).to include('FAIL: admin auth misconfigured')
+        end
+      end
+
+      describe 'rate-limit posture' do
+        before do
+          allow(client).to receive(:miners).and_return(miners: [{ id: '127.0.0.1:4028' }])
+          allow(miner).to receive(:available?).and_return(true)
+        end
+
+        def rate_limit_config(**overrides)
+          instance_double(
+            CgminerManager::Config,
+            monitor_url: 'http://monitor:9292', monitor_timeout: 2000,
+            rate_limit_enabled: true, rate_limit_requests: 60, rate_limit_window_seconds: 60,
+            trusted_proxies: [], **overrides
+          ).tap do |c|
+            allow(c).to receive(:load_miners).and_return([['127.0.0.1', 4028]])
+            allow(CgminerManager::Config).to receive(:from_env).and_return(c)
+          end
+        end
+
+        it 'reports "enabled" with configured values' do
+          rate_limit_config(rate_limit_requests: 120, rate_limit_window_seconds: 30)
+          code, stdout, = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('rate-limit: enabled (120 req / 30s per IP)')
+        end
+
+        it 'reports "DISABLED" when rate_limit_enabled is false' do
+          rate_limit_config(rate_limit_enabled: false)
+          code, stdout, = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('rate-limit: DISABLED (CGMINER_MANAGER_RATE_LIMIT=off)')
+        end
+
+        it 'reports "none" for trusted-proxies when empty' do
+          rate_limit_config(trusted_proxies: [])
+          code, stdout, = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to include('trusted-proxies: none (X-Forwarded-For ignored)')
+        end
+
+        it 'reports parsed CIDR list for trusted-proxies when set' do
+          rate_limit_config(trusted_proxies: [IPAddr.new('127.0.0.1/32'), IPAddr.new('10.0.0.0/8')])
+          code, stdout, = capture_run(['doctor'])
+          expect(code).to eq(0)
+          expect(stdout).to match(%r{trusted-proxies: 127\.0\.0\.1/32, 10\.0\.0\.0/8})
         end
       end
 

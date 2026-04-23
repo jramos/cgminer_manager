@@ -1,5 +1,30 @@
 # Migration
 
+## 1.5.0 — Rate limiting enabled by default
+
+POSTs to admin + write paths (`/manager/admin/*`, `/miner/:id/admin/*`, `/manager/manage_pools`, `/miner/:id/manage_pools`) are throttled to **60 requests / 60 seconds per client IP** by default. A polling script or dashboard exceeding that rate will receive `429 Too Many Requests` with a `Retry-After` header.
+
+Tune or disable:
+
+    # Disable entirely (escape hatch; mirrors admin-auth).
+    export CGMINER_MANAGER_RATE_LIMIT=off
+
+    # Or raise the ceiling:
+    export CGMINER_MANAGER_RATE_LIMIT_REQUESTS=300
+    export CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS=60
+
+**Behind nginx / a reverse proxy** — important: without `CGMINER_MANAGER_TRUSTED_PROXIES` set, every request appears to come from the proxy's IP and the limiter throttles the whole site globally, not per real client. Set it to the proxy's IP or CIDR (comma-separated) to re-enable per-client bucketing:
+
+    export CGMINER_MANAGER_TRUSTED_PROXIES=127.0.0.1/32,10.0.0.0/8
+
+With this set, the limiter consults `X-Forwarded-For` and keys on the leftmost untrusted hop. Ensure nginx forwards the real client IP via `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` — see README for the full snippet.
+
+`bin/cgminer_manager doctor` reports the active posture (`rate-limit: enabled (N req / Ns per IP)` / `DISABLED` and `trusted-proxies: none` / `<cidr list>`) so audits can confirm the configuration.
+
+No changes are required for single-operator / localhost deployments or for deployments where 60 req/min is well above observed usage.
+
+---
+
 ## 1.3.0 — Admin auth required by default (BREAKING)
 
 Upgrading from 1.2.x requires one of the following before restarting:

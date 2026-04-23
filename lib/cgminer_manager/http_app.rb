@@ -83,7 +83,11 @@ module CgminerManager
                                  pool_thread_cap: 8,
                                  monitor_timeout_ms: 2000,
                                  session_secret: 'x' * 64,
-                                 production: false)
+                                 production: false,
+                                 rate_limit_enabled: false,
+                                 rate_limit_requests: 60,
+                                 rate_limit_window_seconds: 60,
+                                 trusted_proxies: [])
       set :monitor_url,             monitor_url
       set :miners_file,             miners_file
       set :configured_miners,       parse_miners_file(miners_file)
@@ -92,6 +96,10 @@ module CgminerManager
       set :monitor_timeout_ms,      monitor_timeout_ms
       set :session_secret,          session_secret
       set :production,              production
+      set :rate_limit_enabled,        rate_limit_enabled
+      set :rate_limit_requests,       rate_limit_requests
+      set :rate_limit_window_seconds, rate_limit_window_seconds
+      set :trusted_proxies,           trusted_proxies
       install_middleware!
     end
 
@@ -126,6 +134,14 @@ module CgminerManager
     set :host_authorization, { permitted_hosts: [] }
     set :views, File.expand_path('../../views', __dir__)
 
+    # Rate-limit defaults. install_middleware! consults these; Server
+    # and configure_for_test! override them with the operator's config
+    # before calling install_middleware!.
+    set :rate_limit_enabled, true
+    set :rate_limit_requests, 60
+    set :rate_limit_window_seconds, 60
+    set :trusted_proxies, []
+
     before do
       @request_started_at = Time.now
       @request_id         = SecureRandom.uuid if admin_path?(request.path_info)
@@ -158,6 +174,16 @@ module CgminerManager
       # session + auth + CSRF middleware, turning each request into
       # an ever-deeper onion.
       @middleware = []
+
+      # RateLimiter sits ABOVE session + auth on purpose: a 401-probing
+      # attacker must be throttled before AdminAuth executes, otherwise
+      # the probe rate is unbounded.
+      if settings.rate_limit_enabled
+        use CgminerManager::RateLimiter,
+            requests: settings.rate_limit_requests,
+            window_seconds: settings.rate_limit_window_seconds,
+            trusted_proxies: settings.trusted_proxies
+      end
 
       use Rack::Session::Cookie,
           key: 'cgminer_manager.session',

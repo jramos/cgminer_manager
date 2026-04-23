@@ -2,6 +2,63 @@
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-04-22
+
+### Added
+- **Rate limiting on admin + write POSTs** (`lib/cgminer_manager/rate_limiter.rb`).
+  New Rack middleware throttles POSTs to `/manager/admin/*`,
+  `/miner/:id/admin/*`, `/manager/manage_pools`, and
+  `/miner/:id/manage_pools` to 60 requests / 60 seconds per client IP
+  by default. Over-limit requests receive `429 Too Many Requests`
+  with a `Retry-After` header. The limiter sits above
+  `Rack::Session::Cookie` + `AdminAuth` so 401-probing attackers are
+  throttled before the auth gate ever executes. Fixed-window
+  semantics (not sliding); an attacker timing requests at a window
+  boundary can push up to 2× the limit in a ~2-second band —
+  acceptable for defense-in-depth. In-process state (Hash + Mutex);
+  single-Puma-process deployments only. Tune via
+  `CGMINER_MANAGER_RATE_LIMIT_REQUESTS` /
+  `CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS` or disable with
+  `CGMINER_MANAGER_RATE_LIMIT=off`.
+- **`CGMINER_MANAGER_TRUSTED_PROXIES` env var** (comma-separated
+  CIDRs, default empty). When `REMOTE_ADDR` matches one of the
+  configured CIDRs, the rate limiter walks `X-Forwarded-For`
+  right-to-left and keys the bucket on the leftmost untrusted hop
+  (the real client IP). Without this, the limiter sees every
+  request as coming from the reverse proxy's IP and throttles
+  globally. Malformed XFF hops fall back to `REMOTE_ADDR` so
+  attacker-controlled garbage cannot amplify memory use. README has
+  an nginx snippet; `MIGRATION.md` documents the upgrade failure
+  mode.
+- **`bin/cgminer_manager doctor` reports rate-limit posture.**
+  Either `rate-limit: enabled (N req / Ns per IP)` or
+  `rate-limit: DISABLED (CGMINER_MANAGER_RATE_LIMIT=off)`, plus
+  `trusted-proxies: none (X-Forwarded-For ignored)` or a comma-
+  separated CIDR list.
+- **`brakeman` in CI** (`.github/workflows/ci.yml`,
+  `config/brakeman.yml`). New `brakeman` job runs
+  `bundle exec brakeman --force --no-summary --quiet --exit-on-warn`
+  on every push and PR, failing CI on any static security warning.
+  Brakeman 8.x is Rails-focused; `force_scan: true` in
+  `config/brakeman.yml` makes it scan this Sinatra app anyway. The
+  Rails-specific checks (Controllers / Models) report zero by design,
+  but the ~79 generic-Ruby checks (Execute, Evaluation, Send,
+  Deserialize, JSONParsing, TemplateInjection, XSS, etc.) still run
+  against `lib/` and the Haml views, covering the admin dashboard
+  surface. Also available locally as `bundle exec rake brakeman`.
+  First-run result: zero warnings; `config/brakeman.ignore` not
+  created.
+- **`bundle-audit` in CI** (`.github/workflows/ci.yml`). New `audit`
+  job runs `bundle exec bundle-audit check --update` on every push
+  and PR, gating merges on known CVEs in `Gemfile.lock`. Also
+  available locally as `bundle exec rake audit`.
+- **Dependabot config** (`.github/dependabot.yml`). Weekly bump PRs
+  for Bundler, GitHub Actions, and Docker `FROM` base images, with
+  `open-pull-requests-limit: 3` per ecosystem. `versioning-strategy:
+  lockfile-only` on bundler keeps gemspec `~>` bounds stable — the
+  lockfile moves forward automatically, but a human widens bounds
+  when intent is to adopt a new line. PRs target `develop`.
+
 ## [1.4.0] — 2026-04-22
 
 ### Added

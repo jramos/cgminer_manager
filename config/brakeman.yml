@@ -1,0 +1,16 @@
+---
+# cgminer_manager is a Sinatra app, not Rails. brakeman's Rails-focused
+# controller/model detection reports "Controllers: 0, Models: 0" here —
+# expected. The generic Ruby checks (Execute, Evaluation, Send,
+# Deserialize, JSONParsing, TemplateInjection, XSS, etc.) still run
+# against lib/ and the Haml views under views/, which covers the admin
+# dashboard surface. `force_scan: true` makes brakeman scan anyway
+# instead of exiting 0 with "Please supply the path to a Rails
+# application." `exit_on_warn: true` flips exit code on warnings so
+# CI fails loudly. CLI invocations in ci.yml and Rakefile pass these
+# flags explicitly as well, so an accidental delete of this file
+# doesn't silently turn the CI check into a no-op.
+
+:app_path: "."
+:force_scan: true
+:exit_on_warn: true
