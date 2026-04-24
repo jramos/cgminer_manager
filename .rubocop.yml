@@ -36,11 +36,14 @@ Metrics/ClassLength:
   # threaded fan-out boilerplate that splitting would obscure. CLI
   # now hosts run/doctor/reload/version plus five posture-report
   # helpers; extracting a Doctor service would hide the linear
-  # one-screen read of what each verb does.
+  # one-screen read of what each verb does. RestartScheduler is a
+  # single thread loop with focused private helpers — splitting
+  # would force test seams across files for one logical unit.
   Exclude:
     - 'lib/cgminer_manager/http_app.rb'
     - 'lib/cgminer_manager/pool_manager.rb'
     - 'lib/cgminer_manager/cli.rb'
+    - 'lib/cgminer_manager/restart_scheduler.rb'
 
 Metrics/AbcSize:
   Max: 25
