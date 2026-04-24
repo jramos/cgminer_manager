@@ -163,6 +163,7 @@ bin/cgminer_manager run
 
 - **Unit specs live at `spec/cgminer_manager/**`**, one file per `lib/` file (roughly).
 - **Integration specs at `spec/integration/`**, tagged `:integration`. They use `Rack::Test::Methods` against `HttpApp` — no Puma spin-up.
+- **Contract specs at `spec/contract/`** — `monitor_openapi_contract_spec.rb` asserts that every envelope field `MonitorClient` + the view-models read from monitor's `/v2/*` responses is declared in the OpenAPI spec `cgminer_monitor` ships (inside the gem, `lib/cgminer_monitor/openapi.yml`). Catches monitor-side rename / envelope reshape at CI time instead of at page-load time. Bumping the `cgminer_monitor` gem pin in `Gemfile` is the deliberate reviewable event that regenerates this contract — if the spec fails after a pin bump, either fix the reader to match the new shape or push back on the monitor change. Scope is envelope keys (`miners`, `host`, `port`, `ok`, `response`, `error`, `fields`, `data`, `status`); cgminer-payload drift (`SUMMARY`, `MHS 5s`, etc.) is covered separately via `FakeCgminer` fixtures.
 - **Monitor calls are stubbed with WebMock**. See `spec/support/monitor_stubs.rb` for helpers that stub `/v2/*` with fixture JSON.
 - **cgminer calls use `FakeCgminer`** (the shared in-process TCP server from `spec/support/fake_cgminer.rb`).
 - **Specs that render routes call `HttpApp.configure_for_test!(monitor_url:, miners_file:, ...)`** in a `before` block. It populates every Sinatra setting (including eagerly parsing `miners_file` into `settings.configured_miners`) so the suite is order-independent without a separate reset step.
@@ -176,15 +177,18 @@ bin/cgminer_manager run
 
 ```sh
 bundle install
-bundle exec rake                                     # rubocop + rspec (full suite)
+bundle exec rake                                     # rubocop + rspec (full suite, incl. contract)
 bundle exec rspec --tag ~integration                 # unit only (what the CI test matrix runs)
 bundle exec rspec --tag integration                  # integration only
+bundle exec rspec spec/contract                      # cross-repo contract against monitor's OpenAPI
 bundle exec rspec path/to/spec.rb:123                # single example
 bundle exec rubocop                                  # lint only
 bundle exec rubocop -A                               # lint + auto-correct
 ```
 
 Coverage is always on (SimpleCov, enforced at the default rake task via `ENFORCE_COVERAGE=1`). Reports in `coverage/` — `.gitignore`d.
+
+**Mermaid validation.** Every `docs/*.md` may contain ` ```mermaid ` blocks. Run `script/validate_mermaid` to lint them all — the script extracts each block and pipes it through `npx @mermaid-js/mermaid-cli`. Requires `node >= 18` and `npx` on PATH. First run is slow (Puppeteer downloads Chromium into `~/.npm/_npx`, ~300 MB; cached after). Not wired into `bundle exec rake` — it's an opt-in local check for docs PRs.
 
 **No external services required for `bundle exec rake`.** No MongoDB, no live monitor, no cgminer. Everything is WebMock + FakeCgminer in-process.
 

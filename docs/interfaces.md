@@ -77,8 +77,12 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 | `MONITOR_TIMEOUT_MS` | HTTP timeout for monitor calls in milliseconds. Default `2000`. |
 | `POOL_THREAD_CAP` | Thread cap for `CgminerCommander` + `PoolManager` + dashboard snapshot fan-out. Default `8`. |
 | `RACK_ENV` | Passed to Puma and used to gate dev vs. production defaults. Default `development`. |
+| `CGMINER_MANAGER_RATE_LIMIT` | Set to `off` to disable the per-IP rate limiter entirely (escape hatch; mirrors `CGMINER_MANAGER_ADMIN_AUTH=off`). Default unset → limiter enabled. |
+| `CGMINER_MANAGER_RATE_LIMIT_REQUESTS` | Requests per window per client bucket. Default `60`. Validated as a positive integer; parse errors name the offending env var. |
+| `CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS` | Rolling window size in seconds. Default `60`. Validated as a positive integer. |
+| `CGMINER_MANAGER_TRUSTED_PROXIES` | Comma-separated list of trusted proxy IPs / CIDRs (e.g. `127.0.0.1/32,10.0.0.0/8`). When set, the rate limiter reads `X-Forwarded-For` and buckets the leftmost untrusted hop (the actual client) rather than the proxy's IP — avoids globally-throttling the whole site behind a single nginx. See the README "Rate limiting" section for the nginx pairing. |
 
-`Config#validate!` fails hard (raises `ConfigError`, CLI maps to exit 2) on: missing `CGMINER_MONITOR_URL`, missing `miners_file`, unknown `log_format`, unknown `log_level`. Integer parsing errors name the offending env var. `Config.from_env` additionally raises `ConfigError` when admin auth is unconfigured (neither creds set nor `CGMINER_MANAGER_ADMIN_AUTH=off`).
+`Config#validate!` fails hard (raises `ConfigError`, CLI maps to exit 2) on: missing `CGMINER_MONITOR_URL`, missing `miners_file`, unknown `log_format`, unknown `log_level`. Integer parsing errors name the offending env var. `Config.from_env` additionally raises `ConfigError` when admin auth is unconfigured (neither creds set nor `CGMINER_MANAGER_ADMIN_AUTH=off`). `CGMINER_MANAGER_TRUSTED_PROXIES` entries are parsed through `IPAddr`; a malformed CIDR fails loudly at boot rather than silently trusting nothing.
 
 ## 3. `miners.yml`
 
