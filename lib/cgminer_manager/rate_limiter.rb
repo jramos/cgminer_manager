@@ -21,12 +21,13 @@ module CgminerManager
   # fallback (see `client_ip`) bounds keys to well-formed IP strings so
   # an attacker cannot amplify memory use via malformed headers.
   class RateLimiter
-    # Matches all 6 rate-limited POST routes in HttpApp:
+    # Matches all rate-limited POST routes in HttpApp:
     # - /manager/manage_pools
     # - /miner/:miner_id/manage_pools
     # - /manager/admin/...
     # - /miner/:miner_id/admin/...
-    DEFAULT_PATHS = %r{\A/(?:manager|miner/[^/]+)/(?:admin(?:/|\z)|manage_pools\z)}
+    # - /miner/:miner_id/maintenance — write to RestartStore
+    DEFAULT_PATHS = %r{\A/(?:manager|miner/[^/]+)/(?:admin(?:/|\z)|manage_pools\z|maintenance(?:/|\z))}
 
     def initialize(app, requests:, window_seconds:, paths: DEFAULT_PATHS, trusted_proxies: [])
       @app = app

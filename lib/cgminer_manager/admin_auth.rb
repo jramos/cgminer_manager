@@ -24,7 +24,7 @@ module CgminerManager
   # at boot so tests and dev harnesses can toggle the gate without
   # restart. Empty strings are treated as unset.
   class AdminAuth
-    ADMIN_PATH = %r{\A/(manager|miner/[^/]+)/admin(/|\z)}
+    ADMIN_PATH = %r{\A/(manager|miner/[^/]+)/(admin(/|\z)|maintenance(/|\z))}
 
     def initialize(app)
       @app = app

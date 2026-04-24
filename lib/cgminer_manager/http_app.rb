@@ -226,7 +226,10 @@ module CgminerManager
       def miner_manage_pools_path(miner_id) = "#{miner_url(miner_id)}/manage_pools"
       def manager_admin_path(command) = "/manager/admin/#{command}"
       def miner_admin_path(miner_id, command) = "#{miner_url(miner_id)}/admin/#{command}"
-      def admin_path?(path) = path.match?(%r{\A/(?:manager|miner/[^/]+)/admin(?:/|\z)})
+
+      def admin_path?(path)
+        path.match?(%r{\A/(?:manager|miner/[^/]+)/(?:admin(?:/|\z)|maintenance(?:/|\z))})
+      end
 
       # Translates a raw "host:port" miner identifier into its display
       # label when miners.yml specifies one, otherwise returns the
@@ -477,6 +480,19 @@ module CgminerManager
         else halt 400, "unknown action: #{action_name}"
         end
       end
+
+      # Load the schedule for one miner, or build a default-disabled
+      # schedule when no store is configured (tests that don't pass
+      # restart_store: into configure_for_test! still render the show
+      # page) or no entry exists yet for this miner.
+      def load_maintenance_schedule(miner_id)
+        store = settings.restart_store
+        existing = store&.load&.[](miner_id)
+        existing || RestartSchedule.new(
+          miner_id: miner_id, enabled: false, time_utc: nil,
+          last_restart_at: nil, last_scheduled_date_utc: nil
+        )
+      end
     end
 
     not_found do
@@ -523,7 +539,8 @@ module CgminerManager
       @miner_data         = SnapshotAdapter.build_miner_data(
         configured_miners, miner_host_port => @view[:snapshots]
       )
-      @bad_chain_elements = []
+      @bad_chain_elements   = []
+      @maintenance_schedule = load_maintenance_schedule(miner_host_port)
       haml :'miner/show'
     end
 
@@ -615,6 +632,55 @@ module CgminerManager
         end
       log_admin_result(command, miner_id, result, started)
       render_admin_result(result)
+    end
+
+    get '/miner/:miner_id/maintenance' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+
+      @miner_host_port      = miner_id
+      @maintenance_schedule = load_maintenance_schedule(miner_id)
+      render_partial('miner/maintenance')
+    end
+
+    post '/miner/:miner_id/maintenance' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+      halt 503, 'restart store not configured' unless settings.restart_store
+
+      attrs = {
+        'miner_id' => miner_id,
+        'enabled' => params[:enabled].to_s == '1',
+        'time_utc' => params[:time_utc].to_s.empty? ? nil : params[:time_utc].to_s
+      }
+
+      begin
+        new_schedule = RestartSchedule.parse(attrs)
+      rescue RestartSchedule::InvalidError => e
+        @miner_host_port       = miner_id
+        @maintenance_schedule  = load_maintenance_schedule(miner_id)
+        @maintenance_error_msg = e.message
+        log_admin_command('admin.maintenance.invalid', command: 'maintenance',
+                                                       scope: miner_id, error: e.message)
+        status 422
+        return render_partial('miner/maintenance')
+      end
+
+      settings.restart_store.update(miner_id) do |existing|
+        new_schedule.with(
+          last_restart_at: existing&.last_restart_at,
+          last_scheduled_date_utc: existing&.last_scheduled_date_utc
+        )
+      end
+
+      log_admin_command('admin.maintenance.updated', command: 'maintenance',
+                                                     scope: miner_id,
+                                                     enabled: attrs['enabled'],
+                                                     time_utc: attrs['time_utc'])
+
+      @miner_host_port      = miner_id
+      @maintenance_schedule = load_maintenance_schedule(miner_id)
+      render_partial('miner/maintenance')
     end
 
     get '/miner/:miner_id/graph_data/:metric' do
