@@ -38,7 +38,7 @@ sequenceDiagram
     Server->>Server: install_signal_handlers again
     Server->>Server: @stop.pop (block until signal)
 
-    Note over HttpApp,PumaT: app is now serving; goto request lifecycle
+    Note over HttpApp,PumaT: app is now serving, goto request lifecycle
 ```
 
 **Two signal-handler installs?** Yes. Puma's `setup_signals` synchronously overwrites SIGTERM/SIGINT handlers inside its thread. We install first so a signal arriving during boot lands in `@stop`, and install again after `@booted.pop` to reclaim those signals.
@@ -84,7 +84,7 @@ sequenceDiagram
 
     else monitor down
         MC--xViewModels: MonitorError
-        ViewModels->>ViewModels: banner='data source unavailable'; miners=fallback from yml
+        ViewModels->>ViewModels: banner='data source unavailable', miners=fallback from yml
     end
 
     ViewModels-->>HttpApp: @view = {miners:, snapshots:, banner:, stale_threshold:}
@@ -119,7 +119,7 @@ sequenceDiagram
     participant Miners as cgminer instances
 
     Browser->>Puma: POST /manager/manage_pools<br/>action_name=disable pool_index=1 authenticity_token=...
-    Puma->>CSRF: validate token (not admin path; AdminAuth skipped)
+    Puma->>CSRF: validate token (not admin path, AdminAuth skipped)
     CSRF-->>HttpApp: dispatch
 
     HttpApp->>HttpApp: action_name='disable', pool_index=1
