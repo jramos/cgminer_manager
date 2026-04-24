@@ -81,6 +81,8 @@ Parsed once at boot by `Config.from_env`, validated in `Config#validate!`. Defau
 | `CGMINER_MANAGER_RATE_LIMIT_REQUESTS` | Requests per window per client bucket. Default `60`. Validated as a positive integer; parse errors name the offending env var. |
 | `CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS` | Rolling window size in seconds. Default `60`. Validated as a positive integer. |
 | `CGMINER_MANAGER_TRUSTED_PROXIES` | Comma-separated list of trusted proxy IPs / CIDRs (e.g. `127.0.0.1/32,10.0.0.0/8`). When set, the rate limiter reads `X-Forwarded-For` and buckets the leftmost untrusted hop (the actual client) rather than the proxy's IP — avoids globally-throttling the whole site behind a single nginx. See the README "Rate limiting" section for the nginx pairing. |
+| `CGMINER_MANAGER_RESTART_SCHEDULES_FILE` | Path to the JSON file backing the per-miner restart schedule (see "Scheduled restart" section below). Default `data/restart_schedules.json` (relative to the manager's working directory). The directory is created on first write. |
+| `CGMINER_MANAGER_RESTART_SCHEDULER` | Set to `off` to disable the in-process scheduler thread that fires daily restarts. Default unset → enabled. The HTTP routes still mutate the file regardless; setting this to `off` just stops the manager from acting on it (useful when running multiple managers behind a load balancer where only one should drive restarts). |
 
 `Config#validate!` fails hard (raises `ConfigError`, CLI maps to exit 2) on: missing `CGMINER_MONITOR_URL`, missing `miners_file`, unknown `log_format`, unknown `log_level`. Integer parsing errors name the offending env var. `Config.from_env` additionally raises `ConfigError` when admin auth is unconfigured (neither creds set nor `CGMINER_MANAGER_ADMIN_AUTH=off`). `CGMINER_MANAGER_TRUSTED_PROXIES` entries are parsed through `IPAddr`; a malformed CIDR fails loudly at boot rather than silently trusting nothing.
 
@@ -106,6 +108,28 @@ YAML array of miner descriptors. Loaded into `settings.configured_miners` by `Se
 
 Parsed with `YAML.safe_load_file`. `HttpApp.parse_miners_file` validates the shape: must be a `Array<Hash>` where every entry has a `host` key. Invalid shapes raise `ConfigError`.
 
+## 3a. `restart_schedules.json` — UI-mutated state
+
+Per-miner daily restart configuration. Path is `CGMINER_MANAGER_RESTART_SCHEDULES_FILE` (default `data/restart_schedules.json`). Shape:
+
+```json
+{
+  "schedules": [
+    {
+      "miner_id": "192.168.1.10:4028",
+      "enabled": true,
+      "time_utc": "04:00",
+      "last_restart_at": "2026-04-23T04:00:14Z",
+      "last_scheduled_date_utc": "2026-04-23"
+    }
+  ]
+}
+```
+
+Mutated by the UI via `POST /miner/:miner_id/maintenance` and by the scheduler thread (which stamps `last_restart_at` + `last_scheduled_date_utc` after a successful fire). Atomic-rename writes serialized through one `RestartStore`-owned mutex so concurrent UI POSTs and scheduler ticks can't tear. Missing/malformed file → empty schedule list, `restart.store.load_failed` log; the manager keeps running.
+
+`time_utc` is `HH:MM` 24-hour UTC. `last_scheduled_date_utc` is `YYYY-MM-DD` UTC and is the **date-based dedupe key** that ensures a schedule fires at most once per UTC calendar day. Operator-edited timestamps (the `*_at` fields) are tolerated but not validated for ISO-8601 strictness — the manager only ever writes them itself.
+
 ## 4. HTTP API + UI
 
 Base URL: `http://<BIND>:<PORT>/` (default `http://127.0.0.1:3000/`).
@@ -124,7 +148,10 @@ Base URL: `http://<BIND>:<PORT>/` (default `http://127.0.0.1:3000/`).
 | POST | `/manager/admin/run` | Raw fleet admin. Params: `command` (matches `ADMIN_RAW_COMMAND_PATTERN`), `args` (comma-separated positional), `scope` (`all` or a configured `host:port`). 422 on pattern mismatch or scope rejection. CSRF-protected; Basic Auth required by default (or `=off`). | `text/html` |
 | POST | `/miner/:miner_id/admin/:command` | Typed per-miner admin. Same `:command` set. | `text/html` |
 | POST | `/miner/:miner_id/admin/run` | Raw per-miner admin. `scope=all` restriction does not apply (scope is already the one miner). | `text/html` |
+| GET | `/miner/:miner_id/maintenance` | Render the per-miner restart-schedule form. Basic Auth required by default (or `=off`). | `text/html` |
+| POST | `/miner/:miner_id/maintenance` | Persist the schedule. Params: `enabled` (`'1'` or absent), `time_utc` (`HH:MM` UTC, optional when disabled). Validated through `RestartSchedule.parse`; 422 on bad input with the form re-rendered. CSRF-protected; Basic Auth required by default. Rate-limited. | `text/html` |
 | GET | `/api/v1/ping.json` | Legacy probe. Returns `{timestamp, available_miners, unavailable_miners}` from cgminer-direct probes (independent of monitor). | `application/json` |
+| GET | `/api/v1/restart_schedules.json` | Public unauthenticated read of every miner's restart schedule. Returns `{schedules: [{miner_id, enabled, time_utc, last_restart_at, last_scheduled_date_utc}, ...], generated_at}`. Consumed by `cgminer_monitor` (`CGMINER_MONITOR_RESTART_SCHEDULE_URL`) so AlertEvaluator can suppress the `offline` rule during a restart window. | `application/json` |
 | GET | `/healthz` | Service health. 200 if miners.yml parses and monitor `/v2/healthz` reachable, else 503 with a `reasons:` array. | `application/json` |
 
 Sinatra route order matches the file order in `http_app.rb`. Named captures (`:miner_id`, `:command`, `:metric`) are standard Sinatra — no custom router.

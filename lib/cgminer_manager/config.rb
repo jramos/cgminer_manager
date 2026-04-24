@@ -20,6 +20,8 @@ module CgminerManager
     :rate_limit_requests,
     :rate_limit_window_seconds,
     :trusted_proxies,
+    :restart_schedules_file,
+    :restart_scheduler_enabled,
     :rack_env
   ) do
     def validate!
@@ -61,6 +63,9 @@ module CgminerManager
         rate_limit_requests: parse_int(env, 'CGMINER_MANAGER_RATE_LIMIT_REQUESTS', '60'),
         rate_limit_window_seconds: parse_int(env, 'CGMINER_MANAGER_RATE_LIMIT_WINDOW_SECONDS', '60'),
         trusted_proxies: parse_cidr_list(env, 'CGMINER_MANAGER_TRUSTED_PROXIES'),
+        restart_schedules_file: env.fetch('CGMINER_MANAGER_RESTART_SCHEDULES_FILE',
+                                          'data/restart_schedules.json'),
+        restart_scheduler_enabled: env['CGMINER_MANAGER_RESTART_SCHEDULER'] != 'off',
         rack_env: rack_env
       ).validate!
     end

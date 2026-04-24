@@ -3,6 +3,30 @@
 ## [Unreleased]
 
 ### Added
+- **Per-miner scheduled-restart window**
+  (`lib/cgminer_manager/restart_*.rb`,
+  `views/miner/_maintenance.haml`). New "Scheduled Restart" form on every
+  miner's Admin tab persists an enable-toggle + UTC time-of-day to a JSON
+  store (`data/restart_schedules.json` by default). A `RestartScheduler`
+  thread spawned by `Server#run` walks the store every 30 s and fires
+  `restart` against any miner whose UTC time-of-day is within ±2 minutes
+  of "now" — date-based dedupe (`last_scheduled_date_utc`) ensures each
+  schedule fires at most once per UTC calendar day. Two layers of error
+  containment: per-tick `rescue StandardError` and a thread-top
+  `rescue Exception` (mirrors `Server#start_puma_thread`) so a
+  non-StandardError surfaces as `restart.scheduler.crash` rather than
+  vanishing the scheduler silently. New routes `GET`/`POST
+  /miner/:miner_id/maintenance` (Basic Auth + CSRF + rate limited) and
+  the public read endpoint `GET /api/v1/restart_schedules.json` (consumed
+  by `cgminer_monitor` to suppress `offline` alerts during a restart
+  window). New env vars `CGMINER_MANAGER_RESTART_SCHEDULES_FILE` and
+  `CGMINER_MANAGER_RESTART_SCHEDULER` (set to `off` to disable the
+  scheduler thread without disabling the routes — useful for multi-host
+  deploys where only one node should drive restarts). All three sister
+  regexes (`AdminAuth::ADMIN_PATH`, `HttpApp#admin_path?`,
+  `RateLimiter::DEFAULT_PATHS`) updated to cover the new path; the
+  integration spec asserts 401 without auth and 429 over limit so a
+  future regression on any of the three trips a test.
 - **Contract test against monitor's OpenAPI spec**
   (`spec/contract/monitor_openapi_contract_spec.rb`). Asserts that
   every envelope key `MonitorClient` + view-models read from

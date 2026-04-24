@@ -97,6 +97,8 @@ All settings come from environment variables.
 | `STALE_THRESHOLD_SECONDS` | | `300` | Tile "updated Xm ago" warning threshold |
 | `SHUTDOWN_TIMEOUT` | | `10` | Seconds to wait for Puma to stop |
 | `CGMINER_MANAGER_PID_FILE` | | unset | Path where `run` writes the server PID on boot and unlinks on shutdown. Required for `bin/cgminer_manager reload`; operators who prefer can still `kill -HUP <pid>` directly. |
+| `CGMINER_MANAGER_RESTART_SCHEDULES_FILE` | | `data/restart_schedules.json` | JSON file backing per-miner daily restart schedules. Mutated by the UI; the directory is created on first write. |
+| `CGMINER_MANAGER_RESTART_SCHEDULER` | | unset | Set to `off` to disable the scheduler thread (the routes still mutate the file — useful when running multiple managers behind a load balancer where only one should drive restarts). |
 
 ## CLI
 
@@ -142,7 +144,10 @@ The gem's error taxonomy (all under `CgminerManager::Error < StandardError`):
 - `POST /miner/:miner_id/admin/:command` — per-miner variant of the above.
 - `POST /manager/admin/run` — raw cgminer RPC with `command` + `args` + `scope` params; `scope` is `all` or a configured `host:port`. Server-side rejects hardware-tuning verbs (`pgaset`, `ascset`, `pgarestart`, `ascrestart`, `pga{enable,disable}`, `asc{enable,disable}`) with `scope=all`.
 - `POST /miner/:miner_id/admin/run` — raw RPC against a single miner (no scope=all restriction).
+- `GET /miner/:miner_id/maintenance` — render the per-miner scheduled-restart form. Basic Auth required.
+- `POST /miner/:miner_id/maintenance` — persist the schedule (CSRF + Basic Auth + rate-limited).
 - `GET /api/v1/ping.json` — legacy probe, returns `{timestamp, available_miners, unavailable_miners}` computed directly from cgminers.
+- `GET /api/v1/restart_schedules.json` — public read of every miner's restart schedule. Consumed by `cgminer_monitor` to suppress `offline` alerts during a scheduled restart window.
 - `GET /healthz` — service health (manager + monitor reachability).
 
 Supported graph metrics: `hashrate` (7 columns), `temperature` (4 columns), `availability` (2-3 columns).

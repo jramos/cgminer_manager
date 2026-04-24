@@ -192,6 +192,30 @@ RSpec.describe CgminerManager::Config do
     end
   end
 
+  describe '.from_env restart-scheduler fields' do
+    it 'defaults restart_schedules_file to data/restart_schedules.json' do
+      config = described_class.from_env(env_base)
+      expect(config.restart_schedules_file).to eq('data/restart_schedules.json')
+    end
+
+    it 'reads CGMINER_MANAGER_RESTART_SCHEDULES_FILE when set' do
+      config = described_class.from_env(env_base.merge(
+                                          'CGMINER_MANAGER_RESTART_SCHEDULES_FILE' => '/var/lib/cm/sched.json'
+                                        ))
+      expect(config.restart_schedules_file).to eq('/var/lib/cm/sched.json')
+    end
+
+    it 'defaults restart_scheduler_enabled to true' do
+      config = described_class.from_env(env_base)
+      expect(config.restart_scheduler_enabled).to be(true)
+    end
+
+    it 'disables restart_scheduler_enabled via CGMINER_MANAGER_RESTART_SCHEDULER=off' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_RESTART_SCHEDULER' => 'off'))
+      expect(config.restart_scheduler_enabled).to be(false)
+    end
+  end
+
   describe '#load_miners' do
     it 'yields [host, port] pairs' do
       config = described_class.from_env(env_base)

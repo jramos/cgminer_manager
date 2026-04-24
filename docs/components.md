@@ -48,18 +48,32 @@ graph LR
     subgraph fleet_write_result_rb["fleet_write_result.rb"]
         FW[FleetWriteEntry + FleetWriteResult]
     end
+    subgraph restart_schedule_rb["restart_schedule.rb"]
+        RS[RestartSchedule]
+    end
+    subgraph restart_store_rb["restart_store.rb"]
+        RSt[RestartStore]
+    end
+    subgraph restart_scheduler_rb["restart_scheduler.rb"]
+        RSch[RestartScheduler]
+    end
 
     CLI -->|run| Srv
     CLI -->|doctor| MC
     CLI -.-> Cfg
     Srv -->|spawns| App
+    Srv -->|spawns| RSch
     Srv -.class-attrs.-> App
+    Srv -->|builds singleton| RSt
     App -.use.-> AA
     App -->|reads via| MC
     App -->|admin writes| Cmd
     App -->|pool writes| PM
     App -->|reshape| SA
     App -->|build| VM
+    App -->|reads + writes| RSt
+    RSch -->|reads + writes| RSt
+    RSt -->|holds| RS
     Cmd -->|returns| FQ
     Cmd -->|returns| FW
     Cfg -->|raises| Err
@@ -68,6 +82,7 @@ graph LR
     Srv -.logs.-> Log
     MC -.logs.-> Log
     AA -.logs.-> Log
+    RSch -.logs.-> Log
 ```
 
 ## Component list
@@ -291,6 +306,36 @@ Same shape as the Query variant but for writes. No `save_status` field (save-aft
 **`FleetWriteEntry(:miner, :status, :response, :error)`** — `status ∈ {:ok, :failed}`. `#ok?`, `#failed?`.
 
 **`FleetWriteResult(:entries)`** — `#ok_count`, `#failed_count`, `#all_ok?`, `#any_failed?`.
+
+### `CgminerManager::RestartSchedule` (`Data.define`)
+**File:** `lib/cgminer_manager/restart_schedule.rb`
+
+`Data.define(:miner_id, :enabled, :time_utc, :last_restart_at, :last_scheduled_date_utc)`. Value object for one miner's daily restart configuration. UTC-only end-to-end.
+
+- `.parse(hash)` — validates and constructs. Rejects malformed `time_utc` (must be `HH:MM`, 24h), non-boolean `enabled`, malformed `last_scheduled_date_utc` (must be `YYYY-MM-DD`). Raises `RestartSchedule::InvalidError` on bad input.
+- `#to_h` — string-keyed hash for JSON serialization.
+
+### `CgminerManager::RestartStore`
+**File:** `lib/cgminer_manager/restart_store.rb`
+
+JSON-backed singleton store. One mutex serializes `#load`, `#update`, and `#replace` so concurrent UI POSTs and scheduler ticks can't tear. `#update(miner_id) { |existing| ... }` is the only API a route should use — load/modify/save under one lock prevents lost-update across concurrent edits. File format wraps entries under `{"schedules": [...]}` so future top-level fields (e.g. schema version) won't need a migration. Atomic-rename writes (`File.write(tmp); File.rename(tmp, target)`) are POSIX-atomic. Missing/malformed file → empty hash + `restart.store.load_failed` log.
+
+The Server builds the store in `configure_http_app` and stashes it on `HttpApp.settings.restart_store`. Both the routes and the scheduler thread read the store from the same instance, which is what makes the mutex meaningful.
+
+### `CgminerManager::RestartScheduler`
+**File:** `lib/cgminer_manager/restart_scheduler.rb`
+
+Background thread spawned by `Server#run` after Puma's signal-handler dance, joined on shutdown. Wakes every `TICK_SECONDS` (30 s) and walks the schedule list:
+
+- Match: `now_utc.strftime('%H:%M')` is within ±2 minutes of `time_utc` (handles the 30 s wake interval + clock skew).
+- Dedupe: skip if `last_scheduled_date_utc == today_utc`. One fire per UTC calendar day per schedule.
+- Fire: `CgminerApiClient::Miner.new(host, port).restart`.
+- Persist: on success, stamp `last_restart_at = now.iso8601` + `last_scheduled_date_utc = today_utc`.
+- Errors: any `CgminerApiClient::Error` or `StandardError` from the restart call is logged as `restart.scheduled.failed`; neither timestamp is updated, so the next tick within the window retries.
+
+Two layers of error containment: a per-tick `rescue StandardError` so a single bad schedule doesn't kill the thread, and a thread-top `rescue Exception` (mirroring `Server#start_puma_thread`) so even a `NoMemoryError` surfaces as `restart.scheduler.crash` instead of vanishing the scheduler silently.
+
+`miner_factory:` and `clock:` constructor kwargs are the spec injection seams. The `configured_miners_provider:` is a proc, not a snapshot, so SIGHUP reloads of `miners.yml` flow through without restarting the scheduler.
 
 ## CLI
 

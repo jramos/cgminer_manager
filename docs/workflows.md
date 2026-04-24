@@ -281,6 +281,55 @@ cd dev/screenshots
 
 Logs land in `dev/screenshots/.run/*.log`. See `dev/screenshots/README.md` for details.
 
+## 7a. Scheduled-restart flow
+
+```mermaid
+sequenceDiagram
+    participant Operator
+    participant UI as Manager UI
+    participant Routes as POST /miner/:id/maintenance
+    participant Store as RestartStore
+    participant Sched as RestartScheduler thread
+    participant Cgminer
+    participant Monitor as cgminer_monitor
+
+    Operator->>UI: opens /miner/:id (Admin tab)
+    UI->>Store: load() → existing schedule
+    UI-->>Operator: form pre-filled
+
+    Operator->>UI: enable + 04:00 + Save
+    UI->>Routes: POST authenticity_token + enabled=1 + time_utc=04:00
+    Routes->>Routes: AdminAuth, RateLimiter, CSRF
+    Routes->>Routes: RestartSchedule.parse → 422 if malformed
+    Routes->>Store: update(miner_id) preserving last_*
+    Routes-->>UI: re-rendered partial
+
+    Note over Sched,Cgminer: every 30 s
+    Sched->>Store: load()
+    alt within ±2 min of time_utc AND not fired today
+        Sched->>Cgminer: Miner.new.restart
+        alt success
+            Cgminer-->>Sched: STATUS:S
+            Sched->>Store: update last_restart_at + last_scheduled_date_utc
+            Sched-->>Sched: log restart.scheduled.fired
+        else failure
+            Cgminer--xSched: ConnectionError or ApiError
+            Sched-->>Sched: log restart.scheduled.failed (timestamps untouched, retry next tick)
+        end
+    end
+
+    Note over Monitor: independently every 30 s
+    Monitor->>Routes: GET /api/v1/restart_schedules.json
+    Monitor->>Monitor: in_restart_window? → suppress alert.fired offline rule
+```
+
+Key observations:
+
+- **Singleton store.** Routes and the scheduler thread share one `RestartStore` instance (built in `Server#configure_http_app`, stashed on `HttpApp.settings.restart_store`). The mutex inside the store serializes their writes. Two stores would mean two mutexes and torn writes.
+- **Date-based dedupe.** `last_scheduled_date_utc` is the dedupe key (UTC calendar day). Operator-driven schedule edits and clock-skew jumps are unambiguous; a fixed-seconds cooldown isn't.
+- **Fail-open both ways.** A failed cgminer restart leaves both timestamps unchanged so the next tick retries within the ±2 minute window. A failed monitor fetch of the schedule means monitor falls back to alerting normally — the operator gets paged on a real outage even if the manager is down.
+- **Two error containment layers.** Per-tick rescue catches StandardError so a single bad schedule doesn't kill the thread. Thread-top rescue Exception catches non-StandardError (e.g. NoMemoryError) so the scheduler emits `restart.scheduler.crash` instead of vanishing silently.
+
 ## 8. Refreshing monitor fixtures
 
 `Rakefile` provides `rake spec:refresh_monitor_fixtures` for capturing live monitor responses into `spec/fixtures/monitor/*.json`:
