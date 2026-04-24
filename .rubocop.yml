@@ -44,6 +44,7 @@ Metrics/ClassLength:
     - 'lib/cgminer_manager/pool_manager.rb'
     - 'lib/cgminer_manager/cli.rb'
     - 'lib/cgminer_manager/restart_scheduler.rb'
+    - 'lib/cgminer_manager/server.rb'
 
 Metrics/AbcSize:
   Max: 25

@@ -40,6 +40,12 @@ module CgminerManager
     set :monitor_timeout_ms,      2000
     set :session_secret,          nil
     set :production,              false
+    # The singleton RestartStore. Server#configure_http_app builds it
+    # once and writes it here so that HTTP request handlers and the
+    # RestartScheduler thread share one mutex-bearing instance —
+    # otherwise concurrent UI POSTs and scheduler ticks would each hold
+    # their own mutex and racing writes would tear.
+    set :restart_store,           nil
 
     # Parses miners.yml into the frozen `[host, port, label]` tuple list
     # consumed by routes. Server#configure_http_app and
@@ -87,7 +93,8 @@ module CgminerManager
                                  rate_limit_enabled: false,
                                  rate_limit_requests: 60,
                                  rate_limit_window_seconds: 60,
-                                 trusted_proxies: [])
+                                 trusted_proxies: [],
+                                 restart_store: nil)
       set :monitor_url,             monitor_url
       set :miners_file,             miners_file
       set :configured_miners,       parse_miners_file(miners_file)
@@ -100,6 +107,7 @@ module CgminerManager
       set :rate_limit_requests,       rate_limit_requests
       set :rate_limit_window_seconds, rate_limit_window_seconds
       set :trusted_proxies,           trusted_proxies
+      set :restart_store,             restart_store
       install_middleware!
     end
 

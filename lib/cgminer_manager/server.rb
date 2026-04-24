@@ -32,9 +32,20 @@ module CgminerManager
       @booted.pop
       install_signal_handlers
 
+      # Start the RestartScheduler AFTER the signal-handler reinstall so
+      # SIGINT/SIGTERM during scheduler startup land in @signals. The
+      # ensure below tears the thread down before the launcher so the
+      # scheduler doesn't keep firing restarts after Puma has stopped
+      # accepting requests.
+      start_restart_scheduler
+
       write_pid_file
 
-      dispatch_signals_until_stop
+      begin
+        dispatch_signals_until_stop
+      ensure
+        stop_restart_scheduler
+      end
       Logger.info(event: 'server.stopping')
 
       launcher.stop
@@ -56,6 +67,7 @@ module CgminerManager
       HttpApp.set :session_secret,          @config.session_secret
       HttpApp.set :production,              @config.production?
       configure_rate_limit
+      configure_restart_store
       # Eagerly parse miners.yml so a malformed file surfaces as a
       # ConfigError at boot (CLI exit 2), not as an HTTP 500 on the first
       # request after Puma binds the listener.
@@ -67,11 +79,38 @@ module CgminerManager
       HttpApp.install_middleware!
     end
 
+    # Build the singleton RestartStore and stash it on HttpApp settings
+    # so route handlers and the scheduler thread share a single mutex.
+    def configure_restart_store
+      @restart_store = RestartStore.new(@config.restart_schedules_file)
+      HttpApp.set :restart_store, @restart_store
+    end
+
     def configure_rate_limit
       HttpApp.set :rate_limit_enabled,        @config.rate_limit_enabled
       HttpApp.set :rate_limit_requests,       @config.rate_limit_requests
       HttpApp.set :rate_limit_window_seconds, @config.rate_limit_window_seconds
       HttpApp.set :trusted_proxies,           @config.trusted_proxies
+    end
+
+    def start_restart_scheduler
+      return unless @config.restart_scheduler_enabled
+
+      @restart_scheduler = RestartScheduler.new(
+        store: @restart_store,
+        configured_miners_provider: -> { HttpApp.settings.configured_miners }
+      )
+      @restart_scheduler.start
+      Logger.info(event: 'restart.scheduler.started',
+                  schedules_file: @config.restart_schedules_file)
+    end
+
+    def stop_restart_scheduler
+      return unless @restart_scheduler
+
+      @restart_scheduler.stop
+      @restart_scheduler.join(@config.shutdown_timeout)
+      Logger.info(event: 'restart.scheduler.stopped')
     end
 
     def start_puma_thread(launcher)
