@@ -745,6 +745,23 @@ module CgminerManager
       end
     end
 
+    # Public read view of every miner's RestartSchedule. Consumed by
+    # cgminer_monitor (CGMINER_MONITOR_RESTART_SCHEDULE_URL) so the
+    # AlertEvaluator can suppress the `offline` rule during a scheduled
+    # restart window. Unauthenticated by design — mirrors /api/v1/ping.json
+    # and avoids dragging monitor into BasicAuth handling. Returns an
+    # empty schedule list if the store is unconfigured.
+    get '/api/v1/restart_schedules.json' do
+      content_type :json
+
+      schedules = settings.restart_store&.load || {}
+      payload = {
+        schedules: schedules.values.map(&:to_h),
+        generated_at: Time.now.utc.iso8601
+      }
+      JSON.generate(payload)
+    end
+
     get '/api/v1/ping.json' do
       content_type :json
 
