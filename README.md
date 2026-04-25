@@ -201,6 +201,10 @@ Tuning env vars:
 
 Implementation is a single-Puma-process in-memory bucket (Hash + Mutex). Cluster-mode Puma deployments would need a shared store (Redis or similar) that the bundled middleware intentionally does not include.
 
+## Audit retention
+
+`cgminer_manager` emits structured JSON to stdout; durable storage, rotation, and retention are the deployer's responsibility (systemd journald, Docker logging driver, or a log shipper like Vector / Fluent-Bit). Filter audit events with `event=admin.*` OR `event=rate_limit.exceeded` — the latter catches unauthenticated 401-probing because the rate limiter sits above the auth gate. See [`docs/logging.md`](docs/logging.md#audit-retention) for systemd / Docker / Vector recipes and [`cgminer_monitor/docs/log_schema.md`](https://github.com/jramos/cgminer_monitor/blob/develop/docs/log_schema.md) for the cross-repo log contract.
+
 ## Further Reading
 
 -   [`CHANGELOG.md`](CHANGELOG.md) — release history: 1.0 Sinatra rewrite, 1.1 rich UI restoration, 1.2 admin surface restoration.

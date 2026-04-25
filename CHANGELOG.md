@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+- **Audit-retention docs** (`docs/logging.md` "Audit retention" section
+  + a brief README pointer). Documents the manager's stdout-only posture
+  and how to route + retain audit events via systemd journald, Docker
+  logging drivers, or a Vector / Fluent-Bit shipper. The recommended
+  audit filter is `event=admin.*` OR `event=rate_limit.exceeded` — the
+  latter catches unauthenticated 401-probing because the rate limiter
+  sits above the auth gate. No code change; the application has no file
+  sink and no runtime dependency on a log backend.
 - **Per-miner scheduled-restart window**
   (`lib/cgminer_manager/restart_*.rb`,
   `views/miner/_maintenance.haml`). New "Scheduled Restart" form on every
