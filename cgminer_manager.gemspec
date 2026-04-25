@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
     'rubygems_mfa_required' => 'true'
   }
 
-  spec.add_dependency 'cgminer_api_client', '~> 0.3'
+  spec.add_dependency 'cgminer_api_client', '~> 0.4'
   spec.add_dependency 'haml', '~> 6.3'
   spec.add_dependency 'http', '~> 5.2'
   spec.add_dependency 'puma', '~> 6.4'

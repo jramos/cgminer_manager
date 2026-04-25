@@ -152,11 +152,16 @@ module CgminerManager
 
     before do
       @request_started_at = Time.now
-      @request_id         = SecureRandom.uuid if admin_path?(request.path_info)
+      # RequestId middleware (top of stack) populates this for every
+      # request — admin and non-admin alike. Read from env so RateLimiter
+      # and AdminAuth (which fire BEFORE this filter) can already have
+      # tagged their events with the same value.
+      @request_id = request.env[CgminerManager::RequestId::ENV_KEY]
     end
 
     after do
       Logger.info(event: 'http.request',
+                  request_id: @request_id,
                   path: request.path,
                   method: request.request_method,
                   status: response.status,
@@ -182,6 +187,11 @@ module CgminerManager
       # session + auth + CSRF middleware, turning each request into
       # an ever-deeper onion.
       @middleware = []
+
+      # RequestId sits at the very top of the stack so RateLimiter and
+      # AdminAuth (which fire before any Sinatra filter) can read the
+      # request_id from env when emitting their events.
+      use CgminerManager::RequestId
 
       # RateLimiter sits ABOVE session + auth on purpose: a 401-probing
       # attacker must be throttled before AdminAuth executes, otherwise
@@ -418,22 +428,28 @@ module CgminerManager
 
       def build_pool_manager_for_all
         FleetBuilders.pool_manager_for_all(
-          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+          configured_miners: configured_miners,
+          thread_cap: settings.pool_thread_cap,
+          request_id: @request_id
         )
       end
 
       def build_pool_manager_for(miner_ids)
-        FleetBuilders.pool_manager_for(miner_ids)
+        FleetBuilders.pool_manager_for(miner_ids, request_id: @request_id)
       end
 
       def build_commander_for_all
         FleetBuilders.commander_for_all(
-          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+          configured_miners: configured_miners,
+          thread_cap: settings.pool_thread_cap,
+          request_id: @request_id
         )
       end
 
       def build_commander_for(miner_ids)
-        FleetBuilders.commander_for(miner_ids, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for(miner_ids,
+                                    thread_cap: settings.pool_thread_cap,
+                                    request_id: @request_id)
       end
 
       def admin_session_id_hash
@@ -767,8 +783,9 @@ module CgminerManager
 
       available = 0
       unavailable = 0
+      on_wire = FleetBuilders.build_wire_logger(@request_id)
       configured_miners.each do |host, port, _label|
-        miner = CgminerApiClient::Miner.new(host, port)
+        miner = CgminerApiClient::Miner.new(host, port, on_wire: on_wire)
         if miner.available?
           available += 1
         else
@@ -787,7 +804,8 @@ module CgminerManager
 
     def monitor_client
       @monitor_client ||= MonitorClient.new(base_url: settings.monitor_url,
-                                            timeout_ms: settings.monitor_timeout_ms)
+                                            timeout_ms: settings.monitor_timeout_ms,
+                                            request_id: @request_id)
     end
   end
 end

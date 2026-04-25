@@ -162,5 +162,23 @@ RSpec.describe CgminerManager::HttpApp do
       expect(described_class.middleware.map(&:first))
         .not_to include(CgminerManager::RateLimiter)
     end
+
+    # RequestId must be the very first middleware so RateLimiter and
+    # AdminAuth events can read request_id from env. Any reshuffle that
+    # demotes RequestId below RateLimiter regresses the trace-id contract
+    # — rate_limit.exceeded events would lose their request_id field.
+    it 'installs RequestId at the top of the middleware stack' do
+      described_class.set :rate_limit_enabled, true
+      described_class.install_middleware!
+
+      classes = described_class.middleware.map(&:first)
+      request_id_index = classes.index(CgminerManager::RequestId)
+      rate_index = classes.index(CgminerManager::RateLimiter)
+      auth_index = classes.index(CgminerManager::AdminAuth)
+
+      expect(request_id_index).to eq(0)
+      expect(request_id_index).to be < rate_index
+      expect(request_id_index).to be < auth_index
+    end
   end
 end

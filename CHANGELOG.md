@@ -2,7 +2,25 @@
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-04-25
+
 ### Added
+- **Cross-repo trace-id propagation** via the `X-Cgminer-Request-Id`
+  HTTP header. New `CgminerManager::RequestId` Rack middleware sits at
+  the top of the stack (above `RateLimiter`, `Rack::Session::Cookie`,
+  `AdminAuth`, and `ConditionalAuthenticityToken`); generates a UUID v4
+  per request or honors an inbound header, stashes the value on
+  `env['cgminer_manager.request_id']`, and echoes it in the response.
+  `MonitorClient` injects the header on every outbound HTTP call to
+  monitor and tags `monitor.call` / `monitor.call.failed` events with
+  the same value. `FleetBuilders` builds per-request
+  `CgminerApiClient::Miner` instances with an `on_wire:` closure that
+  captures the request_id and emits `cgminer.wire` log events tagged
+  with it. The `cgminer.wire` event emits at debug level — opt in via
+  `LOG_LEVEL=debug` to avoid the ~100-200 events per fan-out at info
+  volume. `rate_limit.exceeded`, `admin.auth_failed`,
+  `admin.auth_misconfigured` events all gain `request_id`.
+
 - **Audit-retention docs** (`docs/logging.md` "Audit retention" section
   + a brief README pointer). Documents the manager's stdout-only posture
   and how to route + retain audit events via systemd journald, Docker
@@ -56,6 +74,19 @@
   event catalog, and evolution rules.
 
 ### Changed
+- **`request_id` generation moved from admin-only Sinatra `before`-filter
+  to the new `RequestId` Rack middleware.** Generation now happens for
+  every HTTP request, not just admin paths. Visible consequence:
+  `http.request`, `rate_limit.exceeded`, and `admin.auth_failed` events
+  now carry `request_id` (previously empty for non-admin requests). No
+  API change.
+- **Bumped `cgminer_api_client` dependency from `~> 0.3` to `~> 0.4`**
+  for the `on_wire:` kwarg on `Miner#initialize` (ships in v0.4.0).
+- **Bumped `cgminer_monitor` dev dep pin to `v1.3.1`** (the pin used
+  by the `#4.3` OpenAPI contract spec). v1.3.0 + v1.3.1 add the
+  monitor side of trace-id propagation; v1.3.1 widens monitor's
+  api_client constraint to `>= 0.3, < 0.5` so both can be pinned
+  together without a Bundler conflict.
 - **Log-key consistency — `duration_ms` everywhere.** The
   `admin.result` and `http.request` log events previously emitted
   their timing under `elapsed_ms` and `render_ms` respectively;

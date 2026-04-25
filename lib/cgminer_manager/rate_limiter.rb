@@ -47,7 +47,7 @@ module CgminerManager
       allowed, retry_after = check_bucket(ip, now)
       return @app.call(env) if allowed
 
-      log_exceeded(ip, env['PATH_INFO'], retry_after)
+      log_exceeded(ip, env['PATH_INFO'], retry_after, env[CgminerManager::RequestId::ENV_KEY])
       too_many_requests(retry_after)
     end
 
@@ -134,9 +134,10 @@ module CgminerManager
       end
     end
 
-    def log_exceeded(ip, path, retry_after)
+    def log_exceeded(ip, path, retry_after, request_id)
       Logger.warn(
         event: 'rate_limit.exceeded',
+        request_id: request_id,
         remote_ip: ip,
         path: path,
         retry_after: retry_after

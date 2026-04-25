@@ -85,6 +85,7 @@ module CgminerManager
 
     def log_failure(request, reason)
       Logger.warn(event: 'admin.auth_failed',
+                  request_id: request.env[CgminerManager::RequestId::ENV_KEY],
                   reason: reason,
                   path: request.path_info,
                   remote_ip: request.ip,
@@ -100,6 +101,7 @@ module CgminerManager
 
     def misconfigured(request)
       Logger.warn(event: 'admin.auth_misconfigured',
+                  request_id: request.env[CgminerManager::RequestId::ENV_KEY],
                   path: request.path_info,
                   remote_ip: request.ip,
                   user_agent: request.user_agent)
