@@ -41,13 +41,13 @@ RSpec.describe CgminerManager::FleetBuilders do
     it 'constructs a CgminerCommander with the given thread_cap' do
       described_class.commander_for_all(configured_miners: configured_miners, thread_cap: 2)
       expect(CgminerManager::CgminerCommander).to have_received(:new)
-        .with(miners: have_attributes(length: 2), thread_cap: 2, request_id: nil)
+        .with(miners: have_attributes(length: 2), thread_cap: 2)
     end
 
     it 'defaults a nil thread_cap to 1' do
       described_class.commander_for_all(configured_miners: configured_miners, thread_cap: nil)
       expect(CgminerManager::CgminerCommander).to have_received(:new)
-        .with(miners: anything, thread_cap: 1, request_id: nil)
+        .with(miners: anything, thread_cap: 1)
     end
   end
 
@@ -56,7 +56,7 @@ RSpec.describe CgminerManager::FleetBuilders do
       described_class.commander_for(%w[10.0.0.1:4028], thread_cap: 2)
       expect(CgminerApiClient::Miner).to have_received(:new).with('10.0.0.1', 4028, on_wire: nil)
       expect(CgminerManager::CgminerCommander).to have_received(:new)
-        .with(miners: have_attributes(length: 1), thread_cap: 2, request_id: nil)
+        .with(miners: have_attributes(length: 1), thread_cap: 2)
     end
   end
 

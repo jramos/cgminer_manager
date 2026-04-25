@@ -22,7 +22,7 @@ group :development, :test do
   # and our contract assumptions drift, the pin bump surfaces it.
   gem 'cgminer_monitor',
       git: 'https://github.com/jramos/cgminer_monitor.git',
-      tag: 'v1.2.0',
+      tag: 'v1.3.1',
       require: false
   gem 'cgminer_test_support',
       git: 'https://github.com/jramos/cgminer_test_support.git',

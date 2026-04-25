@@ -15,13 +15,10 @@ module CgminerManager
   # raw response is attached to the entry; operators see the warning text in
   # the response column of the rendered result table.
   class CgminerCommander
-    def initialize(miners:, thread_cap: 8, request_id: nil)
+    def initialize(miners:, thread_cap: 8)
       @miners     = miners
       @thread_cap = thread_cap
-      @request_id = request_id
     end
-
-    attr_reader :request_id
 
     def version = fan_out_query(:version)
     def stats   = fan_out_query(:stats)

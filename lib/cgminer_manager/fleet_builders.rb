@@ -39,14 +39,14 @@ module CgminerManager
     def commander_for_all(configured_miners:, thread_cap:, request_id: nil)
       thread_cap ||= 1
       miners = miners_from(configured_miners, on_wire: build_wire_logger(request_id))
-      CgminerCommander.new(miners: miners, thread_cap: thread_cap, request_id: request_id)
+      CgminerCommander.new(miners: miners, thread_cap: thread_cap)
     end
 
     def commander_for(miner_ids, thread_cap:, request_id: nil)
       thread_cap ||= 1
       on_wire = build_wire_logger(request_id)
       miners = miner_ids.map { |id| miner_from_id(id, on_wire: on_wire) }
-      CgminerCommander.new(miners: miners, thread_cap: thread_cap, request_id: request_id)
+      CgminerCommander.new(miners: miners, thread_cap: thread_cap)
     end
 
     # Public so direct-Miner.new sites in HttpApp routes (e.g.
