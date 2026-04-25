@@ -428,22 +428,28 @@ module CgminerManager
 
       def build_pool_manager_for_all
         FleetBuilders.pool_manager_for_all(
-          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+          configured_miners: configured_miners,
+          thread_cap: settings.pool_thread_cap,
+          request_id: @request_id
         )
       end
 
       def build_pool_manager_for(miner_ids)
-        FleetBuilders.pool_manager_for(miner_ids)
+        FleetBuilders.pool_manager_for(miner_ids, request_id: @request_id)
       end
 
       def build_commander_for_all
         FleetBuilders.commander_for_all(
-          configured_miners: configured_miners, thread_cap: settings.pool_thread_cap
+          configured_miners: configured_miners,
+          thread_cap: settings.pool_thread_cap,
+          request_id: @request_id
         )
       end
 
       def build_commander_for(miner_ids)
-        FleetBuilders.commander_for(miner_ids, thread_cap: settings.pool_thread_cap)
+        FleetBuilders.commander_for(miner_ids,
+                                    thread_cap: settings.pool_thread_cap,
+                                    request_id: @request_id)
       end
 
       def admin_session_id_hash
@@ -777,8 +783,9 @@ module CgminerManager
 
       available = 0
       unavailable = 0
+      on_wire = FleetBuilders.build_wire_logger(@request_id)
       configured_miners.each do |host, port, _label|
-        miner = CgminerApiClient::Miner.new(host, port)
+        miner = CgminerApiClient::Miner.new(host, port, on_wire: on_wire)
         if miner.available?
           available += 1
         else

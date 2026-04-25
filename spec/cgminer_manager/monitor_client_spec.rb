@@ -119,8 +119,8 @@ RSpec.describe CgminerManager::MonitorClient do
       client = described_class.new(base_url: url, timeout_ms: 2000)
       stub_request(:get, "#{url}/v2/miners").to_return(status: 200, body: '{"miners":[]}')
       client.miners
-      expect(WebMock).to have_requested(:get, "#{url}/v2/miners")
-        .with { |req| !req.headers.key?('X-Cgminer-Request-Id') }
+      expect(WebMock).to(have_requested(:get, "#{url}/v2/miners")
+        .with { |req| !req.headers.key?('X-Cgminer-Request-Id') })
     end
 
     it 'still sends the header on the failure path (monitor.call.failed log site)' do

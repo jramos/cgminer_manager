@@ -4,6 +4,15 @@ source 'https://rubygems.org'
 
 gemspec
 
+# Pin cgminer_api_client to the v0.4.0 git tag rather than rubygems —
+# trace-id propagation in cgminer_manager v1.6.0 requires the on_wire:
+# kwarg on Miner#initialize, which ships in v0.4.0. The gemspec
+# constraint `~> 0.4` matches; this override just sources from git
+# until v0.4.0 is published to rubygems.
+gem 'cgminer_api_client',
+    git: 'https://github.com/jramos/cgminer_api_client.git',
+    tag: 'v0.4.0'
+
 group :development, :test do
   gem 'brakeman', '>= 7.0'
   gem 'bundler-audit', '>= 0.9'
