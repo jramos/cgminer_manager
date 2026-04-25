@@ -152,11 +152,16 @@ module CgminerManager
 
     before do
       @request_started_at = Time.now
-      @request_id         = SecureRandom.uuid if admin_path?(request.path_info)
+      # RequestId middleware (top of stack) populates this for every
+      # request — admin and non-admin alike. Read from env so RateLimiter
+      # and AdminAuth (which fire BEFORE this filter) can already have
+      # tagged their events with the same value.
+      @request_id = request.env[CgminerManager::RequestId::ENV_KEY]
     end
 
     after do
       Logger.info(event: 'http.request',
+                  request_id: @request_id,
                   path: request.path,
                   method: request.request_method,
                   status: response.status,
@@ -182,6 +187,11 @@ module CgminerManager
       # session + auth + CSRF middleware, turning each request into
       # an ever-deeper onion.
       @middleware = []
+
+      # RequestId sits at the very top of the stack so RateLimiter and
+      # AdminAuth (which fire before any Sinatra filter) can read the
+      # request_id from env when emitting their events.
+      use CgminerManager::RequestId
 
       # RateLimiter sits ABOVE session + auth on purpose: a 401-probing
       # attacker must be throttled before AdminAuth executes, otherwise
