@@ -113,21 +113,21 @@ echo_id_mon=$(curl -sS -i \
 [[ "$echo_id_mon" == "$REQUEST_ID" ]] \
   || fail "monitor response did not echo X-Cgminer-Request-Id (got: '$echo_id_mon', expected '$REQUEST_ID')"
 
-# Scrape container stdout for the request_id. compose service names are
-# 'cgminer_manager' and 'cgminer_monitor' per docker-compose.yml.
+# Scrape container stdout for the request_id. Compose service names
+# are 'manager' and 'monitor' per docker-compose.yml.
 mgr_hits=$(docker compose \
   -f docker-compose.yml -f docker-compose.e2e.yml \
-  logs cgminer_manager 2>/dev/null \
+  logs manager 2>/dev/null \
   | grep -cF "$REQUEST_ID" || true)
 mon_hits=$(docker compose \
   -f docker-compose.yml -f docker-compose.e2e.yml \
-  logs cgminer_monitor 2>/dev/null \
+  logs monitor 2>/dev/null \
   | grep -cF "$REQUEST_ID" || true)
 
 [[ "$mgr_hits" -gt 0 ]] \
-  || fail "no $REQUEST_ID hits in cgminer_manager logs"
+  || fail "no $REQUEST_ID hits in manager logs"
 [[ "$mon_hits" -gt 0 ]] \
-  || fail "no $REQUEST_ID hits in cgminer_monitor logs (manager → monitor propagation broken)"
+  || fail "no $REQUEST_ID hits in monitor logs (manager → monitor propagation broken)"
 
 echo "  manager log hits: $mgr_hits"
 echo "  monitor log hits: $mon_hits"
