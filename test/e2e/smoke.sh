@@ -86,4 +86,50 @@ for verb in version stats; do
   [[ "$code" == "200" ]] || fail "POST /manager/admin/$verb returned $code"
 done
 
+# --- Phase 4: trace-id propagation ------------------------------------------
+# An admin POST with a known X-Cgminer-Request-Id must surface the same id
+# in both manager logs (admin.command, admin.result, monitor.call,
+# cgminer.wire — though cgminer.wire is debug-level, so default-info CI runs
+# won't see it) and monitor logs (http.request from manager-driven calls).
+echo "== Phase 4: trace-id propagation =="
+
+REQUEST_ID="e2e-$(uuidgen | tr '[:upper:]' '[:lower:]')"
+
+# Issue an admin POST with the trace id. The response should also echo it.
+echo "  request_id: $REQUEST_ID"
+echo_id=$(curl -sS -i \
+  -u "$ADMIN_USER:$ADMIN_PASSWORD" \
+  -H "X-Cgminer-Request-Id: $REQUEST_ID" \
+  -X POST "$MANAGER/manager/admin/version" \
+  | awk -F': ' '/^[Xx]-[Cc]gminer-[Rr]equest-[Ii]d:/ { gsub(/[\r\n]/, "", $2); print $2 }')
+[[ "$echo_id" == "$REQUEST_ID" ]] \
+  || fail "manager response did not echo X-Cgminer-Request-Id (got: '$echo_id', expected '$REQUEST_ID')"
+
+# Direct monitor call with the same header — monitor's response must echo too.
+echo_id_mon=$(curl -sS -i \
+  -H "X-Cgminer-Request-Id: $REQUEST_ID" \
+  "$MONITOR/v2/healthz" \
+  | awk -F': ' '/^[Xx]-[Cc]gminer-[Rr]equest-[Ii]d:/ { gsub(/[\r\n]/, "", $2); print $2 }')
+[[ "$echo_id_mon" == "$REQUEST_ID" ]] \
+  || fail "monitor response did not echo X-Cgminer-Request-Id (got: '$echo_id_mon', expected '$REQUEST_ID')"
+
+# Scrape container stdout for the request_id. compose service names are
+# 'cgminer_manager' and 'cgminer_monitor' per docker-compose.yml.
+mgr_hits=$(docker compose \
+  -f docker-compose.yml -f docker-compose.e2e.yml \
+  logs cgminer_manager 2>/dev/null \
+  | grep -cF "$REQUEST_ID" || true)
+mon_hits=$(docker compose \
+  -f docker-compose.yml -f docker-compose.e2e.yml \
+  logs cgminer_monitor 2>/dev/null \
+  | grep -cF "$REQUEST_ID" || true)
+
+[[ "$mgr_hits" -gt 0 ]] \
+  || fail "no $REQUEST_ID hits in cgminer_manager logs"
+[[ "$mon_hits" -gt 0 ]] \
+  || fail "no $REQUEST_ID hits in cgminer_monitor logs (manager → monitor propagation broken)"
+
+echo "  manager log hits: $mgr_hits"
+echo "  monitor log hits: $mon_hits"
+
 echo "OK: all smoke assertions passed"
