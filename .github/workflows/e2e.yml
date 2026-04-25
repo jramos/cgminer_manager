@@ -54,10 +54,14 @@ jobs:
 
       - name: Dump compose state on failure
         if: failure()
+        env:
+          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use' }}
         run: |
           docker compose -f docker-compose.yml -f docker-compose.e2e.yml ps
           docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs
 
       - name: Tear down
         if: always()
+        env:
+          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use' }}
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
