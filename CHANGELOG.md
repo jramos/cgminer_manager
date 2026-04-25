@@ -61,6 +61,12 @@
 - `docs/interfaces.md`, `docs/workflows.md`, and `docs/architecture.md`
   updated to name `duration_ms` in their event tables and Mermaid
   sequence diagrams.
+- Test-support code (FakeCgminer, CgminerFixtures) extracted to the
+  shared `cgminer_test_support` gem. `spec/support/monitor_stubs.rb`
+  remains manager-specific and unchanged. The
+  `dev/screenshots/fake_cgminer_fleet.rb` harness now requires the
+  shared gem instead of loading from `spec/support/` via load-path
+  manipulation; its bespoke per-scenario response map is unchanged.
 
 ## [1.5.0] — 2026-04-22
 
