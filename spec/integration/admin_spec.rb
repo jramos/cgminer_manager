@@ -30,7 +30,7 @@ RSpec.describe 'admin surface', type: :integration do
       'pgaset' => ok_status(code: 72, msg: 'PGA set')
     }
   end
-  let(:fake) { FakeCgminer.new(responses: fake_responses).start }
+  let(:fake) { CgminerTestSupport::FakeCgminer.new(responses: fake_responses).start }
 
   after do
     fake.stop

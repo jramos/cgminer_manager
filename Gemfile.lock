@@ -10,6 +10,13 @@ GIT
       rack-cors (~> 2.0)
       sinatra (>= 4.0)
 
+GIT
+  remote: https://github.com/jramos/cgminer_test_support.git
+  revision: aee3dcdb93eec3050f7a5b6716cd73629fec74ac
+  tag: v0.1.0
+  specs:
+    cgminer_test_support (0.1.0)
+
 PATH
   remote: .
   specs:
@@ -221,6 +228,7 @@ DEPENDENCIES
   bundler-audit (>= 0.9)
   cgminer_manager!
   cgminer_monitor!
+  cgminer_test_support!
   parallel (< 2.0)
   rack-test (>= 2.1)
   rake (>= 13.2)
@@ -244,6 +252,7 @@ CHECKSUMS
   cgminer_api_client (0.3.0) sha256=89a7cbec7b66338a3b21d71967b4e42b3f9f1fafacc2ded58263a8127d98876e
   cgminer_manager (1.5.0)
   cgminer_monitor (1.2.0)
+  cgminer_test_support (0.1.0)
   concurrent-ruby (1.3.6) sha256=6b56837e1e7e5292f9864f34b69c5a2cbc75c0cf5338f1ce9903d10fa762d5ab
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   crack (1.0.1) sha256=ff4a10390cd31d66440b7524eb1841874db86201d5b70032028553130b6d4c7e

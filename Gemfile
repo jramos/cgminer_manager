@@ -15,6 +15,10 @@ group :development, :test do
       git: 'https://github.com/jramos/cgminer_monitor.git',
       tag: 'v1.2.0',
       require: false
+  gem 'cgminer_test_support',
+      git: 'https://github.com/jramos/cgminer_test_support.git',
+      tag: 'v0.1.0',
+      require: false
   # parallel 2.x requires Ruby >= 3.3; pin to 1.x so our Ruby 3.2 matrix entry
   # can still bundle. Transitive dep of rubocop / rubocop-ast.
   gem 'parallel', '< 2.0'
