@@ -105,6 +105,34 @@ RSpec.describe CgminerManager::MonitorClient do
     end
   end
 
+  describe 'X-Cgminer-Request-Id header propagation' do
+    it 'sends the header on outbound requests when request_id is configured' do
+      client = described_class.new(base_url: url, timeout_ms: 2000, request_id: 'outbound-uuid')
+      stub = stub_request(:get, "#{url}/v2/miners")
+             .with(headers: { 'X-Cgminer-Request-Id' => 'outbound-uuid' })
+             .to_return(status: 200, body: '{"miners":[]}')
+      client.miners
+      expect(stub).to have_been_requested
+    end
+
+    it 'omits the header when request_id is nil (default)' do
+      client = described_class.new(base_url: url, timeout_ms: 2000)
+      stub_request(:get, "#{url}/v2/miners").to_return(status: 200, body: '{"miners":[]}')
+      client.miners
+      expect(WebMock).to have_requested(:get, "#{url}/v2/miners")
+        .with { |req| !req.headers.key?('X-Cgminer-Request-Id') }
+    end
+
+    it 'still sends the header on the failure path (monitor.call.failed log site)' do
+      client = described_class.new(base_url: url, timeout_ms: 2000, request_id: 'failure-trace')
+      stub = stub_request(:get, "#{url}/v2/miners")
+             .with(headers: { 'X-Cgminer-Request-Id' => 'failure-trace' })
+             .to_raise(Errno::ECONNREFUSED)
+      expect { client.miners }.to raise_error(CgminerManager::MonitorError::ConnectionError)
+      expect(stub).to have_been_requested
+    end
+  end
+
   describe 'observability' do
     it 'emits a monitor.call log line per request' do
       stub_monitor_miners

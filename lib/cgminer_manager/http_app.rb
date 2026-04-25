@@ -797,7 +797,8 @@ module CgminerManager
 
     def monitor_client
       @monitor_client ||= MonitorClient.new(base_url: settings.monitor_url,
-                                            timeout_ms: settings.monitor_timeout_ms)
+                                            timeout_ms: settings.monitor_timeout_ms,
+                                            request_id: @request_id)
     end
   end
 end
