@@ -8,7 +8,7 @@ on:
       monitor_ref:
         description: 'cgminer_monitor ref to build (branch, tag, or SHA)'
         required: false
-        default: 'v1.3.1'
+        default: 'v1.3.2'
   repository_dispatch:
     types: [cgminer-contract-change]
 
@@ -27,7 +27,7 @@ jobs:
       - name: Clone cgminer_monitor
         run: |
           git clone --depth 1 \
-            --branch "${{ inputs.monitor_ref || 'v1.3.1' }}" \
+            --branch "${{ inputs.monitor_ref || 'v1.3.2' }}" \
             https://github.com/jramos/cgminer_monitor.git \
             _e2e_build/cgminer_monitor
 
