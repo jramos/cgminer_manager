@@ -1,11 +1,4 @@
 GIT
-  remote: https://github.com/jramos/cgminer_api_client.git
-  revision: 64ac716ed5c2abcebc89d591802210fe89cebf39
-  tag: v0.4.0
-  specs:
-    cgminer_api_client (0.4.0)
-
-GIT
   remote: https://github.com/jramos/cgminer_monitor.git
   revision: add311ab648b965a66523c8736eb1f77e2bcbbfa
   tag: v1.3.1
@@ -65,6 +58,7 @@ GEM
     bundler-audit (0.9.3)
       bundler (>= 1.2.0)
       thor (~> 1.0)
+    cgminer_api_client (0.4.0)
     concurrent-ruby (1.3.6)
     connection_pool (3.0.2)
     crack (1.0.1)
@@ -232,7 +226,6 @@ PLATFORMS
 DEPENDENCIES
   brakeman (>= 7.0)
   bundler-audit (>= 0.9)
-  cgminer_api_client!
   cgminer_manager!
   cgminer_monitor!
   cgminer_test_support!
@@ -256,7 +249,7 @@ CHECKSUMS
   brakeman (8.0.4) sha256=7bf921fa9638544835df9aa7b3e720a9a72c0267f34f92135955edd80d4dcf6f
   bson (5.2.0) sha256=c468c1e8a3cfa1e80531cc519a890f85586986721d8e305f83465cc36bb82608
   bundler-audit (0.9.3) sha256=81c8766c71e47d0d28a0f98c7eed028539f21a6ea3cd8f685eb6f42333c9b4e9
-  cgminer_api_client (0.4.0)
+  cgminer_api_client (0.4.0) sha256=adc32cb114439ae2808dee28f5b1757fa528e293abe131c85382a12cd98b1a71
   cgminer_manager (1.6.0)
   cgminer_monitor (1.3.1)
   cgminer_test_support (0.1.0)

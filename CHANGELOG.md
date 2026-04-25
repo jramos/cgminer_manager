@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Changed
+- **Resolution source for `cgminer_api_client` switched from git+tag
+  override to plain rubygems.** v0.4.0 was published to rubygems
+  after `cgminer_manager` v1.6.0 cut, so the temporary `Gemfile`
+  override (added in PR #33 to unblock the `on_wire:` kwarg
+  requirement) is dropped. Gemspec constraint `~> 0.4` is unchanged;
+  downstream consumers now resolve through standard channels. No
+  behavior change.
+
 ## [1.6.0] — 2026-04-25
 
 ### Added
