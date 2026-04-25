@@ -1,6 +1,15 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Force line-buffered stdout/stderr so docker compose logs sees output
+# in real time. Without this, Ruby's default block-buffered mode (when
+# stdio is not a TTY, as in docker) holds emitted log lines until the
+# buffer fills — which for an intermittently-logging admin surface can
+# be minutes or never. Monitor's poll loop happens to keep its buffer
+# flowing, masking the same issue there.
+$stdout.sync = true
+$stderr.sync = true
+
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'cgminer_manager'
 
