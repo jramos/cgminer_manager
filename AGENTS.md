@@ -55,7 +55,10 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 │   ├── logger.rb                   # Structured JSON/text logger (module singleton, thread-safe)
 │   ├── monitor_client.rb           # HTTP client for cgminer_monitor /v2/*
 │   ├── pool_manager.rb             # PoolManager + MinerEntry + PoolActionResult (Data.define)
-│   ├── server.rb                   # Orchestrator: signals, Puma launcher, shutdown
+│   ├── restart_schedule.rb         # RestartSchedule (Data.define) — daily-restart config per miner
+│   ├── restart_scheduler.rb        # Background thread: walks RestartStore, fires daily restarts
+│   ├── restart_store.rb            # RestartStore — atomic-rename JSON + mutex; singleton
+│   ├── server.rb                   # Orchestrator: signals, Puma launcher, shutdown, RestartScheduler
 │   ├── snapshot_adapter.rb         # Monitor envelope → legacy HAML shape translation
 │   ├── version.rb                  # VERSION = "1.2.0"
 │   └── view_miner.rb               # ViewMiner + ViewMinerPool (Data.define value types)
@@ -69,6 +72,7 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 ├── config/
 │   ├── miners.yml.example          # [{ host, port, [label] }]
 │   └── puma.rb                     # For direct `puma`/`rackup`; NOT used by `run` (Server builds its own launcher)
+├── data/                           # UI-mutated state — restart_schedules.json (CGMINER_MANAGER_RESTART_SCHEDULES_FILE)
 ├── config.ru                       # Rack entrypoint — matches build_puma_launcher without signals/shutdown
 ├── spec/                           # RSpec unit + integration (NOT packaged)
 │   ├── cgminer_manager/            # Unit, one per lib/ file
@@ -114,18 +118,21 @@ bin/cgminer_manager run
                             │
                             └── write path: CgminerCommander ── TCP (via cgminer_api_client) ──> cgminer
                                             PoolManager      ── TCP (via cgminer_api_client) ──> cgminer
+                                            RestartScheduler ── TCP (via cgminer_api_client) ──> cgminer
+                                                              (in-process thread, 30 s tick, daily)
 ```
 
 **Key structural facts:**
 
 1. **Two upstreams with different transports.** HTTP to `cgminer_monitor` for reads, TCP direct to cgminer for writes. The manager never reads cgminer directly for dashboard tiles (that's monitor's job) and never writes to Mongo.
-2. **Single-process, foreground, no background workers.** Supervisor-driven.
-3. **`HttpApp` state lives in Sinatra settings** set by `Server#configure_http_app` at boot: `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`, and `settings.configured_miners` (eagerly parsed at boot via `HttpApp.parse_miners_file`). Tests populate them in one call via `HttpApp.configure_for_test!(...)`.
+2. **Single-process, foreground, with one in-process background thread.** Supervisor-driven. The `RestartScheduler` thread (added 1.6.0) runs alongside Puma to fire daily restarts; everything else is request-driven.
+3. **`HttpApp` state lives in Sinatra settings** set by `Server#configure_http_app` at boot: `settings.monitor_url`, `settings.miners_file`, `settings.stale_threshold_seconds`, `settings.pool_thread_cap`, `settings.monitor_timeout_ms`, `settings.session_secret`, `settings.production`, `settings.configured_miners` (eagerly parsed at boot via `HttpApp.parse_miners_file`), and `settings.restart_store` (the singleton `RestartStore` instance shared between request handlers and the scheduler thread). Tests populate them in one call via `HttpApp.configure_for_test!(...)`.
 4. **`Config` is immutable** (`Data.define`). Validated at boot. **Exception:** `AdminAuth` reads `CGMINER_MANAGER_ADMIN_USER`/`_PASSWORD`/`CGMINER_MANAGER_ADMIN_AUTH` per-request — deliberate, so dev harnesses can toggle auth without restart. Admin Basic Auth is required by default as of 1.3.0; `Config.from_env` raises `ConfigError` unless creds are configured or `CGMINER_MANAGER_ADMIN_AUTH=off` is set.
 5. **`CgminerApiClient::Miner.to_s` is monkey-patched** at the top of `http_app.rb` to return `"host:port"`. Upstream doesn't define it; `respond_to_missing?` excludes `to_*`, so it's a safe host-side addition. Makes `FleetWriteEntry.miner` and `MinerEntry.miner` display stable identifiers.
 6. **Admin surface has 4 defensive layers.** In order: (a) CSRF via `ConditionalAuthenticityToken`, (b) default-required Basic Auth via `AdminAuth` — valid Basic Auth bypasses CSRF; `CGMINER_MANAGER_ADMIN_AUTH=off` is the escape hatch, (c) scope restrictions on hardware-tuning verbs (refuse `scope=all`), (d) per-request audit logging threaded by `request_id`. The typed-allowlist on `/manager/admin/:command` is **ergonomic** (UI buttons), not defensive — anyone who can reach `/admin/run` can run any cgminer verb.
 7. **Thread-cap fan-out lives in `CgminerManager::ThreadedFanOut.map(items, thread_cap:) { ... }`.** Used by `ViewModels.fetch_snapshots_for`, `CgminerCommander#fan_out_query` / `#fan_out_write`, and `PoolManager#run_each`. Handles `Queue` + fixed worker count + `Mutex`-protected results; the block owns per-item error capture and result wrapping. Returns an ordered array matching input order. Default cap is 8 via `POOL_THREAD_CAP`.
 8. **No OpenAPI spec** (unlike `cgminer_monitor`). If you add one, also add a CI parity check.
+9. **Three sister regexes for admin path matching.** When adding a new admin-gated route, update **all three**: `AdminAuth::ADMIN_PATH` (the actual auth gate), `HttpApp#admin_path?` helper (audit-log correlation), and `RateLimiter::DEFAULT_PATHS` (throttling). Forgetting `AdminAuth::ADMIN_PATH` ships the route unauthenticated. Forgetting `RateLimiter::DEFAULT_PATHS` ships it unbounded. The integration spec for the maintenance routes (`spec/integration/restart_schedule_routes_spec.rb`) asserts 401 without auth and 429 over limit specifically to catch regressions on those updates.
 
 ## Conventions that matter when editing code
 
@@ -163,6 +170,7 @@ bin/cgminer_manager run
 
 - **Unit specs live at `spec/cgminer_manager/**`**, one file per `lib/` file (roughly).
 - **Integration specs at `spec/integration/`**, tagged `:integration`. They use `Rack::Test::Methods` against `HttpApp` — no Puma spin-up.
+- **Contract specs at `spec/contract/`** — `monitor_openapi_contract_spec.rb` asserts that every envelope field `MonitorClient` + the view-models read from monitor's `/v2/*` responses is declared in the OpenAPI spec `cgminer_monitor` ships (inside the gem, `lib/cgminer_monitor/openapi.yml`). Catches monitor-side rename / envelope reshape at CI time instead of at page-load time. Bumping the `cgminer_monitor` gem pin in `Gemfile` is the deliberate reviewable event that regenerates this contract — if the spec fails after a pin bump, either fix the reader to match the new shape or push back on the monitor change. Scope is envelope keys (`miners`, `host`, `port`, `ok`, `response`, `error`, `fields`, `data`, `status`); cgminer-payload drift (`SUMMARY`, `MHS 5s`, etc.) is covered separately via `FakeCgminer` fixtures.
 - **Monitor calls are stubbed with WebMock**. See `spec/support/monitor_stubs.rb` for helpers that stub `/v2/*` with fixture JSON.
 - **cgminer calls use `FakeCgminer`** (the shared in-process TCP server from `spec/support/fake_cgminer.rb`).
 - **Specs that render routes call `HttpApp.configure_for_test!(monitor_url:, miners_file:, ...)`** in a `before` block. It populates every Sinatra setting (including eagerly parsing `miners_file` into `settings.configured_miners`) so the suite is order-independent without a separate reset step.
@@ -176,15 +184,18 @@ bin/cgminer_manager run
 
 ```sh
 bundle install
-bundle exec rake                                     # rubocop + rspec (full suite)
+bundle exec rake                                     # rubocop + rspec (full suite, incl. contract)
 bundle exec rspec --tag ~integration                 # unit only (what the CI test matrix runs)
 bundle exec rspec --tag integration                  # integration only
+bundle exec rspec spec/contract                      # cross-repo contract against monitor's OpenAPI
 bundle exec rspec path/to/spec.rb:123                # single example
 bundle exec rubocop                                  # lint only
 bundle exec rubocop -A                               # lint + auto-correct
 ```
 
 Coverage is always on (SimpleCov, enforced at the default rake task via `ENFORCE_COVERAGE=1`). Reports in `coverage/` — `.gitignore`d.
+
+**Mermaid validation.** Every `docs/*.md` may contain ` ```mermaid ` blocks. Run `script/validate_mermaid` to lint them all — the script extracts each block and pipes it through `npx @mermaid-js/mermaid-cli`. Requires `node >= 18` and `npx` on PATH. First run is slow (Puppeteer downloads Chromium into `~/.npm/_npx`, ~300 MB; cached after). Not wired into `bundle exec rake` — it's an opt-in local check for docs PRs.
 
 **No external services required for `bundle exec rake`.** No MongoDB, no live monitor, no cgminer. Everything is WebMock + FakeCgminer in-process.
 

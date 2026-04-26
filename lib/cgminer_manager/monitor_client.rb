@@ -6,9 +6,10 @@ require 'cgi'
 
 module CgminerManager
   class MonitorClient
-    def initialize(base_url:, timeout_ms: 2000)
+    def initialize(base_url:, timeout_ms: 2000, request_id: nil)
       @base_url   = base_url.sub(%r{/\z}, '')
       @timeout_s  = timeout_ms / 1000.0
+      @request_id = request_id
     end
 
     def miners
@@ -34,20 +35,29 @@ module CgminerManager
     private
 
     def get(path, params: {})
-      started  = Time.now
-      response = HTTP.timeout(@timeout_s).get("#{@base_url}#{path}", params: params)
+      started = Time.now
+      client  = HTTP.timeout(@timeout_s)
+      client  = client.headers('X-Cgminer-Request-Id' => @request_id) if @request_id
+      response = client.get("#{@base_url}#{path}", params: params)
       log_call(path, response, started)
       raise_api_error(response) unless response.status.success?
 
       JSON.parse(response.body.to_s, symbolize_names: true)
     rescue HTTP::ConnectionError, HTTP::TimeoutError, Errno::ECONNREFUSED => e
-      Logger.warn(event: 'monitor.call.failed', url: path, error: e.class.to_s, message: e.message)
+      Logger.warn(event: 'monitor.call.failed',
+                  request_id: @request_id,
+                  url: path,
+                  error: e.class.to_s,
+                  message: e.message)
       raise MonitorError::ConnectionError, "monitor unreachable: #{e.message}"
     end
 
     def log_call(path, response, started)
       duration_ms = ((Time.now - started) * 1000).round
-      Logger.info(event: 'monitor.call', url: path, status: response.status.to_i,
+      Logger.info(event: 'monitor.call',
+                  request_id: @request_id,
+                  url: path,
+                  status: response.status.to_i,
                   duration_ms: duration_ms)
     end
 

@@ -21,12 +21,13 @@ module CgminerManager
   # fallback (see `client_ip`) bounds keys to well-formed IP strings so
   # an attacker cannot amplify memory use via malformed headers.
   class RateLimiter
-    # Matches all 6 rate-limited POST routes in HttpApp:
+    # Matches all rate-limited POST routes in HttpApp:
     # - /manager/manage_pools
     # - /miner/:miner_id/manage_pools
     # - /manager/admin/...
     # - /miner/:miner_id/admin/...
-    DEFAULT_PATHS = %r{\A/(?:manager|miner/[^/]+)/(?:admin(?:/|\z)|manage_pools\z)}
+    # - /miner/:miner_id/maintenance — write to RestartStore
+    DEFAULT_PATHS = %r{\A/(?:manager|miner/[^/]+)/(?:admin(?:/|\z)|manage_pools\z|maintenance(?:/|\z))}
 
     def initialize(app, requests:, window_seconds:, paths: DEFAULT_PATHS, trusted_proxies: [])
       @app = app
@@ -46,7 +47,7 @@ module CgminerManager
       allowed, retry_after = check_bucket(ip, now)
       return @app.call(env) if allowed
 
-      log_exceeded(ip, env['PATH_INFO'], retry_after)
+      log_exceeded(ip, env['PATH_INFO'], retry_after, env[CgminerManager::RequestId::ENV_KEY])
       too_many_requests(retry_after)
     end
 
@@ -133,9 +134,10 @@ module CgminerManager
       end
     end
 
-    def log_exceeded(ip, path, retry_after)
+    def log_exceeded(ip, path, retry_after, request_id)
       Logger.warn(
         event: 'rate_limit.exceeded',
+        request_id: request_id,
         remote_ip: ip,
         path: path,
         retry_after: retry_after

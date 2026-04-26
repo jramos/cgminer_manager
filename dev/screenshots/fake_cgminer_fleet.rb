@@ -10,10 +10,7 @@
 #
 # Stops on SIGINT/SIGTERM (also wired by boot.sh's pidfile teardown).
 
-$LOAD_PATH.unshift(File.expand_path('../../spec/support', __dir__))
-
-require 'fake_cgminer'
-require 'cgminer_fixtures'
+require 'cgminer_test_support'
 require_relative 'scenario'
 
 def responses_for(spec)
@@ -47,7 +44,7 @@ end
 
 servers = Scenario::MINERS.map do |spec|
   responses = responses_for(spec)
-  server = FakeCgminer.new(responses: responses, port: spec[:port]).start
+  server = CgminerTestSupport::FakeCgminer.new(responses: responses, port: spec[:port]).start
   warn "listening on 127.0.0.1:#{server.port} (label=#{spec[:label]}, model=#{spec[:model]})"
   server
 end

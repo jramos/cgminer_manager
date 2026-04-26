@@ -31,7 +31,7 @@ RSpec.describe 'pool management', type: :integration do
       'save' => ok_status(code: 20, msg: 'Configuration saved')
     }
   end
-  let(:fake) { FakeCgminer.new(responses: fake_responses).start }
+  let(:fake) { CgminerTestSupport::FakeCgminer.new(responses: fake_responses).start }
 
   after { fake.stop }
 

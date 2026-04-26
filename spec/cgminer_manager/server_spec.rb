@@ -17,6 +17,8 @@ RSpec.describe CgminerManager::Server do
     path
   end
 
+  let(:schedules_file) { File.join(tmpdir, 'restart_schedules.json') }
+
   let(:config) do
     instance_double(
       CgminerManager::Config,
@@ -30,7 +32,11 @@ RSpec.describe CgminerManager::Server do
       rate_limit_enabled: true,
       rate_limit_requests: 60,
       rate_limit_window_seconds: 60,
-      trusted_proxies: []
+      trusted_proxies: [],
+      restart_schedules_file: schedules_file,
+      restart_scheduler_enabled: true,
+      shutdown_timeout: 10,
+      require_confirm: true
     )
   end
 
@@ -49,6 +55,7 @@ RSpec.describe CgminerManager::Server do
     CgminerManager::HttpApp.set :rate_limit_requests,       60
     CgminerManager::HttpApp.set :rate_limit_window_seconds, 60
     CgminerManager::HttpApp.set :trusted_proxies,           []
+    CgminerManager::HttpApp.set :restart_store,             nil
   end
 
   after do
@@ -100,6 +107,41 @@ RSpec.describe CgminerManager::Server do
 
       session_middleware = CgminerManager::HttpApp.middleware.find { |m| m.first == Rack::Session::Cookie }
       expect(session_middleware[1].first[:secret]).to eq('a' * 64)
+    end
+
+    # The RestartStore singleton must be the SAME instance shared
+    # between HTTP request handlers and the RestartScheduler thread —
+    # otherwise route POSTs and scheduler ticks each hold their own
+    # mutex and concurrent writes can tear.
+    it 'builds a singleton RestartStore and stashes it on HttpApp settings' do
+      server.send(:configure_http_app)
+      stored = CgminerManager::HttpApp.settings.restart_store
+      expect(stored).to be_a(CgminerManager::RestartStore)
+      expect(stored.path).to eq(schedules_file)
+      expect(server.instance_variable_get(:@restart_store)).to equal(stored)
+    end
+  end
+
+  describe '#start_restart_scheduler' do
+    before do
+      server.send(:configure_http_app)
+      allow(CgminerManager::Logger).to receive(:info)
+    end
+
+    it 'starts a RestartScheduler with the singleton store and a configured-miners proc' do
+      server.send(:start_restart_scheduler)
+      scheduler = server.instance_variable_get(:@restart_scheduler)
+      expect(scheduler).to be_a(CgminerManager::RestartScheduler)
+      expect(scheduler.thread).not_to be_nil
+
+      server.send(:stop_restart_scheduler)
+      expect(scheduler.thread.alive?).to be(false)
+    end
+
+    it 'is a no-op when restart_scheduler_enabled is false' do
+      allow(config).to receive(:restart_scheduler_enabled).and_return(false)
+      server.send(:start_restart_scheduler)
+      expect(server.instance_variable_get(:@restart_scheduler)).to be_nil
     end
   end
 end

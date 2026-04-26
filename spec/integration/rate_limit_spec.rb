@@ -77,6 +77,21 @@ RSpec.describe 'rate limiting', type: :integration do
     end
   end
 
+  describe 'path coverage (regex extension)' do
+    before do
+      CgminerManager::HttpApp.configure_for_test!(
+        monitor_url: 'http://localhost:9292', miners_file: miners_file,
+        rate_limit_enabled: true, rate_limit_requests: 2, rate_limit_window_seconds: 60
+      )
+    end
+
+    it 'rate-limits POST /miner/:id/maintenance (proves the limiter regex covers maintenance)' do
+      2.times { post '/miner/127.0.0.1:4028/maintenance' }
+      post '/miner/127.0.0.1:4028/maintenance'
+      expect(last_response.status).to eq(429)
+    end
+  end
+
   describe 'disabled posture' do
     before do
       CgminerManager::HttpApp.configure_for_test!(

@@ -35,6 +35,9 @@ group :development, :test do
   gem 'rubocop-rspec', '>= 2.27'
   gem 'simplecov',     '>= 0.22'
   gem 'webmock',       '>= 3.23'
+  gem 'cgminer_monitor',
+      git: 'https://github.com/jramos/cgminer_monitor.git',
+      tag: 'vX.Y.Z', require: false
 end
 ```
 
@@ -47,6 +50,7 @@ end
 | `rubocop`, `rubocop-rake`, `rubocop-rspec` | Linter and plugins. |
 | `simplecov` | Code coverage. Started in `spec_helper.rb` with coverage enforcement gated by `ENFORCE_COVERAGE=1` (set automatically by the rake task, not set when running filtered specs directly). |
 | `webmock` | Stubs outbound HTTP calls to `cgminer_monitor`. See `spec/support/monitor_stubs.rb` for the helper module. |
+| `cgminer_monitor` | CI-only dev dep, pinned by git tag. Ships its OpenAPI spec inside the gem at `lib/cgminer_monitor/openapi.yml`; `spec/contract/monitor_openapi_contract_spec.rb` loads it via `Gem::Specification.find_by_name` and asserts that every `/v2/*` envelope key `MonitorClient` reads is declared. Bumping the tag is a deliberate reviewable event — OpenAPI revisions surface as a pin bump PR. `require: false` keeps monitor out of manager's runtime autoload path; only the spec loader reaches into the gem dir. |
 
 ## Ruby version support
 

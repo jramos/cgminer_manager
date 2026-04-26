@@ -242,7 +242,7 @@ All admin POSTs emit (at minimum) one entry event and one exit event, threaded b
 |---|---|---|
 | `admin.command` | on typed-allowlist POST | `request_id`, `user`, `remote_ip`, `user_agent`, `session_id_hash`, `command`, `scope` |
 | `admin.raw_command` | on `/admin/run` POST | same as above + `args` |
-| `admin.result` | after the commander returns | `request_id`, `command`, `scope`, `ok_count`, `failed_count`, `elapsed_ms` |
+| `admin.result` | after the commander returns | `request_id`, `command`, `scope`, `ok_count`, `failed_count`, `duration_ms` |
 | `admin.scope_rejected` | 422 from scope check | `request_id`, `command`, `scope` |
 | `admin.auth_failed` | 401 from `AdminAuth` | `reason` (`missing_creds`/`bad_creds`/`user_mismatch`), `path`, `remote_ip`, `user_agent` |
 

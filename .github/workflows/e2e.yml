@@ -8,7 +8,7 @@ on:
       monitor_ref:
         description: 'cgminer_monitor ref to build (branch, tag, or SHA)'
         required: false
-        default: 'master'
+        default: 'v1.3.2'
   repository_dispatch:
     types: [cgminer-contract-change]
 
@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Clone cgminer_monitor
         run: |
           git clone --depth 1 \
-            --branch "${{ inputs.monitor_ref || 'master' }}" \
+            --branch "${{ inputs.monitor_ref || 'v1.3.2' }}" \
             https://github.com/jramos/cgminer_monitor.git \
             _e2e_build/cgminer_monitor
 
@@ -39,7 +39,7 @@ jobs:
 
       - name: Compose up
         env:
-          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use' }}
+          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use-padded-to-64-bytes-aaaaaaa' }}
         run: |
           docker compose \
             -f docker-compose.yml \
@@ -54,10 +54,14 @@ jobs:
 
       - name: Dump compose state on failure
         if: failure()
+        env:
+          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use-padded-to-64-bytes-aaaaaaa' }}
         run: |
           docker compose -f docker-compose.yml -f docker-compose.e2e.yml ps
           docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs
 
       - name: Tear down
         if: always()
+        env:
+          SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'e2e-ephemeral-secret-not-for-prod-use-padded-to-64-bytes-aaaaaaa' }}
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v

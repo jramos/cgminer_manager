@@ -17,6 +17,7 @@ ENV['RACK_ENV'] ||= 'test'
 
 require 'cgminer_manager'
 
+require 'cgminer_test_support'
 Dir[File.join(__dir__, 'support', '**', '*.rb')].each { |f| require f }
 
 RSpec.configure do |config|

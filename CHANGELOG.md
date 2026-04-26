@@ -2,6 +2,230 @@
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-04-26
+
+### Added
+- **Two-step confirmation flow for destructive admin commands.**
+  Default-on; opt out via `CGMINER_MANAGER_REQUIRE_CONFIRM=off`.
+  Per-curl bypass via `?auto_confirm=1` query param. A fleet-wide
+  destructive POST (typed allowlist write — `restart`/`quit`/`zero`/
+  `save`; raw `/run` with `scope=all`; or any `/manage_pools` action)
+  now returns **202 Accepted** + a 2-minute single-use confirmation
+  token instead of executing. A separate `POST /manager/admin/confirm/:token`
+  consumes the token and dispatches the originally-pinned action
+  verbatim. Tokens are bound to the originating identity (admin_user
+  on Basic Auth path, session_id_hash on browser path) so an unrelated
+  operator's session can't replay another's pending token.
+
+  New endpoints:
+  - `POST /manager/admin/confirm/:token` — confirms + executes.
+  - `DELETE /manager/admin/confirm/:token` — explicit cancel.
+  - **No GET endpoint** — token never appears in a URL bar (Referer /
+    history / access-log leakage protection). JS-off fallback page
+    renders inline in the 202 response body of the original POST.
+
+  Carve-outs (always skip the gate):
+  - Read-only typed verbs (`version`, `stats`, `devs`).
+  - Per-miner destructive routes (`/miner/:id/admin/*`,
+    `/miner/:id/manage_pools`) — single-rig blast radius.
+
+  Fail-closed when `CGMINER_MANAGER_ADMIN_AUTH=off` AND
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=on`: destructive POSTs return
+  503 + a body naming both knobs. Operators must align the two
+  intentionally; a boot-time warn surfaces the misalignment
+  pre-request. A second boot-time warn fires under `WEB_CONCURRENCY > 1`
+  (Puma cluster mode) noting that the in-process token store is
+  cluster-unsafe.
+
+- **Five new audit events** for the flow: `admin.action_started`,
+  `admin.action_confirmed`, `admin.action_auto_confirmed`,
+  `admin.action_cancelled`, and `admin.action_rejected` (single
+  event with a `reason:` Symbol discriminator — `:expired` /
+  `:session_mismatch` / `:evicted` / `:not_found` — instead of
+  proliferating event names per failure mode). Plus a startup-time
+  `config.warn` line for the alignment gaps. Schema reserved in
+  `cgminer_monitor`'s canonical `docs/log_schema.md` under the
+  same `admin.*` namespace.
+
+- **Pool credentials are redacted in the audit log.**
+  `manage_pools/add` actions persist their full args (URL, user,
+  password) in the in-memory `ConfirmationStore::Entry` so step 2
+  can dispatch verbatim, but the args field of `admin.action_started`
+  / `admin.action_confirmed` becomes `"[REDACTED: pool credentials]"`.
+  Raw `/run` args are passed through unredacted (operator-supplied
+  opaque strings; the operator is on the hook for what they typed).
+
+### Changed
+- **Existing curl scripts and CI smoke tests** that POST against
+  fleet-wide destructive admin routes (`/manager/admin/{restart,quit,
+  zero,save}`, `/manager/admin/run`, `/manager/manage_pools`) must
+  add `?auto_confirm=1` to each call OR set
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=off` globally. This repo's own
+  `test/e2e/smoke.sh` is updated alongside this release.
+
+### Migration
+- **Operators with curl scripts:** append `?auto_confirm=1` to each
+  destructive POST URL. Audit-log entries shift from `admin.command` /
+  `admin.result` (single-step pre-1.7.0) to `admin.action_auto_confirmed`
+  + `admin.command` + `admin.result` (single-step with audit-trail
+  evidence of the bypass).
+- **Operators using the browser admin tab:** click Restart (or any
+  destructive button) → server-rendered Confirm/Cancel page renders
+  inline → click Confirm within 2 minutes. JS modal polish is a
+  follow-up; the server-rendered page is fully functional today.
+- **Operators in dev mode** (`CGMINER_MANAGER_ADMIN_AUTH=off`): set
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=off` to align the two knobs;
+  otherwise destructive POSTs return 503 with an explanatory body.
+
+## [1.6.2] — 2026-04-25
+
+### Changed
+- **Extracted `code_for` helper from `AdminLogging` into a new
+  `CgminerManager::ErrorCode` module** as `.classify(error)`. The
+  helper was a generic `CgminerApiClient`-error → symbol classifier
+  with no admin-surface coupling, and `FleetQueryResult` /
+  `FleetWriteResult` reached back into `AdminLogging` purely to
+  compute a value those Data classes own. The new home decouples
+  the dependency direction. Renamed `code_for` → `classify` along
+  the way (avoids the `def for` reserved-word landmine and reads
+  more naturally next to `ApiError#code`). Internal refactor — no
+  behavior change, no log-shape change.
+
+## [1.6.1] — 2026-04-25
+
+### Added
+- **`failed_codes` field on `admin.result`** — count-by-code map
+  (e.g. `{"access_denied": 3, "connection_error": 2}`) summarizing
+  how the failed entries broke down on a fleet write/query. Always
+  present (empty `{}` when `failed_count == 0`). Populated via the
+  new `AdminLogging.code_for(error)` helper that maps any rescued
+  exception to a six-symbol vocabulary (`:access_denied`,
+  `:invalid_command`, `:unknown`, `:timeout`, `:connection_error`,
+  `:unexpected`). Operators can now alert on
+  `failed_codes.access_denied > 0` from the audit log without
+  parsing English error message substrings. `FleetQueryResult` and
+  `FleetWriteResult` both expose a new `failed_codes_count_map`
+  method that the log entry duck-types over.
+
+### Changed
+- **Resolution source for `cgminer_api_client` switched from git+tag
+  override to plain rubygems.** v0.4.0 was published to rubygems
+  after `cgminer_manager` v1.6.0 cut, so the temporary `Gemfile`
+  override (added in PR #33 to unblock the `on_wire:` kwarg
+  requirement) is dropped. Gemspec constraint `~> 0.4` is unchanged;
+  downstream consumers now resolve through standard channels. No
+  behavior change.
+- **Bumped `cgminer_monitor` Gemfile pin from `v1.3.1` → `v1.3.3`**
+  for the schema-extended `code` standard-key row referenced by
+  manager's `admin.result.failed_codes` field. Picks up monitor's
+  own `poll.miner_failed.code` emission too, so the contract test
+  exercises the live shape.
+
+## [1.6.0] — 2026-04-25
+
+### Added
+- **Cross-repo trace-id propagation** via the `X-Cgminer-Request-Id`
+  HTTP header. New `CgminerManager::RequestId` Rack middleware sits at
+  the top of the stack (above `RateLimiter`, `Rack::Session::Cookie`,
+  `AdminAuth`, and `ConditionalAuthenticityToken`); generates a UUID v4
+  per request or honors an inbound header, stashes the value on
+  `env['cgminer_manager.request_id']`, and echoes it in the response.
+  `MonitorClient` injects the header on every outbound HTTP call to
+  monitor and tags `monitor.call` / `monitor.call.failed` events with
+  the same value. `FleetBuilders` builds per-request
+  `CgminerApiClient::Miner` instances with an `on_wire:` closure that
+  captures the request_id and emits `cgminer.wire` log events tagged
+  with it. The `cgminer.wire` event emits at debug level — opt in via
+  `LOG_LEVEL=debug` to avoid the ~100-200 events per fan-out at info
+  volume. `rate_limit.exceeded`, `admin.auth_failed`,
+  `admin.auth_misconfigured` events all gain `request_id`.
+
+- **Audit-retention docs** (`docs/logging.md` "Audit retention" section
+  + a brief README pointer). Documents the manager's stdout-only posture
+  and how to route + retain audit events via systemd journald, Docker
+  logging drivers, or a Vector / Fluent-Bit shipper. The recommended
+  audit filter is `event=admin.*` OR `event=rate_limit.exceeded` — the
+  latter catches unauthenticated 401-probing because the rate limiter
+  sits above the auth gate. No code change; the application has no file
+  sink and no runtime dependency on a log backend.
+- **Per-miner scheduled-restart window**
+  (`lib/cgminer_manager/restart_*.rb`,
+  `views/miner/_maintenance.haml`). New "Scheduled Restart" form on every
+  miner's Admin tab persists an enable-toggle + UTC time-of-day to a JSON
+  store (`data/restart_schedules.json` by default). A `RestartScheduler`
+  thread spawned by `Server#run` walks the store every 30 s and fires
+  `restart` against any miner whose UTC time-of-day is within ±2 minutes
+  of "now" — date-based dedupe (`last_scheduled_date_utc`) ensures each
+  schedule fires at most once per UTC calendar day. Two layers of error
+  containment: per-tick `rescue StandardError` and a thread-top
+  `rescue Exception` (mirrors `Server#start_puma_thread`) so a
+  non-StandardError surfaces as `restart.scheduler.crash` rather than
+  vanishing the scheduler silently. New routes `GET`/`POST
+  /miner/:miner_id/maintenance` (Basic Auth + CSRF + rate limited) and
+  the public read endpoint `GET /api/v1/restart_schedules.json` (consumed
+  by `cgminer_monitor` to suppress `offline` alerts during a restart
+  window). New env vars `CGMINER_MANAGER_RESTART_SCHEDULES_FILE` and
+  `CGMINER_MANAGER_RESTART_SCHEDULER` (set to `off` to disable the
+  scheduler thread without disabling the routes — useful for multi-host
+  deploys where only one node should drive restarts). All three sister
+  regexes (`AdminAuth::ADMIN_PATH`, `HttpApp#admin_path?`,
+  `RateLimiter::DEFAULT_PATHS`) updated to cover the new path; the
+  integration spec asserts 401 without auth and 429 over limit so a
+  future regression on any of the three trips a test.
+- **Contract test against monitor's OpenAPI spec**
+  (`spec/contract/monitor_openapi_contract_spec.rb`). Asserts that
+  every envelope key `MonitorClient` + view-models read from
+  cgminer_monitor's `/v2/*` responses is declared in the monitor-
+  shipped OpenAPI (`lib/cgminer_monitor/openapi.yml`). Catches
+  field-rename or envelope-reshape drift at CI time instead of at
+  page-load. Scope is envelope-only (`miners`, `host`, `port`,
+  `available`, `id`, `ok`, `response`, `error`, `fields`, `data`,
+  `status`); cgminer-payload drift stays in api_client territory.
+  Monitor is added as a CI-only dev dep in `Gemfile` pinned to
+  `tag: 'v1.2.0'` under a `GIT` source — bumping the tag is a
+  deliberate reviewable event that surfaces OpenAPI revisions in
+  manager's PR history.
+- **`docs/logging.md`** — short stub naming the manager-owned log
+  event namespaces (`admin.*`, `rate_limit.*`, `monitor.*`, `http.*`),
+  the shared namespaces (`server.*`, `reload.*`, `puma.*`), and the
+  house conventions. Links to `cgminer_monitor/docs/log_schema.md`
+  as the cross-repo source of truth for reserved keys, the full
+  event catalog, and evolution rules.
+
+### Changed
+- **`request_id` generation moved from admin-only Sinatra `before`-filter
+  to the new `RequestId` Rack middleware.** Generation now happens for
+  every HTTP request, not just admin paths. Visible consequence:
+  `http.request`, `rate_limit.exceeded`, and `admin.auth_failed` events
+  now carry `request_id` (previously empty for non-admin requests). No
+  API change.
+- **Bumped `cgminer_api_client` dependency from `~> 0.3` to `~> 0.4`**
+  for the `on_wire:` kwarg on `Miner#initialize` (ships in v0.4.0).
+- **Bumped `cgminer_monitor` dev dep pin to `v1.3.1`** (the pin used
+  by the `#4.3` OpenAPI contract spec). v1.3.0 + v1.3.1 add the
+  monitor side of trace-id propagation; v1.3.1 widens monitor's
+  api_client constraint to `>= 0.3, < 0.5` so both can be pinned
+  together without a Bundler conflict.
+- **Log-key consistency — `duration_ms` everywhere.** The
+  `admin.result` and `http.request` log events previously emitted
+  their timing under `elapsed_ms` and `render_ms` respectively;
+  both now emit `duration_ms` to match `monitor.call` and the
+  house-wide standard. No Ruby API change — `AdminLogging.result_log_entry`
+  and the `http.request` after-filter still accept the same inputs.
+  **Log consumers that keyed off `elapsed_ms` or `render_ms` must
+  update their queries to `duration_ms`.** The `cgminer_monitor`
+  canonical log-schema doc (`cgminer_monitor/docs/log_schema.md`)
+  pins `duration_ms` as the standardized reserved key.
+- `docs/interfaces.md`, `docs/workflows.md`, and `docs/architecture.md`
+  updated to name `duration_ms` in their event tables and Mermaid
+  sequence diagrams.
+- Test-support code (FakeCgminer, CgminerFixtures) extracted to the
+  shared `cgminer_test_support` gem. `spec/support/monitor_stubs.rb`
+  remains manager-specific and unchanged. The
+  `dev/screenshots/fake_cgminer_fleet.rb` harness now requires the
+  shared gem instead of loading from `spec/support/` via load-path
+  manipulation; its bespoke per-scenario response map is unchanged.
+
 ## [1.5.0] — 2026-04-22
 
 ### Added

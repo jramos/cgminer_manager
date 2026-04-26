@@ -38,7 +38,7 @@ sequenceDiagram
     Server->>Server: install_signal_handlers again
     Server->>Server: @stop.pop (block until signal)
 
-    Note over HttpApp,PumaT: app is now serving; goto request lifecycle
+    Note over HttpApp,PumaT: app is now serving, goto request lifecycle
 ```
 
 **Two signal-handler installs?** Yes. Puma's `setup_signals` synchronously overwrites SIGTERM/SIGINT handlers inside its thread. We install first so a signal arriving during boot lands in `@stop`, and install again after `@booted.pop` to reclaim those signals.
@@ -84,7 +84,7 @@ sequenceDiagram
 
     else monitor down
         MC--xViewModels: MonitorError
-        ViewModels->>ViewModels: banner='data source unavailable'; miners=fallback from yml
+        ViewModels->>ViewModels: banner='data source unavailable', miners=fallback from yml
     end
 
     ViewModels-->>HttpApp: @view = {miners:, snapshots:, banner:, stale_threshold:}
@@ -95,7 +95,7 @@ sequenceDiagram
     HttpApp->>HAML: haml :'manager/index' with @miner_pool, @miner_data, @bad_chain_elements, @view
     HAML->>HAML: render layout, _header, manager/index (Summary/Miner Pool/Admin tabs),
     HAML-->>HttpApp: HTML
-    HttpApp->>Logger: after-filter: 'http.request' path=/ status=200 render_ms=...
+    HttpApp->>Logger: after-filter: 'http.request' path=/ status=200 duration_ms=...
     HttpApp-->>Puma: 200 HTML
     Puma-->>Browser: response
 ```
@@ -119,7 +119,7 @@ sequenceDiagram
     participant Miners as cgminer instances
 
     Browser->>Puma: POST /manager/manage_pools<br/>action_name=disable pool_index=1 authenticity_token=...
-    Puma->>CSRF: validate token (not admin path; AdminAuth skipped)
+    Puma->>CSRF: validate token (not admin path, AdminAuth skipped)
     CSRF-->>HttpApp: dispatch
 
     HttpApp->>HttpApp: action_name='disable', pool_index=1
@@ -216,7 +216,7 @@ sequenceDiagram
     end
     Cmdr-->>HttpApp: FleetWriteResult
 
-    HttpApp->>Logger: 'admin.result' request_id=... ok_count=N failed_count=M elapsed_ms=...
+    HttpApp->>Logger: 'admin.result' request_id=... ok_count=N failed_count=M duration_ms=...
     HttpApp->>HAML: render_admin_result(result)
     HAML-->>HttpApp: HTML fragment (shared/_fleet_write)
     HttpApp-->>Puma: 200 HTML
@@ -280,6 +280,55 @@ cd dev/screenshots
 ```
 
 Logs land in `dev/screenshots/.run/*.log`. See `dev/screenshots/README.md` for details.
+
+## 7a. Scheduled-restart flow
+
+```mermaid
+sequenceDiagram
+    participant Operator
+    participant UI as Manager UI
+    participant Routes as POST /miner/:id/maintenance
+    participant Store as RestartStore
+    participant Sched as RestartScheduler thread
+    participant Cgminer
+    participant Monitor as cgminer_monitor
+
+    Operator->>UI: opens /miner/:id (Admin tab)
+    UI->>Store: load() → existing schedule
+    UI-->>Operator: form pre-filled
+
+    Operator->>UI: enable + 04:00 + Save
+    UI->>Routes: POST authenticity_token + enabled=1 + time_utc=04:00
+    Routes->>Routes: AdminAuth, RateLimiter, CSRF
+    Routes->>Routes: RestartSchedule.parse → 422 if malformed
+    Routes->>Store: update(miner_id) preserving last_*
+    Routes-->>UI: re-rendered partial
+
+    Note over Sched,Cgminer: every 30 s
+    Sched->>Store: load()
+    alt within ±2 min of time_utc AND not fired today
+        Sched->>Cgminer: Miner.new.restart
+        alt success
+            Cgminer-->>Sched: STATUS:S
+            Sched->>Store: update last_restart_at + last_scheduled_date_utc
+            Sched-->>Sched: log restart.scheduled.fired
+        else failure
+            Cgminer--xSched: ConnectionError or ApiError
+            Sched-->>Sched: log restart.scheduled.failed (timestamps untouched, retry next tick)
+        end
+    end
+
+    Note over Monitor: independently every 30 s
+    Monitor->>Routes: GET /api/v1/restart_schedules.json
+    Monitor->>Monitor: in_restart_window? → suppress alert.fired offline rule
+```
+
+Key observations:
+
+- **Singleton store.** Routes and the scheduler thread share one `RestartStore` instance (built in `Server#configure_http_app`, stashed on `HttpApp.settings.restart_store`). The mutex inside the store serializes their writes. Two stores would mean two mutexes and torn writes.
+- **Date-based dedupe.** `last_scheduled_date_utc` is the dedupe key (UTC calendar day). Operator-driven schedule edits and clock-skew jumps are unambiguous; a fixed-seconds cooldown isn't.
+- **Fail-open both ways.** A failed cgminer restart leaves both timestamps unchanged so the next tick retries within the ±2 minute window. A failed monitor fetch of the schedule means monitor falls back to alerting normally — the operator gets paged on a real outage even if the manager is down.
+- **Two error containment layers.** Per-tick rescue catches StandardError so a single bad schedule doesn't kill the thread. Thread-top rescue Exception catches non-StandardError (e.g. NoMemoryError) so the scheduler emits `restart.scheduler.crash` instead of vanishing silently.
 
 ## 8. Refreshing monitor fixtures
 

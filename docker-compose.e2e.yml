@@ -28,16 +28,27 @@ services:
   fake1: &fake
     image: ruby:3.4-slim
     working_dir: /app
-    volumes:
-      - ./spec/support:/app/spec/support:ro
+    # FakeCgminer + Fixtures live in the cgminer_test_support gem since
+    # PR #4.1's extraction. Install the gem at container start (cheap —
+    # the gem is stdlib-only with no native extensions) and run a tiny
+    # ruby one-liner that binds 0.0.0.0:4028. The exe inside the gem
+    # binds 127.0.0.1 only, which is loopback-only inside the container
+    # and unreachable from the monitor service over the compose network.
     command:
-      - "ruby"
-      - "-r"
-      - "/app/spec/support/cgminer_fixtures.rb"
-      - "-r"
-      - "/app/spec/support/fake_cgminer.rb"
-      - "-e"
-      - "FakeCgminer.with(port: 4028, host: '0.0.0.0') { |p| puts p; sleep }"
+      - "bash"
+      - "-c"
+      - |
+        apt-get update -qq && apt-get install -y -qq git >/dev/null
+        cat > /tmp/Gemfile <<'GEMFILE'
+        source "https://rubygems.org"
+        gem "cgminer_test_support",
+            git: "https://github.com/jramos/cgminer_test_support.git",
+            tag: "v0.1.0"
+        GEMFILE
+        cd /tmp
+        bundle install --quiet
+        exec bundle exec ruby -r cgminer_test_support -e \
+          "CgminerTestSupport::FakeCgminer.new(host: '0.0.0.0', port: 4028).start; puts '0.0.0.0:4028'; sleep"
     healthcheck:
       test:
         - "CMD"

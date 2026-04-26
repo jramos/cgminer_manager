@@ -86,4 +86,73 @@ for verb in version stats; do
   [[ "$code" == "200" ]] || fail "POST /manager/admin/$verb returned $code"
 done
 
+# --- Phase 4: trace-id propagation ------------------------------------------
+# An admin POST with a known X-Cgminer-Request-Id must surface the same id
+# in both manager logs (admin.command, admin.result, monitor.call,
+# cgminer.wire — though cgminer.wire is debug-level, so default-info CI runs
+# won't see it) and monitor logs (http.request from manager-driven calls).
+echo "== Phase 4: trace-id propagation =="
+
+REQUEST_ID="e2e-$(uuidgen | tr '[:upper:]' '[:lower:]')"
+
+# Issue an admin POST with the trace id. The response should also echo it.
+echo "  request_id: $REQUEST_ID"
+echo_id=$(curl -sS -i \
+  -u "$ADMIN_USER:$ADMIN_PASSWORD" \
+  -H "X-Cgminer-Request-Id: $REQUEST_ID" \
+  -X POST "$MANAGER/manager/admin/version" \
+  | awk -F': ' '/^[Xx]-[Cc]gminer-[Rr]equest-[Ii]d:/ { gsub(/[\r\n]/, "", $2); print $2 }')
+[[ "$echo_id" == "$REQUEST_ID" ]] \
+  || fail "manager response did not echo X-Cgminer-Request-Id (got: '$echo_id', expected '$REQUEST_ID')"
+
+# Direct monitor call with the same header — monitor's response must echo too.
+echo_id_mon=$(curl -sS -i \
+  -H "X-Cgminer-Request-Id: $REQUEST_ID" \
+  "$MONITOR/v2/healthz" \
+  | awk -F': ' '/^[Xx]-[Cc]gminer-[Rr]equest-[Ii]d:/ { gsub(/[\r\n]/, "", $2); print $2 }')
+[[ "$echo_id_mon" == "$REQUEST_ID" ]] \
+  || fail "monitor response did not echo X-Cgminer-Request-Id (got: '$echo_id_mon', expected '$REQUEST_ID')"
+
+# Scrape container stdout for the request_id. Use `docker logs
+# <container>` directly rather than `docker compose logs <service>` —
+# issue #35 reported the compose service-filter form returning 0 hits
+# during the polling window despite the log line being present in the
+# unfiltered output. Container names follow docker-compose's
+# project-prefix convention: <project>-<service>-<replica>.
+# Docker's log file lags Ruby's stdout flush; poll briefly so we
+# don't fail on the few-hundred-ms race between the http after-filter
+# writing the line and docker capturing it.
+MGR_CONTAINER="cgminer_manager-manager-1"
+MON_CONTAINER="cgminer_manager-monitor-1"
+
+mgr_hits=0
+mon_hits=0
+for _ in $(seq 1 10); do
+  mgr_hits=$(docker logs "$MGR_CONTAINER" 2>&1 | grep -cF "$REQUEST_ID" || true)
+  mon_hits=$(docker logs "$MON_CONTAINER" 2>&1 | grep -cF "$REQUEST_ID" || true)
+  [[ "$mgr_hits" -gt 0 && "$mon_hits" -gt 0 ]] && break
+  sleep 0.5
+done
+
+# Diagnostic: if either side still has 0 hits after polling, dump
+# the relevant container's last 50 stdout lines to stderr so the
+# next failing run surfaces what was actually queried instead of
+# just "0 hits" (issue #35's original symptom).
+if [[ "$mgr_hits" -eq 0 ]]; then
+  echo "DIAG: $MGR_CONTAINER last 50 stdout lines:" >&2
+  docker logs --tail 50 "$MGR_CONTAINER" 2>&1 >&2 || true
+fi
+if [[ "$mon_hits" -eq 0 ]]; then
+  echo "DIAG: $MON_CONTAINER last 50 stdout lines:" >&2
+  docker logs --tail 50 "$MON_CONTAINER" 2>&1 >&2 || true
+fi
+
+[[ "$mgr_hits" -gt 0 ]] \
+  || fail "no $REQUEST_ID hits in manager logs"
+[[ "$mon_hits" -gt 0 ]] \
+  || fail "no $REQUEST_ID hits in monitor logs (manager → monitor propagation broken)"
+
+echo "  manager log hits: $mgr_hits"
+echo "  monitor log hits: $mon_hits"
+
 echo "OK: all smoke assertions passed"
