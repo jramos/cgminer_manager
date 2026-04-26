@@ -139,21 +139,24 @@ module CgminerManager
     end
 
     # Binds a token to the originating identity for replay protection.
-    # Two paths:
+    # Two paths, tagged so consume() can compare like-with-like (the
+    # AdminAuth middleware doesn't establish a session for Basic Auth
+    # bypass, which would otherwise cause every Basic-Auth pair of
+    # requests to look like a session_mismatch):
     #   * Basic Auth (curl, CI smoke, Slack-bot, etc.): each request
     #     ships the same auth header, so admin_user is stable across
     #     step 1 and step 2. Use it.
     #   * Session-cookie (browser admin tab): rack session carries
-    #     across requests, so session_id_hash is stable.
-    # Tagged so consume() can compare like-with-like (the AdminAuth
-    # middleware doesn't establish a session for Basic Auth bypass,
-    # which would otherwise cause every Basic-Auth pair of requests
-    # to look like a session_mismatch).
+    #     across requests, so session.id is stable. Hash session.id.to_s
+    #     directly — NEVER fall back to hashing the SessionHash object
+    #     itself, since its representation changes as session contents
+    #     mutate between step 1 and step 2 (rack-protection touches
+    #     it), which would manifest as spurious :session_mismatch.
     def confirmation_session_id_hash
       if confirmation_user
         "user:#{AdminLogging.session_id_hash(confirmation_user)}"
       else
-        "session:#{AdminLogging.session_id_hash(session.id || session)}"
+        "session:#{AdminLogging.session_id_hash(session.id.to_s)}"
       end
     end
 
@@ -161,7 +164,11 @@ module CgminerManager
     # session_id_hash). Routes refuse to issue tokens in that posture
     # — fail-closed. Detected by the AdminAuth middleware NOT setting
     # `cgminer_manager.admin_authed` (which it does on basic-auth
-    # success) AND the env var being explicitly off.
+    # success) AND admin auth being explicitly disabled. Reads ENV
+    # directly (rather than going through Config) to mirror the
+    # runtime-per-request posture of AdminAuth itself — both honor
+    # runtime ENV mutation so an operator can toggle the dev-mode
+    # escape hatch without process restart.
     def confirmation_auth_misaligned?
       ENV['CGMINER_MANAGER_ADMIN_AUTH'] == 'off' &&
         !env['cgminer_manager.admin_authed']
