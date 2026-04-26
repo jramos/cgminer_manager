@@ -36,7 +36,8 @@ RSpec.describe CgminerManager::Server do
       restart_schedules_file: schedules_file,
       restart_scheduler_enabled: true,
       shutdown_timeout: 10,
-      require_confirm: true
+      require_confirm: true,
+      drain_auto_resume_seconds: 3600
     )
   end
 
