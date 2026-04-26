@@ -16,6 +16,10 @@ Web UI for operating cgminer rigs. Displays data fetched from [`cgminer_monitor`
 
 ![Miner detail](public/screenshots/miner.png)
 
+### Miner admin (per-miner commands + maintenance + drain)
+
+![Miner admin](public/screenshots/miner-admin.png)
+
 ### Admin
 
 ![Admin](public/screenshots/admin.png)
