@@ -2,6 +2,79 @@
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-04-26
+
+### Added
+- **Per-miner Drain mode.** Two new POST routes: `/miner/:id/maintenance/drain`
+  and `/miner/:id/maintenance/resume`. Drain calls `disablepool 0` on the
+  rig so it stops hashing but stays responsive on the cgminer API; Resume
+  calls `enablepool 0`. Drain state persists on the per-miner
+  `RestartSchedule` record (five new nullable fields: `drained`,
+  `drained_at`, `drained_by`, `auto_resume_attempt_count`,
+  `auto_resume_last_attempt_at`) and survives manager restarts. Pool
+  index 0 is the convention used elsewhere in the codebase; per-miner
+  pool-index configuration is out of scope.
+
+  Per-miner blast radius means these routes skip the v1.7.0
+  confirmation-flow gate (per the per-miner carve-out); the browser
+  `confirm()` dialog naming the auto-resume timeout is the sole UX
+  guardrail. Maintenance partial gains Drain / Resume buttons + a
+  "Currently draining since X by Y" status block when drained.
+
+- **Auto-resume timer** prevents forgotten drains. The existing
+  `RestartScheduler` thread runs a new pre-pass on each tick: any drained
+  miner whose `now - drained_at >= auto_resume_seconds` (default 3600s,
+  configurable via `CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS`) gets
+  `enablepool 0` issued and the drain state cleared. The wire call is
+  re-validated under the store's mutex so a concurrent operator Resume
+  can't race with the timer. Failure paths apply
+  exponential-with-cap backoff: attempts 2..N retry at
+  `min(60, 2^(N-1)) * 60` seconds since the last attempt, capping at 60
+  minutes; after 5 consecutive failures the scheduler emits
+  `drain.auto_resume_giving_up` once at error level then keeps retrying
+  at the cap with `drain.failed` warns.
+
+- **Scheduler skip:** drained schedules are excluded from the nightly
+  restart fire-pass via a new `return if schedule.draining?` guard.
+  Same-tick ordering means the auto-resume pass runs FIRST, so a drain
+  that has aged out into a restart window correctly fires the restart
+  on the same tick.
+
+- **Drain suppresses monitor's offline alert.** Pairs with
+  `cgminer_monitor` v1.5.0's new `RestartScheduleClient#in_drain?`
+  predicate consumed by `AlertEvaluator#populate_offline_readings`. The
+  existing `alert.suppressed_during_restart_window` event gains a
+  `cause:` Symbol field (`:restart_window` / `:drain`) — single grep
+  target for both suppression flavors.
+
+- **Four new audit events** under `drain.*`:
+  - `drain.applied` (info) — drain succeeded; logs `auto_resume_seconds`
+    (the operator's intent at drain time).
+  - `drain.resumed` (info) — drain cleared; `cause:` is `:operator`,
+    `:auto_resume`, or `:auto_resume_orphan_cleared`.
+  - `drain.failed` (warn) — wire call returned `:failed`; `cause:` is
+    `:drain`, `:resume`, or `:auto_resume`; carries `attempt_count` for
+    auto-resume backoff visibility.
+  - `drain.indeterminate` (warn) — wire call returned `:indeterminate`
+    (verification timed out — operator should verify rig state).
+
+  Plus `drain.auto_resume_giving_up` (error, one-shot) after 5
+  consecutive auto-resume failures.
+
+- **`CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS`** new env var; integer
+  > 0; default 3600. ConfigError on 0/negative/garbage.
+
+### Changed
+- **`/api/v1/restart_schedules.json`** wire shape extends with the five
+  new drain fields automatically (the existing endpoint serializes
+  `RestartSchedule#to_h`). Backwards-compatible: older `cgminer_monitor`
+  versions read the additional fields harmlessly. **Drain suppression
+  requires `cgminer_monitor ≥ 1.5.0`** — older monitors will treat
+  drained rigs as offline and page the operator.
+- Maintenance schedule edit (POST `/miner/:id/maintenance`) now
+  preserves drain state across edits — the form only touches
+  `enabled`/`time_utc`; drain lives behind its own buttons.
+
 ## [1.7.0] — 2026-04-26
 
 ### Added

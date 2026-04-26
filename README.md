@@ -225,6 +225,35 @@ curl -u admin:pw -X POST 'http://localhost:3000/manager/admin/restart?auto_confi
 - **Cluster-mode Puma is unsafe.** Tokens live in a process-local store (same as RateLimiter); a worker hop between step 1 and step 2 silently drops legitimate confirmations. A boot-time warn fires when `WEB_CONCURRENCY > 1`. Single-worker deployment is the supported posture until shared-store support lands.
 - **Pool credentials are redacted in the audit log.** `manage_pools/add` actions persist URL+user+password in the in-memory entry so step 2 dispatches verbatim, but the audit-log `args` field is `"[REDACTED: pool credentials]"`. Raw `/run` args pass through unredacted (operator on the hook for what they typed).
 
+### Drain mode (1.8.0+)
+
+Stop a single rig from hashing without restarting it. Pool 0 gets disabled (`disablepool 0`); the rig stays responsive on the cgminer API for diagnosis. Resume calls `enablepool 0`. Useful for swapping a fan, investigating thermal issues, or pulling a rig for maintenance without losing accumulated runtime state.
+
+Per-miner only — fleet-wide drain is intentionally not exposed (the operator workflow that needs it is rare, and a process restart between drain and resume could leave half the fleet idle indefinitely).
+
+| Endpoint | Effect |
+|---|---|
+| `POST /miner/:id/maintenance/drain` | Calls `disablepool 0`, persists `drained: true`, browser confirm() prompts before submission |
+| `POST /miner/:id/maintenance/resume` | Calls `enablepool 0`, clears drain state |
+
+The maintenance partial on the miner detail page surfaces both buttons + a "Currently draining since X by Y" status block when drained.
+
+**Auto-resume.** The `RestartScheduler` thread runs a pre-pass each tick: any drained miner whose `now - drained_at >= CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS` (default `3600`) gets `enablepool 0` issued and the drain cleared. Wire-call failures apply exponential-with-cap backoff (60-minute cap); after 5 consecutive failures the scheduler emits `drain.auto_resume_giving_up` once at error level and keeps retrying at the cap with `drain.failed` warns. The pre-pass runs BEFORE the schedule-firing pass, so a drain that ages out into a restart window correctly fires the restart on the same tick.
+
+**Audit events** (collapsed per `cause:` discriminator):
+
+| Event | Level | Notes |
+|---|---|---|
+| `drain.applied` | info | Drain succeeded; carries `auto_resume_seconds` (operator intent at drain time) |
+| `drain.resumed` | info | Drain cleared; `cause:` is `:operator`, `:auto_resume`, or `:auto_resume_orphan_cleared` (rig removed from `miners.yml` mid-drain) |
+| `drain.failed` | warn | Wire call `:failed`; `cause:` distinguishes `:drain` / `:resume` / `:auto_resume` |
+| `drain.indeterminate` | warn | Wire call `:indeterminate` (verification timed out — operator should verify rig state) |
+| `drain.auto_resume_giving_up` | error | One-shot after 5 consecutive auto-resume failures |
+
+**Drain suppresses `cgminer_monitor`'s offline alert.** Requires `cgminer_monitor ≥ 1.5.0`; older monitors will treat drained rigs as offline and page the operator. The cross-repo wire is the existing `/api/v1/restart_schedules.json` endpoint, which auto-extends with the new drain fields.
+
+**Cluster-mode caveat.** Drain state lives in the same atomic-rename JSON file as `RestartStore` — single-Puma-process safe. Multi-worker Puma deployments may see a ~30-second propagation lag between a drain POST landing on worker B and the scheduler-running worker A's next file-read tick.
+
 ### Rate limiting
 
 As of 1.5.0, POSTs to admin + write paths (`/manager/admin/*`, `/miner/:id/admin/*`, `/manager/manage_pools`, `/miner/:id/manage_pools`) are throttled to 60 requests / 60 seconds per client IP. Anything over the limit receives `429 Too Many Requests` with a `Retry-After` header. The limiter sits above Basic Auth, so 401-probing attackers are throttled before `AdminAuth` ever runs.
