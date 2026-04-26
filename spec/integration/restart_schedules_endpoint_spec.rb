@@ -42,7 +42,7 @@ RSpec.describe 'GET /api/v1/restart_schedules.json', type: :integration do
 
   context 'with one schedule' do
     before do
-      store.replace('127.0.0.1:4028' => CgminerManager::RestartSchedule.new(
+      store.replace('127.0.0.1:4028' => CgminerManager::RestartSchedule.build(
         miner_id: '127.0.0.1:4028', enabled: true, time_utc: '04:00',
         last_restart_at: '2026-04-23T04:00:14Z', last_scheduled_date_utc: '2026-04-23'
       ))

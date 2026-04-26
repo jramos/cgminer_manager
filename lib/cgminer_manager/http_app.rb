@@ -581,7 +581,7 @@ module CgminerManager
       def load_maintenance_schedule(miner_id)
         store = settings.restart_store
         existing = store&.load&.[](miner_id)
-        existing || RestartSchedule.new(
+        existing || RestartSchedule.build(
           miner_id: miner_id, enabled: false, time_utc: nil,
           last_restart_at: nil, last_scheduled_date_utc: nil
         )

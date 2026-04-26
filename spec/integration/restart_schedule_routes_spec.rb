@@ -69,7 +69,7 @@ RSpec.describe 'maintenance routes', type: :integration do
 
   describe 'GET /miner/:id/maintenance' do
     it 'returns the form populated from the store' do
-      store.replace(miner_id => CgminerManager::RestartSchedule.new(
+      store.replace(miner_id => CgminerManager::RestartSchedule.build(
         miner_id: miner_id, enabled: true, time_utc: '04:00',
         last_restart_at: '2026-04-23T04:00:14Z', last_scheduled_date_utc: '2026-04-23'
       ))
@@ -109,7 +109,7 @@ RSpec.describe 'maintenance routes', type: :integration do
     end
 
     it 'preserves last_restart_at + last_scheduled_date_utc on update' do
-      store.replace(miner_id => CgminerManager::RestartSchedule.new(
+      store.replace(miner_id => CgminerManager::RestartSchedule.build(
         miner_id: miner_id, enabled: true, time_utc: '04:00',
         last_restart_at: '2026-04-23T04:00:14Z', last_scheduled_date_utc: '2026-04-23'
       ))

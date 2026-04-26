@@ -9,7 +9,7 @@ RSpec.describe CgminerManager::RestartStore do
   let(:store) { described_class.new(path) }
 
   let(:schedule) do
-    CgminerManager::RestartSchedule.new(
+    CgminerManager::RestartSchedule.build(
       miner_id: '127.0.0.1:4028', enabled: true, time_utc: '04:00',
       last_restart_at: nil, last_scheduled_date_utc: nil
     )
