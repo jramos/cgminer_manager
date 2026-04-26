@@ -42,8 +42,23 @@ module CgminerManager
         scope: scope,
         ok_count: result.ok_count,
         failed_count: result.failed_count,
+        failed_codes: result.failed_codes_count_map,
         duration_ms: ((Time.now - started_at) * 1000).round
       }
+    end
+
+    # Mirror of CgminerMonitor::Poller#code_for. Six-symbol vocabulary
+    # documented in cgminer_monitor's docs/log_schema.md `code`
+    # standard-key row. Branch ordering: ApiError-shaped errors win
+    # via the duck-typed #code Symbol guard (covers the AccessDeniedError
+    # subclass too); transport-only errors fall through to the
+    # synthesized values.
+    def code_for(error)
+      return error.code if error.respond_to?(:code) && error.code.is_a?(Symbol)
+      return :timeout if error.is_a?(CgminerApiClient::TimeoutError)
+      return :connection_error if error.is_a?(CgminerApiClient::ConnectionError)
+
+      :unexpected
     end
   end
 end
