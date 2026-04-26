@@ -92,6 +92,7 @@ module CgminerManager
       HttpApp.set :rate_limit_window_seconds, @config.rate_limit_window_seconds
       HttpApp.set :trusted_proxies,           @config.trusted_proxies
       HttpApp.set :confirmation_required,     @config.require_confirm
+      HttpApp.set :drain_auto_resume_seconds, @config.drain_auto_resume_seconds
     end
 
     def start_restart_scheduler
@@ -99,7 +100,8 @@ module CgminerManager
 
       @restart_scheduler = RestartScheduler.new(
         store: @restart_store,
-        configured_miners_provider: -> { HttpApp.settings.configured_miners }
+        configured_miners_provider: -> { HttpApp.settings.configured_miners },
+        auto_resume_seconds: @config.drain_auto_resume_seconds
       )
       @restart_scheduler.start
       Logger.info(event: 'restart.scheduler.started',

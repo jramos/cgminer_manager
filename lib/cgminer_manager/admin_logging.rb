@@ -148,5 +148,66 @@ module CgminerManager
 
       args
     end
+
+    # ----- Drain mode events (v1.8.0+) -----
+    #
+    # Four collapsed audit events for the per-miner Drain / Resume
+    # flow. Three of them carry a `cause:` Symbol discriminator
+    # (:drain / :resume / :auto_resume; drain.resumed also accepts
+    # :operator and :auto_resume_orphan_cleared) so the originating
+    # caller is grep-discriminable without proliferating event names.
+    # cgminer_monitor v1.5.0+'s docs/log_schema.md catalogs them.
+
+    def drain_applied_log_entry(miner_id:, drained_at:, auto_resume_seconds:, request_id:, # rubocop:disable Metrics/ParameterLists
+                                user: nil, pool_index: 0)
+      {
+        event: 'drain.applied',
+        request_id: request_id,
+        miner_id: miner_id,
+        user: user,
+        drained_at: drained_at,
+        auto_resume_seconds: auto_resume_seconds,
+        pool_index: pool_index
+      }
+    end
+
+    def drain_resumed_log_entry(miner_id:, cause:, drained_at:, request_id: nil, # rubocop:disable Metrics/ParameterLists
+                                user: nil, pool_index: 0)
+      {
+        event: 'drain.resumed',
+        request_id: request_id,
+        miner_id: miner_id,
+        user: user,
+        cause: cause,
+        drained_at: drained_at,
+        pool_index: pool_index
+      }
+    end
+
+    def drain_failed_log_entry(miner_id:, cause:, error:, code:, request_id: nil, # rubocop:disable Metrics/ParameterLists
+                               user: nil, attempt_count: nil)
+      {
+        event: 'drain.failed',
+        request_id: request_id,
+        miner_id: miner_id,
+        user: user,
+        cause: cause,
+        error: error,
+        code: code,
+        attempt_count: attempt_count
+      }
+    end
+
+    def drain_indeterminate_log_entry(miner_id:, cause:, request_id: nil,
+                                      user: nil, pool_index: 0)
+      {
+        event: 'drain.indeterminate',
+        request_id: request_id,
+        miner_id: miner_id,
+        user: user,
+        cause: cause,
+        pool_index: pool_index
+      }
+    end
   end
 end

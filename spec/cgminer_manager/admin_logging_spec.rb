@@ -225,6 +225,95 @@ RSpec.describe CgminerManager::AdminLogging do
   # `admin.result.failed_codes` field is consistent across query and
   # write commands. AdminLogging.result_log_entry duck-types over
   # whichever it gets at the call site.
+  describe '.drain_applied_log_entry (v1.8.0+)' do
+    it 'logs auto_resume_seconds (NOT auto_resume_at — env may change between drain and resume)' do
+      entry = described_class.drain_applied_log_entry(
+        miner_id: '127.0.0.1:4028', drained_at: '2026-04-26T12:00:00.000Z',
+        auto_resume_seconds: 3600,
+        request_id: 'req-1', user: 'op'
+      )
+      expect(entry).to include(
+        event: 'drain.applied',
+        miner_id: '127.0.0.1:4028',
+        drained_at: '2026-04-26T12:00:00.000Z',
+        auto_resume_seconds: 3600,
+        pool_index: 0,
+        user: 'op'
+      )
+    end
+  end
+
+  describe '.drain_resumed_log_entry (v1.8.0+)' do
+    it 'carries cause: :operator + the original drained_at for elapsed-time calc' do
+      entry = described_class.drain_resumed_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :operator,
+        drained_at: '2026-04-26T12:00:00.000Z',
+        request_id: 'req-2', user: 'op'
+      )
+      expect(entry).to include(
+        event: 'drain.resumed',
+        cause: :operator,
+        drained_at: '2026-04-26T12:00:00.000Z',
+        miner_id: '127.0.0.1:4028'
+      )
+    end
+
+    it 'accepts cause: :auto_resume with nil request_id + nil user (scheduler-thread emission)' do
+      entry = described_class.drain_resumed_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :auto_resume,
+        drained_at: '2026-04-26T12:00:00.000Z'
+      )
+      expect(entry).to include(cause: :auto_resume, request_id: nil, user: nil)
+    end
+
+    it 'accepts cause: :auto_resume_orphan_cleared (rig removed from miners.yml mid-drain)' do
+      entry = described_class.drain_resumed_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :auto_resume_orphan_cleared,
+        drained_at: '2026-04-26T12:00:00.000Z'
+      )
+      expect(entry[:cause]).to eq(:auto_resume_orphan_cleared)
+    end
+  end
+
+  describe '.drain_failed_log_entry (v1.8.0+)' do
+    it 'carries cause: + error + code + optional attempt_count' do
+      entry = described_class.drain_failed_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :auto_resume,
+        error: 'connect timeout', code: :timeout, attempt_count: 3
+      )
+      expect(entry).to include(
+        event: 'drain.failed',
+        cause: :auto_resume,
+        error: 'connect timeout',
+        code: :timeout,
+        attempt_count: 3
+      )
+    end
+
+    it 'leaves attempt_count nil for operator-initiated drain/resume failures' do
+      entry = described_class.drain_failed_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :drain,
+        error: 'refused', code: :connection_error,
+        request_id: 'req-1', user: 'op'
+      )
+      expect(entry[:attempt_count]).to be_nil
+    end
+  end
+
+  describe '.drain_indeterminate_log_entry (v1.8.0+)' do
+    it 'carries cause: + pool_index + nil request_id for auto_resume' do
+      entry = described_class.drain_indeterminate_log_entry(
+        miner_id: '127.0.0.1:4028', cause: :auto_resume
+      )
+      expect(entry).to include(
+        event: 'drain.indeterminate',
+        cause: :auto_resume,
+        pool_index: 0,
+        request_id: nil
+      )
+    end
+  end
+
   describe 'failed_codes_count_map shape via Fleet*Result' do
     let(:miner) { '127.0.0.1:4028' }
     let(:access_denied) { CgminerApiClient::AccessDeniedError.new('45: Access denied', cgminer_code: 45) }
