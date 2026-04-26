@@ -55,6 +55,10 @@ module CgminerManager
     # CGMINER_MANAGER_REQUIRE_CONFIRM=off. Server#configure_http_app
     # plumbs the parsed Config value here.
     set :confirmation_required,   true
+    # Drain mode auto-resume timeout (v1.8.0+); plumbed from
+    # Config#drain_auto_resume_seconds. Default mirrors the Config
+    # default for the no-Server-init test path.
+    set :drain_auto_resume_seconds, 3600
 
     # Parses miners.yml into the frozen `[host, port, label]` tuple list
     # consumed by routes. Server#configure_http_app and
@@ -574,6 +578,124 @@ module CgminerManager
         render_partial('shared/manage_pools')
       end
 
+      # Drives both POST /miner/:id/maintenance/drain and the symmetric
+      # /resume route. Calls PoolManager#disable_pool / #enable_pool on
+      # pool index 0, persists drain state on the per-miner schedule,
+      # and emits the appropriate drain.* audit event. Failure paths
+      # follow the locked plan's decision #6:
+      #   :ok           → drain persists / drain clears, drain.applied/resumed.
+      #   :failed       → drain does NOT persist (fail-open), drain.failed.
+      #   :indeterminate → drain persists OR clears anyway (fail-closed
+      #                    on drain, fail-open on resume), drain.indeterminate.
+      def dispatch_drain(miner_id, action:, existing: nil)
+        host_port = configured_miners_index[miner_id]
+        halt 404 unless host_port
+
+        pool_result = call_drain_wire(action, host_port)
+        status_kind = drain_pool_status(pool_result)
+
+        case action
+        when :drain
+          handle_drain_outcome(miner_id, status_kind, pool_result)
+        when :resume
+          handle_resume_outcome(miner_id, existing, status_kind, pool_result)
+        end
+
+        @miner_host_port      = miner_id
+        @maintenance_schedule = load_maintenance_schedule(miner_id)
+        render_partial('miner/maintenance')
+      end
+
+      def call_drain_wire(action, host_port)
+        host, port = host_port
+        miner = CgminerApiClient::Miner.new(host, port)
+        pm = PoolManager.new([miner])
+        action == :drain ? pm.disable_pool(pool_index: 0) : pm.enable_pool(pool_index: 0)
+      end
+
+      def drain_pool_status(pool_result)
+        return :failed if pool_result.entries.empty?
+        return :failed if pool_result.entries.any? { |e| e.command_status == :failed }
+        return :indeterminate if pool_result.entries.any? { |e| e.command_status == :indeterminate }
+
+        :ok
+      end
+
+      def handle_drain_outcome(miner_id, status_kind, pool_result)
+        case status_kind
+        when :ok, :indeterminate
+          # Both persist drained: true (decision #6 fail-closed on
+          # :indeterminate). On :indeterminate we additionally emit
+          # drain.indeterminate so the operator verifies rig state.
+          drained_at = Time.now.utc.iso8601(3)
+          settings.restart_store.update(miner_id) do |existing|
+            base = existing || RestartSchedule.build(miner_id: miner_id, enabled: false,
+                                                     time_utc: nil, last_restart_at: nil,
+                                                     last_scheduled_date_utc: nil)
+            base.with(drained: true, drained_at: drained_at,
+                      drained_by: env['cgminer_manager.admin_user'])
+          end
+          emit_drain_applied(miner_id, drained_at)
+          emit_drain_indeterminate(miner_id, :drain) if status_kind == :indeterminate
+        else
+          emit_drain_failed(miner_id, :drain, pool_result)
+          status 502
+        end
+      end
+
+      def handle_resume_outcome(miner_id, existing, status_kind, pool_result)
+        case status_kind
+        when :ok, :indeterminate
+          settings.restart_store.update(miner_id) do |s|
+            (s || existing).with(drained: false, drained_at: nil, drained_by: nil,
+                                 auto_resume_attempt_count: 0,
+                                 auto_resume_last_attempt_at: nil)
+          end
+          emit_drain_resumed(miner_id, existing)
+          emit_drain_indeterminate(miner_id, :resume) if status_kind == :indeterminate
+        else
+          emit_drain_failed(miner_id, :resume, pool_result)
+          status 502
+        end
+      end
+
+      def emit_drain_applied(miner_id, drained_at)
+        Logger.info(**AdminLogging.drain_applied_log_entry(
+          miner_id: miner_id, drained_at: drained_at,
+          auto_resume_seconds: settings.drain_auto_resume_seconds,
+          request_id: env['cgminer_manager.request_id'],
+          user: env['cgminer_manager.admin_user']
+        ))
+      end
+
+      def emit_drain_resumed(miner_id, existing)
+        Logger.info(**AdminLogging.drain_resumed_log_entry(
+          miner_id: miner_id, cause: :operator,
+          drained_at: existing.drained_at,
+          request_id: env['cgminer_manager.request_id'],
+          user: env['cgminer_manager.admin_user']
+        ))
+      end
+
+      def emit_drain_failed(miner_id, cause, pool_result)
+        failed = pool_result.entries.find { |e| e.command_status == :failed }
+        reason = failed&.command_reason.to_s
+        Logger.warn(**AdminLogging.drain_failed_log_entry(
+          miner_id: miner_id, cause: cause,
+          error: reason.empty? ? 'unknown' : reason, code: :unexpected,
+          request_id: env['cgminer_manager.request_id'],
+          user: env['cgminer_manager.admin_user']
+        ))
+      end
+
+      def emit_drain_indeterminate(miner_id, cause)
+        Logger.warn(**AdminLogging.drain_indeterminate_log_entry(
+          miner_id: miner_id, cause: cause,
+          request_id: env['cgminer_manager.request_id'],
+          user: env['cgminer_manager.admin_user']
+        ))
+      end
+
       # Load the schedule for one miner, or build a default-disabled
       # schedule when no store is configured (tests that don't pass
       # restart_store: into configure_for_test! still render the show
@@ -813,9 +935,17 @@ module CgminerManager
       end
 
       settings.restart_store.update(miner_id) do |existing|
+        # Preserve drain state across schedule edits — the maintenance
+        # form only touches enabled/time_utc; drain lives behind its
+        # own Drain/Resume buttons (v1.8.0+).
         new_schedule.with(
           last_restart_at: existing&.last_restart_at,
-          last_scheduled_date_utc: existing&.last_scheduled_date_utc
+          last_scheduled_date_utc: existing&.last_scheduled_date_utc,
+          drained: existing&.drained || false,
+          drained_at: existing&.drained_at,
+          drained_by: existing&.drained_by,
+          auto_resume_attempt_count: existing&.auto_resume_attempt_count || 0,
+          auto_resume_last_attempt_at: existing&.auto_resume_last_attempt_at
         )
       end
 
@@ -827,6 +957,42 @@ module CgminerManager
       @miner_host_port      = miner_id
       @maintenance_schedule = load_maintenance_schedule(miner_id)
       render_partial('miner/maintenance')
+    end
+
+    # ----- Drain mode endpoints (v1.8.0+) -----
+    # Per-miner only — fleet-wide drain is intentionally not exposed
+    # (the operator workflow that needs it is rare and risky enough to
+    # revisit separately). Per-miner blast radius means these routes
+    # skip the v1.7.0 confirmation-flow gate (per the per-miner
+    # carve-out); the browser-side confirm() dialog is the sole
+    # guardrail.
+
+    post '/miner/:miner_id/maintenance/drain' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+      halt 503, 'restart store not configured' unless settings.restart_store
+
+      existing = settings.restart_store.load[miner_id]
+      if existing&.draining?
+        status 422
+        return 'miner already drained'
+      end
+
+      dispatch_drain(miner_id, action: :drain)
+    end
+
+    post '/miner/:miner_id/maintenance/resume' do
+      miner_id = CGI.unescape(params[:miner_id])
+      halt 404 unless miner_configured?(miner_id)
+      halt 503, 'restart store not configured' unless settings.restart_store
+
+      existing = settings.restart_store.load[miner_id]
+      unless existing&.draining?
+        status 422
+        return 'miner not drained'
+      end
+
+      dispatch_drain(miner_id, action: :resume, existing: existing)
     end
 
     get '/miner/:miner_id/graph_data/:metric' do

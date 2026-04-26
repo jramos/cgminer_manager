@@ -92,6 +92,7 @@ module CgminerManager
       HttpApp.set :rate_limit_window_seconds, @config.rate_limit_window_seconds
       HttpApp.set :trusted_proxies,           @config.trusted_proxies
       HttpApp.set :confirmation_required,     @config.require_confirm
+      HttpApp.set :drain_auto_resume_seconds, @config.drain_auto_resume_seconds
     end
 
     def start_restart_scheduler
