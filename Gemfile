@@ -23,6 +23,11 @@ group :development, :test do
   # can still bundle. Transitive dep of rubocop / rubocop-ast.
   gem 'parallel', '< 2.0'
   gem 'rack-test', '>= 2.1'
+  # Sinatra 4.x needs rackup at runtime (rack-3 split). Only the
+  # dev/screenshots/fake_monitor.rb harness invokes Sinatra::Base#run!
+  # directly — production manager runs under Puma via cgminer_manager
+  # CLI, which doesn't go through Sinatra's built-in launcher.
+  gem 'rackup', '>= 2.1'
   gem 'rake', '>= 13.2'
   gem 'rspec', '>= 3.13'
   gem 'rubocop', '>= 1.60'
