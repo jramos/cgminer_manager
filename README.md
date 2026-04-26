@@ -177,6 +177,54 @@ The typed admin button list (`version`/`stats`/`devs`/`zero`/`save`/`restart`/`q
 
 Basic Auth transmits credentials base64-encoded (reversible), so terminate TLS at a reverse proxy in any deployment where the UI is reachable beyond localhost.
 
+### Confirmation flow for destructive admin commands (1.7.0+)
+
+Fleet-wide destructive admin POSTs require a two-step confirmation by default. A single misclick on Restart can no longer restart the whole fleet in one request: the first POST returns 202 + a 2-minute single-use token, and a separate `POST /manager/admin/confirm/:token` consumes the token and dispatches the originally-pinned action.
+
+Routes that gate (when `CGMINER_MANAGER_REQUIRE_CONFIRM` is on, the default):
+
+| Route | Verbs |
+|---|---|
+| `POST /manager/admin/:command` | `restart`, `quit`, `zero`, `save` (the four typed-allowlist writes — read-only `version`/`stats`/`devs` always skip) |
+| `POST /manager/admin/run` | every command at `scope=all` (raw RPC; per-miner scopes skip) |
+| `POST /manager/manage_pools` | every action (`disable`, `enable`, `remove`, `add`) |
+
+Per-miner destructive routes (`/miner/:id/admin/*`, `/miner/:id/manage_pools`) **always skip** the gate — the blast radius is one rig, and the existing browser confirm dialog is the guardrail there.
+
+**Per-curl bypass.** Append `?auto_confirm=1` to the destructive POST URL to execute in one step. The bypass emits an `admin.action_auto_confirmed` audit-log line so the trail captures who skipped the dance and why:
+
+```bash
+# Two-step (default):
+curl -u admin:pw -X POST http://localhost:3000/manager/admin/restart
+# → 202 Accepted + {"confirmation_token":"…", "expires_at":"…", …}
+curl -u admin:pw -X POST http://localhost:3000/manager/admin/confirm/<token>
+# → 200 + the fleet-write result
+
+# Single-step bypass:
+curl -u admin:pw -X POST 'http://localhost:3000/manager/admin/restart?auto_confirm=1'
+# → 200 + the fleet-write result; admin.action_auto_confirmed in the audit log
+```
+
+**Per-deployment opt-out.** Set `CGMINER_MANAGER_REQUIRE_CONFIRM=off` to disable the flow globally. Useful for CI fleets where every script would otherwise need updating.
+
+**Audit events.** Five new events under the `admin.action_*` namespace:
+
+| Event | Level | Emitted on |
+|---|---|---|
+| `admin.action_started` | info | Step 1 — token issued |
+| `admin.action_confirmed` | info | Step 2 — token consumed, dispatch about to fire |
+| `admin.action_auto_confirmed` | info | `?auto_confirm=1` skipped step 1 |
+| `admin.action_cancelled` | info | DELETE /confirm/:token (Cancel button) |
+| `admin.action_rejected` | warn | Step 2 failed; carries `reason:` Symbol (`expired` / `session_mismatch` / `evicted` / `not_found`) |
+
+`admin.command` and `admin.result` still emit on dispatch; the new events wrap rather than replace the existing audit trail.
+
+**Posture gotchas:**
+
+- **`AUTH=off` + `REQUIRE_CONFIRM=on` is fail-closed.** Destructive POSTs return 503 with a body explaining the misalignment — admin auth is required for the session-binding defense to function. Set `CGMINER_MANAGER_REQUIRE_CONFIRM=off` to align the two knobs in dev mode. A boot-time warn surfaces this pre-request.
+- **Cluster-mode Puma is unsafe.** Tokens live in a process-local store (same as RateLimiter); a worker hop between step 1 and step 2 silently drops legitimate confirmations. A boot-time warn fires when `WEB_CONCURRENCY > 1`. Single-worker deployment is the supported posture until shared-store support lands.
+- **Pool credentials are redacted in the audit log.** `manage_pools/add` actions persist URL+user+password in the in-memory entry so step 2 dispatches verbatim, but the audit-log `args` field is `"[REDACTED: pool credentials]"`. Raw `/run` args pass through unredacted (operator on the hook for what they typed).
+
 ### Rate limiting
 
 As of 1.5.0, POSTs to admin + write paths (`/manager/admin/*`, `/miner/:id/admin/*`, `/manager/manage_pools`, `/miner/:id/manage_pools`) are throttled to 60 requests / 60 seconds per client IP. Anything over the limit receives `429 Too Many Requests` with a `Retry-After` header. The limiter sits above Basic Auth, so 401-probing attackers are throttled before `AdminAuth` ever runs.

@@ -2,6 +2,81 @@
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-04-26
+
+### Added
+- **Two-step confirmation flow for destructive admin commands.**
+  Default-on; opt out via `CGMINER_MANAGER_REQUIRE_CONFIRM=off`.
+  Per-curl bypass via `?auto_confirm=1` query param. A fleet-wide
+  destructive POST (typed allowlist write — `restart`/`quit`/`zero`/
+  `save`; raw `/run` with `scope=all`; or any `/manage_pools` action)
+  now returns **202 Accepted** + a 2-minute single-use confirmation
+  token instead of executing. A separate `POST /manager/admin/confirm/:token`
+  consumes the token and dispatches the originally-pinned action
+  verbatim. Tokens are bound to the originating identity (admin_user
+  on Basic Auth path, session_id_hash on browser path) so an unrelated
+  operator's session can't replay another's pending token.
+
+  New endpoints:
+  - `POST /manager/admin/confirm/:token` — confirms + executes.
+  - `DELETE /manager/admin/confirm/:token` — explicit cancel.
+  - **No GET endpoint** — token never appears in a URL bar (Referer /
+    history / access-log leakage protection). JS-off fallback page
+    renders inline in the 202 response body of the original POST.
+
+  Carve-outs (always skip the gate):
+  - Read-only typed verbs (`version`, `stats`, `devs`).
+  - Per-miner destructive routes (`/miner/:id/admin/*`,
+    `/miner/:id/manage_pools`) — single-rig blast radius.
+
+  Fail-closed when `CGMINER_MANAGER_ADMIN_AUTH=off` AND
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=on`: destructive POSTs return
+  503 + a body naming both knobs. Operators must align the two
+  intentionally; a boot-time warn surfaces the misalignment
+  pre-request. A second boot-time warn fires under `WEB_CONCURRENCY > 1`
+  (Puma cluster mode) noting that the in-process token store is
+  cluster-unsafe.
+
+- **Five new audit events** for the flow: `admin.action_started`,
+  `admin.action_confirmed`, `admin.action_auto_confirmed`,
+  `admin.action_cancelled`, and `admin.action_rejected` (single
+  event with a `reason:` Symbol discriminator — `:expired` /
+  `:session_mismatch` / `:evicted` / `:not_found` — instead of
+  proliferating event names per failure mode). Plus a startup-time
+  `config.warn` line for the alignment gaps. Schema reserved in
+  `cgminer_monitor`'s canonical `docs/log_schema.md` under the
+  same `admin.*` namespace.
+
+- **Pool credentials are redacted in the audit log.**
+  `manage_pools/add` actions persist their full args (URL, user,
+  password) in the in-memory `ConfirmationStore::Entry` so step 2
+  can dispatch verbatim, but the args field of `admin.action_started`
+  / `admin.action_confirmed` becomes `"[REDACTED: pool credentials]"`.
+  Raw `/run` args are passed through unredacted (operator-supplied
+  opaque strings; the operator is on the hook for what they typed).
+
+### Changed
+- **Existing curl scripts and CI smoke tests** that POST against
+  fleet-wide destructive admin routes (`/manager/admin/{restart,quit,
+  zero,save}`, `/manager/admin/run`, `/manager/manage_pools`) must
+  add `?auto_confirm=1` to each call OR set
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=off` globally. This repo's own
+  `test/e2e/smoke.sh` is updated alongside this release.
+
+### Migration
+- **Operators with curl scripts:** append `?auto_confirm=1` to each
+  destructive POST URL. Audit-log entries shift from `admin.command` /
+  `admin.result` (single-step pre-1.7.0) to `admin.action_auto_confirmed`
+  + `admin.command` + `admin.result` (single-step with audit-trail
+  evidence of the bypass).
+- **Operators using the browser admin tab:** click Restart (or any
+  destructive button) → server-rendered Confirm/Cancel page renders
+  inline → click Confirm within 2 minutes. JS modal polish is a
+  follow-up; the server-rendered page is fully functional today.
+- **Operators in dev mode** (`CGMINER_MANAGER_ADMIN_AUTH=off`): set
+  `CGMINER_MANAGER_REQUIRE_CONFIRM=off` to align the two knobs;
+  otherwise destructive POSTs return 503 with an explanatory body.
+
 ## [1.6.2] — 2026-04-25
 
 ### Changed
