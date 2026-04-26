@@ -1,7 +1,10 @@
-- schedule  = @maintenance_schedule
-- enabled   = schedule&.enabled
-- time_utc  = schedule&.time_utc
-- last_at   = schedule&.last_restart_at
+- schedule    = @maintenance_schedule
+- enabled     = schedule&.enabled
+- time_utc    = schedule&.time_utc
+- last_at     = schedule&.last_restart_at
+- draining    = schedule&.draining?
+- drained_at  = schedule&.drained_at
+- drained_by  = schedule&.drained_by
 
 #maintenance.maintenance-section
   %h3 Scheduled Restart
@@ -28,3 +31,24 @@
 
   - if @maintenance_error_msg && !@maintenance_error_msg.empty?
     %p.danger= @maintenance_error_msg
+
+  %h3{ style: 'margin-top: 1.5em' } Drain (Disable Pool 0)
+  %p.muted
+    Stop hashing without restarting — pool 0 is disabled, the miner stays
+    responsive on the cgminer API for diagnosis. The scheduler skips drained
+    miners; auto-resume kicks in after the configured timeout
+    (default 1h) so a forgotten drain self-recovers.
+  - if draining
+    %p.warning
+      %strong Currently draining since
+      = drained_at
+      - if drained_by && !drained_by.empty?
+        \ by
+        = drained_by
+    %form.admin-form{ action: "#{miner_url(@miner_host_port)}/maintenance/resume", method: 'post', 'data-target' => '#maintenance' }
+      %input{ type: 'hidden', name: 'authenticity_token', value: csrf_token }
+      %button{ type: 'submit', onclick: "return confirm('Resume hashing on this miner now?')" } Resume Hashing
+  - else
+    %form.admin-form{ action: "#{miner_url(@miner_host_port)}/maintenance/drain", method: 'post', 'data-target' => '#maintenance' }
+      %input{ type: 'hidden', name: 'authenticity_token', value: csrf_token }
+      %button{ type: 'submit', onclick: "return confirm('Drain this miner — disable pool 0 until Resume or auto-resume in #{settings.drain_auto_resume_seconds / 60} minutes. Continue?')" } Drain (Stop Hashing)
