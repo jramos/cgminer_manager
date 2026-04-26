@@ -588,7 +588,7 @@ module CgminerManager
       #   :indeterminate → drain persists OR clears anyway (fail-closed
       #                    on drain, fail-open on resume), drain.indeterminate.
       def dispatch_drain(miner_id, action:, existing: nil)
-        host_port = configured_miners_index[miner_id]
+        host_port = drain_host_port_for(miner_id)
         halt 404 unless host_port
 
         pool_result = call_drain_wire(action, host_port)
@@ -604,6 +604,14 @@ module CgminerManager
         @miner_host_port      = miner_id
         @maintenance_schedule = load_maintenance_schedule(miner_id)
         render_partial('miner/maintenance')
+      end
+
+      def drain_host_port_for(miner_id)
+        configured_miners.each do |entry|
+          host, port, = entry
+          return [host, port] if "#{host}:#{port}" == miner_id
+        end
+        nil
       end
 
       def call_drain_wire(action, host_port)
