@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-04-25
+
+### Added
+- **`failed_codes` field on `admin.result`** — count-by-code map
+  (e.g. `{"access_denied": 3, "connection_error": 2}`) summarizing
+  how the failed entries broke down on a fleet write/query. Always
+  present (empty `{}` when `failed_count == 0`). Populated via the
+  new `AdminLogging.code_for(error)` helper that maps any rescued
+  exception to a six-symbol vocabulary (`:access_denied`,
+  `:invalid_command`, `:unknown`, `:timeout`, `:connection_error`,
+  `:unexpected`). Operators can now alert on
+  `failed_codes.access_denied > 0` from the audit log without
+  parsing English error message substrings. `FleetQueryResult` and
+  `FleetWriteResult` both expose a new `failed_codes_count_map`
+  method that the log entry duck-types over.
+
 ### Changed
 - **Resolution source for `cgminer_api_client` switched from git+tag
   override to plain rubygems.** v0.4.0 was published to rubygems
@@ -10,6 +26,11 @@
   requirement) is dropped. Gemspec constraint `~> 0.4` is unchanged;
   downstream consumers now resolve through standard channels. No
   behavior change.
+- **Bumped `cgminer_monitor` Gemfile pin from `v1.3.1` → `v1.3.3`**
+  for the schema-extended `code` standard-key row referenced by
+  manager's `admin.result.failed_codes` field. Picks up monitor's
+  own `poll.miner_failed.code` emission too, so the contract test
+  exercises the live shape.
 
 ## [1.6.0] — 2026-04-25
 

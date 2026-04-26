@@ -233,6 +233,41 @@ RSpec.describe 'admin surface', type: :integration do
       expect(result_event[:scope]).to eq('all')
     end
 
+    it 'emits admin.result with failed_codes count map when miners refuse the command' do
+      # Re-stub the backing fake to surface "45: Access denied" on restart so
+      # FleetWriteResult sees a real ApiError → :access_denied at code_for.
+      denied_fake = restub_fake_with(restart: CgminerTestSupport::Fixtures::PRIVILEGED_DENIED)
+
+      events = capture_admin_log_events { post_admin_command(:restart) }
+
+      result_event = events.find { |e| e[:event] == 'admin.result' }
+      expect(result_event).not_to be_nil
+      expect(result_event[:failed_count]).to be >= 1
+      expect(result_event[:failed_codes]).to eq(access_denied: result_event[:failed_count])
+    ensure
+      denied_fake&.stop
+    end
+
+    def restub_fake_with(**overrides)
+      fake.stop
+      replacement = CgminerTestSupport::FakeCgminer.new(
+        responses: fake_responses.merge(overrides.transform_keys(&:to_s))
+      ).start
+      path = File.join(Dir.mktmpdir, 'miners.yml')
+      File.write(path, "- host: 127.0.0.1\n  port: #{replacement.port}\n")
+      CgminerManager::HttpApp.configure_for_test!(
+        monitor_url: 'http://localhost:9292', miners_file: path
+      )
+      replacement
+    end
+
+    def post_admin_command(command)
+      token = fetch_csrf_token
+      post "/manager/admin/#{command}",
+           { authenticity_token: token },
+           'HTTP_X_CSRF_TOKEN' => token
+    end
+
     it 'emits admin.raw_command with command + args + scope captured verbatim' do
       events = capture_admin_log_events do
         token = fetch_csrf_token
