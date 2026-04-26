@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-04-25
+
+### Changed
+- **Extracted `code_for` helper from `AdminLogging` into a new
+  `CgminerManager::ErrorCode` module** as `.classify(error)`. The
+  helper was a generic `CgminerApiClient`-error → symbol classifier
+  with no admin-surface coupling, and `FleetQueryResult` /
+  `FleetWriteResult` reached back into `AdminLogging` purely to
+  compute a value those Data classes own. The new home decouples
+  the dependency direction. Renamed `code_for` → `classify` along
+  the way (avoids the `def for` reserved-word landmine and reads
+  more naturally next to `ApiError#code`). Internal refactor — no
+  behavior change, no log-shape change.
+
 ## [1.6.1] — 2026-04-25
 
 ### Added
