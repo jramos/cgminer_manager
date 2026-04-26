@@ -23,6 +23,7 @@ module CgminerManager # rubocop:disable Metrics/ModuleLength
     :restart_schedules_file,
     :restart_scheduler_enabled,
     :require_confirm,
+    :drain_auto_resume_seconds,
     :rack_env
   ) do
     def validate!
@@ -30,6 +31,9 @@ module CgminerManager # rubocop:disable Metrics/ModuleLength
       raise ConfigError, "miners_file not found: #{miners_file}" unless File.exist?(miners_file)
       raise ConfigError, 'log_format must be json or text' unless %w[json text].include?(log_format)
       raise ConfigError, 'invalid log_level' unless %w[debug info warn error].include?(log_level)
+      unless drain_auto_resume_seconds.positive?
+        raise ConfigError, 'CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS must be > 0'
+      end
 
       self
     end
@@ -44,7 +48,7 @@ module CgminerManager # rubocop:disable Metrics/ModuleLength
   end
 
   class << Config
-    def from_env(env = ENV) # rubocop:disable Metrics/MethodLength
+    def from_env(env = ENV) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
       rack_env = env.fetch('RACK_ENV', 'development')
       validate_admin_auth!(env)
       require_confirm = env['CGMINER_MANAGER_REQUIRE_CONFIRM'] != 'off'
@@ -70,6 +74,7 @@ module CgminerManager # rubocop:disable Metrics/ModuleLength
                                           'data/restart_schedules.json'),
         restart_scheduler_enabled: env['CGMINER_MANAGER_RESTART_SCHEDULER'] != 'off',
         require_confirm: require_confirm,
+        drain_auto_resume_seconds: parse_int(env, 'CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS', '3600'),
         rack_env: rack_env
       ).validate!
     end

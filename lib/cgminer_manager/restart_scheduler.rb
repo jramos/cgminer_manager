@@ -16,13 +16,24 @@ module CgminerManager
     TICK_SECONDS    = 30
     WINDOW_MINUTES  = 2
 
-    def initialize(store:, configured_miners_provider:,
+    # Auto-resume backoff: attempts 2..N retry at min(60, 2^(N-1)) * 60
+    # seconds since the last attempt, capped at 60 minutes. After this
+    # many consecutive failures we emit drain.auto_resume_giving_up
+    # once at error-level, then keep retrying at the cap with warn
+    # emissions only — recoverable when the rig comes back.
+    AUTO_RESUME_GIVING_UP_AFTER = 5
+
+    def initialize(store:, configured_miners_provider:, # rubocop:disable Metrics/ParameterLists
+                   auto_resume_seconds: 3600,
                    clock: -> { Time.now.utc },
-                   miner_factory: ->(host, port) { CgminerApiClient::Miner.new(host, port) })
+                   miner_factory: ->(host, port) { CgminerApiClient::Miner.new(host, port) },
+                   pool_manager_factory: ->(miner) { PoolManager.new([miner]) })
       @store                      = store
       @configured_miners_provider = configured_miners_provider
+      @auto_resume_seconds        = auto_resume_seconds
       @clock                      = clock
       @miner_factory              = miner_factory
+      @pool_manager_factory       = pool_manager_factory
       @stopped                    = false
       @mutex                      = Mutex.new
       @cv                         = ConditionVariable.new
@@ -55,17 +66,154 @@ module CgminerManager
 
     # Run a single scheduling pass. Public so specs can drive ticks
     # synchronously without spawning the thread.
+    #
+    # The auto-resume pass runs FIRST so a drained schedule that has
+    # aged out into its restart window correctly fires the restart in
+    # the same tick: drain clears, schedule fires.
     def tick
       now           = @clock.call
-      schedules     = @store.load
       miners_by_id  = configured_miners_index
 
-      schedules.each_value do |schedule|
+      auto_resume_drained(now, miners_by_id)
+
+      @store.load.each_value do |schedule|
         process_schedule(schedule, now, miners_by_id)
       end
     end
 
     private
+
+    # Walks the store for drained schedules whose backoff window has
+    # elapsed. For each candidate, re-validates `drained == true` under
+    # the store's mutex (protects against a concurrent operator Resume
+    # winning the race) before issuing the wire call.
+    def auto_resume_drained(now, miners_by_id)
+      @store.load.each_value do |schedule|
+        next unless schedule.draining?
+        next unless auto_resume_due?(schedule, now)
+
+        miner_id = schedule.miner_id
+        host_port = miners_by_id[miner_id]
+        next force_clear_orphan_drain(miner_id) if host_port.nil?
+
+        attempt_auto_resume(miner_id, host_port, now)
+      end
+    end
+
+    # Exposed for callers that need the same backoff cadence (the
+    # scheduler's tick). `now - drained_at >= @auto_resume_seconds`
+    # is the first-attempt gate; subsequent attempts back off at
+    # min(60, 2^(N-1)) * 60 seconds since the last attempt.
+    def auto_resume_due?(schedule, now)
+      drained_at = parse_iso8601(schedule.drained_at)
+      return false if drained_at.nil?
+      return false unless (now - drained_at) >= @auto_resume_seconds
+
+      last_attempt = parse_iso8601(schedule.auto_resume_last_attempt_at)
+      return true if last_attempt.nil?
+
+      backoff_seconds = [60, 2**[schedule.auto_resume_attempt_count - 1, 0].max].min * 60
+      (now - last_attempt) >= backoff_seconds
+    end
+
+    def attempt_auto_resume(miner_id, host_port, now)
+      pool_result = nil
+      @store.update(miner_id) do |existing|
+        next existing if existing.nil? || !existing.draining?
+
+        host, port = host_port
+        miner = @miner_factory.call(host, port)
+        pool_result = @pool_manager_factory.call(miner).enable_pool(pool_index: 0)
+        next_schedule_after_auto_resume(existing, pool_result, now)
+      end
+
+      log_auto_resume_outcome(miner_id, pool_result, now) if pool_result
+    rescue StandardError => e
+      Logger.error(event: 'drain.auto_resume_persist_failed',
+                   miner_id: miner_id,
+                   error: e.class.to_s, message: e.message)
+    end
+
+    def next_schedule_after_auto_resume(schedule, pool_result, now)
+      status = pool_result_status(pool_result)
+      case status
+      when :ok, :indeterminate
+        # Both success and indeterminate clear the drain state so the
+        # next nightly restart can proceed; indeterminate operators
+        # should verify rig state but the scheduler shouldn't keep
+        # retrying a possibly-already-resumed rig.
+        schedule.with(drained: false, drained_at: nil, drained_by: nil,
+                      auto_resume_attempt_count: 0,
+                      auto_resume_last_attempt_at: nil)
+      else # :failed
+        new_count = schedule.auto_resume_attempt_count + 1
+        schedule.with(auto_resume_attempt_count: new_count,
+                      auto_resume_last_attempt_at: now.iso8601(3))
+      end
+    end
+
+    def log_auto_resume_outcome(miner_id, pool_result, now)
+      status = pool_result_status(pool_result)
+      schedule = @store.load[miner_id]
+      attempt_count = schedule&.auto_resume_attempt_count || 0
+      drained_at_iso = schedule&.drained_at # nil after :ok / :indeterminate clears
+
+      case status
+      when :ok
+        Logger.info(event: 'drain.resumed', miner_id: miner_id,
+                    cause: :auto_resume, drained_at: drained_at_iso, pool_index: 0)
+      when :indeterminate
+        Logger.warn(event: 'drain.indeterminate', miner_id: miner_id,
+                    cause: :auto_resume, pool_index: 0)
+      else # :failed
+        log_payload = pool_failed_log_payload(pool_result)
+        Logger.warn(event: 'drain.failed', miner_id: miner_id,
+                    cause: :auto_resume, attempt_count: attempt_count, **log_payload)
+        if attempt_count == AUTO_RESUME_GIVING_UP_AFTER
+          Logger.error(event: 'drain.auto_resume_giving_up',
+                       miner_id: miner_id, attempt_count: attempt_count)
+        end
+      end
+      _ = now # accepted for symmetry; unused in current emissions
+    end
+
+    def force_clear_orphan_drain(miner_id)
+      drained_at = nil
+      @store.update(miner_id) do |existing|
+        next existing if existing.nil? || !existing.draining?
+
+        drained_at = existing.drained_at
+        existing.with(drained: false, drained_at: nil, drained_by: nil,
+                      auto_resume_attempt_count: 0,
+                      auto_resume_last_attempt_at: nil)
+      end
+      Logger.info(event: 'drain.resumed', miner_id: miner_id,
+                  cause: :auto_resume_orphan_cleared,
+                  drained_at: drained_at, pool_index: 0)
+    end
+
+    def pool_result_status(pool_result)
+      entries = pool_result.entries
+      return :failed if entries.empty?
+      return :failed if entries.any? { |e| e.command_status == :failed }
+      return :indeterminate if entries.any? { |e| e.command_status == :indeterminate }
+
+      :ok
+    end
+
+    def pool_failed_log_payload(pool_result)
+      failed = pool_result.entries.find { |e| e.command_status == :failed }
+      reason = failed&.command_reason.to_s
+      { error: reason.empty? ? 'unknown' : reason, code: :unexpected }
+    end
+
+    def parse_iso8601(value)
+      return nil unless value.is_a?(String)
+
+      Time.iso8601(value)
+    rescue ArgumentError
+      nil
+    end
 
     # Thread-top guard: any uncaught exception inside the loop would
     # silently kill the scheduler. Wrap with rescue Exception (mirroring
@@ -92,6 +240,9 @@ module CgminerManager
     def process_schedule(schedule, now, miners_by_id)
       return unless schedule.enabled
       return if schedule.time_utc.nil?
+      # Drained miners skip the nightly restart; auto-resume in tick()
+      # already cleared eligible drains by this point.
+      return if schedule.draining?
 
       host_port = miners_by_id[schedule.miner_id]
       return unless host_port # orphan: schedule for a miner no longer in miners.yml

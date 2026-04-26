@@ -99,7 +99,8 @@ module CgminerManager
 
       @restart_scheduler = RestartScheduler.new(
         store: @restart_store,
-        configured_miners_provider: -> { HttpApp.settings.configured_miners }
+        configured_miners_provider: -> { HttpApp.settings.configured_miners },
+        auto_resume_seconds: @config.drain_auto_resume_seconds
       )
       @restart_scheduler.start
       Logger.info(event: 'restart.scheduler.started',

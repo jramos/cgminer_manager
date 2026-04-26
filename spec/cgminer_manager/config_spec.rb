@@ -265,6 +265,36 @@ RSpec.describe CgminerManager::Config do
     end
   end
 
+  describe '.from_env DRAIN_AUTO_RESUME_SECONDS (v1.8.0+)' do
+    it 'defaults drain_auto_resume_seconds to 3600 when unset' do
+      config = described_class.from_env(env_base)
+      expect(config.drain_auto_resume_seconds).to eq(3600)
+    end
+
+    it 'parses an explicit integer value' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS' => '7200'))
+      expect(config.drain_auto_resume_seconds).to eq(7200)
+    end
+
+    it 'raises ConfigError when set to 0' do
+      env = env_base.merge('CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS' => '0')
+      expect { described_class.from_env(env) }
+        .to raise_error(CgminerManager::ConfigError, /DRAIN_AUTO_RESUME_SECONDS/)
+    end
+
+    it 'raises ConfigError when set to a negative value' do
+      env = env_base.merge('CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS' => '-30')
+      expect { described_class.from_env(env) }
+        .to raise_error(CgminerManager::ConfigError, /DRAIN_AUTO_RESUME_SECONDS/)
+    end
+
+    it 'raises ConfigError when set to garbage' do
+      env = env_base.merge('CGMINER_MANAGER_DRAIN_AUTO_RESUME_SECONDS' => 'forever')
+      expect { described_class.from_env(env) }
+        .to raise_error(CgminerManager::ConfigError, /must be an integer/)
+    end
+  end
+
   describe '#load_miners' do
     it 'yields [host, port] pairs' do
       config = described_class.from_env(env_base)
