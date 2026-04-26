@@ -3,6 +3,7 @@
 require_relative 'cgminer_manager/version'
 require_relative 'cgminer_manager/errors'
 require_relative 'cgminer_manager/error_code'
+require_relative 'cgminer_manager/confirmation_store'
 require_relative 'cgminer_manager/config'
 require_relative 'cgminer_manager/logger'
 require_relative 'cgminer_manager/monitor_client'
