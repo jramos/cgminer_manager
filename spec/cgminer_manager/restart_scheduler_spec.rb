@@ -250,7 +250,8 @@ RSpec.describe CgminerManager::RestartScheduler do
         expect(pool_manager).to have_received(:enable_pool).with(pool_index: 0)
         expect(CgminerManager::Logger).to have_received(:info).with(
           hash_including(event: 'drain.resumed', cause: :auto_resume,
-                         miner_id: schedule.miner_id, pool_index: 0)
+                         miner_id: schedule.miner_id, pool_index: 0,
+                         drained_at: '2026-04-26T12:00:00.000Z')
         )
       end
     end
@@ -258,27 +259,29 @@ RSpec.describe CgminerManager::RestartScheduler do
     describe 'C1 race: store re-read inside the mutex' do
       let(:fixed_now) { Time.utc(2026, 4, 26, 12, 5, 0) }
 
-      before do
+      it 'skips wire call when a concurrent Resume cleared drain between candidate selection and update block' do
+        # Outer load (in `auto_resume_drained`) sees drained=true so the
+        # rig becomes a candidate. THEN, simulating a concurrent operator
+        # POST /resume that won the race, we stub the store's `update`
+        # block to be invoked with a non-drained schedule. The block must
+        # detect drained=false and skip the wire call.
         store.replace(schedule.miner_id => drained_schedule(drained_at: '2026-04-26T12:00:00.000Z'))
-        # Simulate a concurrent operator Resume by clearing the drain
-        # mid-update via the store's update API. The auto-resume's
-        # update block re-reads inside the mutex and sees the cleared
-        # state, so it should NOT call enable_pool and NOT emit drain.resumed.
-        allow(store).to receive(:load).and_wrap_original do |original|
-          loaded = original.call
-          # Inject a "concurrent operator clear" by mutating the loaded copy.
-          # The next inner update() sees the original drained=true; we want
-          # to simulate that the wire call is gated by re-read. Instead,
-          # use a stub that returns a not-drained schedule to update().
-          loaded
-        end
         allow(pool_manager).to receive(:enable_pool)
-      end
 
-      it 'skips wire call when re-read inside update shows drained=false' do
-        # Pre-clear before tick so the inner update block sees drained=false.
-        store.replace(schedule.miner_id => schedule)
+        # Wrap update so the block sees a not-drained schedule even though
+        # the outer load saw drained=true. This simulates the race window
+        # closing between the candidate-selection load and the update block.
+        not_drained = schedule # baseline schedule with drained=false
+        allow(store).to receive(:update).and_wrap_original do |_original, _miner_id, &block|
+          result = block.call(not_drained)
+          # Mirror what RestartStore.update would do on success; we don't
+          # actually persist here because the wire call is what we're
+          # asserting against.
+          result
+        end
+
         scheduler.tick
+
         expect(pool_manager).not_to have_received(:enable_pool)
       end
     end
@@ -338,6 +341,32 @@ RSpec.describe CgminerManager::RestartScheduler do
           hash_including(event: 'drain.auto_resume_giving_up',
                          attempt_count: described_class::AUTO_RESUME_GIVING_UP_AFTER)
         )
+      end
+    end
+
+    describe 'same-tick ordering: auto-resume runs before fire-pass (decision #8)' do
+      # A drained schedule that has aged out into its restart window
+      # should clear in the auto-resume pass FIRST, then fire the
+      # nightly restart in the schedule-firing pass on the same tick.
+      let(:fixed_now) { Time.utc(2026, 4, 26, 4, 0, 30) }
+
+      before do
+        store.replace(schedule.miner_id => CgminerManager::RestartSchedule.build(
+          miner_id: '127.0.0.1:4028', enabled: true, time_utc: '04:00',
+          last_restart_at: nil, last_scheduled_date_utc: nil,
+          drained: true, drained_at: '2026-04-26T02:00:00.000Z', drained_by: 'op'
+        ))
+        allow(pool_manager).to receive(:enable_pool).and_return(ok_pool_result)
+      end
+
+      it 'clears drain AND fires restart in the same tick' do
+        scheduler.tick
+
+        persisted = store.load[schedule.miner_id]
+        expect(pool_manager).to have_received(:enable_pool).with(pool_index: 0)
+        expect(fake_miner).to have_received(:restart).once
+        expect(persisted.drained).to be(false)
+        expect(persisted.last_scheduled_date_utc).to eq('2026-04-26')
       end
     end
 

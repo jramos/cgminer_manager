@@ -118,8 +118,20 @@ module CgminerManager
 
     def attempt_auto_resume(miner_id, host_port, now)
       pool_result = nil
+      pre_drained_at = nil
+      pre_attempt_count = 0
       @store.update(miner_id) do |existing|
+        # Re-read inside the mutex protects against a concurrent
+        # operator Resume that won the race between candidate
+        # selection and this block (review C1).
         next existing if existing.nil? || !existing.draining?
+
+        # Capture state BEFORE the update mutates it — `drained_at`
+        # is needed in the log emission for elapsed-time calc, and
+        # the post-update store read would see nil for :ok and
+        # :indeterminate paths.
+        pre_drained_at = existing.drained_at
+        pre_attempt_count = existing.auto_resume_attempt_count
 
         host, port = host_port
         miner = @miner_factory.call(host, port)
@@ -127,7 +139,11 @@ module CgminerManager
         next_schedule_after_auto_resume(existing, pool_result, now)
       end
 
-      log_auto_resume_outcome(miner_id, pool_result, now) if pool_result
+      return unless pool_result
+
+      log_auto_resume_outcome(miner_id, pool_result,
+                              drained_at: pre_drained_at,
+                              prior_attempt_count: pre_attempt_count)
     rescue StandardError => e
       Logger.error(event: 'drain.auto_resume_persist_failed',
                    miner_id: miner_id,
@@ -152,29 +168,26 @@ module CgminerManager
       end
     end
 
-    def log_auto_resume_outcome(miner_id, pool_result, now)
+    def log_auto_resume_outcome(miner_id, pool_result, drained_at:, prior_attempt_count:)
       status = pool_result_status(pool_result)
-      schedule = @store.load[miner_id]
-      attempt_count = schedule&.auto_resume_attempt_count || 0
-      drained_at_iso = schedule&.drained_at # nil after :ok / :indeterminate clears
 
       case status
       when :ok
         Logger.info(event: 'drain.resumed', miner_id: miner_id,
-                    cause: :auto_resume, drained_at: drained_at_iso, pool_index: 0)
+                    cause: :auto_resume, drained_at: drained_at, pool_index: 0)
       when :indeterminate
         Logger.warn(event: 'drain.indeterminate', miner_id: miner_id,
                     cause: :auto_resume, pool_index: 0)
       else # :failed
+        new_count = prior_attempt_count + 1
         log_payload = pool_failed_log_payload(pool_result)
         Logger.warn(event: 'drain.failed', miner_id: miner_id,
-                    cause: :auto_resume, attempt_count: attempt_count, **log_payload)
-        if attempt_count == AUTO_RESUME_GIVING_UP_AFTER
+                    cause: :auto_resume, attempt_count: new_count, **log_payload)
+        if new_count == AUTO_RESUME_GIVING_UP_AFTER
           Logger.error(event: 'drain.auto_resume_giving_up',
-                       miner_id: miner_id, attempt_count: attempt_count)
+                       miner_id: miner_id, attempt_count: new_count)
         end
       end
-      _ = now # accepted for symmetry; unused in current emissions
     end
 
     def force_clear_orphan_drain(miner_id)
