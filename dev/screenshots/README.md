@@ -33,7 +33,11 @@ Capture the four PNGs (from any browser or Playwright MCP session):
 
 For each, wait until `window.__chartsReady === true` (the flag the graph
 partials set after every canvas has rendered), then take a full-page
-screenshot at 1280 × 2400 (Chrome will crop the height to actual content).
+screenshot at **2560 px width**. Do NOT set a fixed height — the
+screenshot tool's `fullPage: true` lets the browser determine the
+height from the rendered content. Older shots used 1280 × 2400 with a
+hard height cap; the cap clipped tall pages and the half-resolution
+came out blurry on retina displays.
 
 When finished:
 
