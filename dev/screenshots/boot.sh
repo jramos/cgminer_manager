@@ -44,13 +44,14 @@ wait_until_ready() {
   done
 }
 
-start_process fake_monitor env PORT="$FAKE_MONITOR_PORT" ruby fake_monitor.rb
+start_process fake_monitor env PORT="$FAKE_MONITOR_PORT" bundle exec ruby fake_monitor.rb
 wait_until_ready fake_monitor "http://127.0.0.1:${FAKE_MONITOR_PORT}/v2/healthz"
 
 # Fleet of fake cgminer TCP listeners, one per scenario miner. Keeps
 # /api/v1/ping.json honest (available? succeeds on real sockets) and
-# lets the Admin surface exercise real RPC round-trips.
-start_process fake_cgminer_fleet ruby fake_cgminer_fleet.rb
+# lets the Admin surface exercise real RPC round-trips. bundle exec so
+# `cgminer_test_support` (git+tag dev-dep) resolves on the load path.
+start_process fake_cgminer_fleet bundle exec ruby fake_cgminer_fleet.rb
 # Probe each port — fake_cgminer speaks raw TCP, not HTTP, so a bash
 # `>/dev/tcp/127.0.0.1/PORT` reachability check is the right shape.
 for port in "${FAKE_CGMINER_PORTS[@]}"; do
@@ -71,6 +72,8 @@ start_process manager env \
   SESSION_SECRET="dev-screenshots-not-for-prod-0123456789abcdef0123456789abcdef0123456789abcdef" \
   PORT="$MANAGER_PORT" \
   BIND="127.0.0.1" \
+  CGMINER_MANAGER_ADMIN_AUTH=off \
+  CGMINER_MANAGER_REQUIRE_CONFIRM=off \
   bash -c "cd '$repo_root' && exec bundle exec bin/cgminer_manager run"
 
 wait_until_ready manager "http://127.0.0.1:${MANAGER_PORT}/" 60

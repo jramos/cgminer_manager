@@ -28,11 +28,25 @@ Capture the four PNGs (from any browser or Playwright MCP session):
 - `http://127.0.0.1:3030/` → `public/screenshots/summary.png` (hide `#miner-pool` via `document.getElementById('miner-pool').style.display = 'none'` before the fullPage shot so only the 6 aggregate graphs render)
 - `http://127.0.0.1:3030/` → `public/screenshots/miner-pool.png` (inject `<style>#summary{display:none!important}</style>` before `DOMContentLoaded` so the availability chart draws at full container height)
 - `http://127.0.0.1:3030/miner/127.0.0.1%3A40281` → `public/screenshots/miner.png` (Antminer S3 detail; full page)
+- `http://127.0.0.1:3030/miner/127.0.0.1%3A40281` → `public/screenshots/miner-admin.png` (click the Admin tab link to expose the per-miner admin commands + Scheduled Restart + Drain section)
 - `http://127.0.0.1:3030/` → `public/screenshots/admin.png` (click the Admin tab link after `window.__chartsReady` flips; `initTabs` hides the Summary and Miner Pool panels automatically)
 
 For each, wait until `window.__chartsReady === true` (the flag the graph
 partials set after every canvas has rendered), then take a full-page
-screenshot at 1280 × 2400 (Chrome will crop the height to actual content).
+screenshot. The capture recipe:
+
+1. **Viewport 2560 × 1080**, height left to the browser
+   (`fullPage: true` honors the rendered content height).
+2. **Apply `document.documentElement.style.zoom = 2`** before shooting.
+   The production layout caps `#content` at 1024 px (see
+   `public/css/base.css`) and Chart.js canvases hardcode their `width`
+   attribute (`responsive: false`). The zoom multiplier doubles every
+   CSS pixel, so the page lays out as if the viewport were 1280 — same
+   ~80%/10%/10% content/gutter ratio the operator sees in a normal
+   browser — but the rasterized PNG comes out at 2560 px wide, twice
+   the resolution. This is the closest available substitute for
+   `deviceScaleFactor: 2`, which Playwright MCP's `browser_take_screenshot`
+   does not expose (it hard-codes `scale: 'css'`).
 
 When finished:
 
