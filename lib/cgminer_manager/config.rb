@@ -4,7 +4,7 @@ require 'yaml'
 require 'securerandom'
 require 'ipaddr'
 
-module CgminerManager
+module CgminerManager # rubocop:disable Metrics/ModuleLength
   Config = Data.define(
     :monitor_url,
     :miners_file,
@@ -22,6 +22,7 @@ module CgminerManager
     :trusted_proxies,
     :restart_schedules_file,
     :restart_scheduler_enabled,
+    :require_confirm,
     :rack_env
   ) do
     def validate!
@@ -43,9 +44,11 @@ module CgminerManager
   end
 
   class << Config
-    def from_env(env = ENV)
+    def from_env(env = ENV) # rubocop:disable Metrics/MethodLength
       rack_env = env.fetch('RACK_ENV', 'development')
       validate_admin_auth!(env)
+      require_confirm = env['CGMINER_MANAGER_REQUIRE_CONFIRM'] != 'off'
+      warn_misalignments!(env, require_confirm: require_confirm)
       new(
         monitor_url: env['CGMINER_MONITOR_URL'],
         miners_file: env.fetch('MINERS_FILE', 'config/miners.yml'),
@@ -66,6 +69,7 @@ module CgminerManager
         restart_schedules_file: env.fetch('CGMINER_MANAGER_RESTART_SCHEDULES_FILE',
                                           'data/restart_schedules.json'),
         restart_scheduler_enabled: env['CGMINER_MANAGER_RESTART_SCHEDULER'] != 'off',
+        require_confirm: require_confirm,
         rack_env: rack_env
       ).validate!
     end
@@ -94,6 +98,36 @@ module CgminerManager
             'admin auth is required by default: set CGMINER_MANAGER_ADMIN_USER + ' \
             'CGMINER_MANAGER_ADMIN_PASSWORD, or CGMINER_MANAGER_ADMIN_AUTH=off to ' \
             'deliberately disable (see MIGRATION.md)'
+    end
+
+    # Surfaces operator-misalignment between the confirmation flow
+    # and adjacent posture knobs at boot, so the operator sees the
+    # gap before the first request rather than at runtime:
+    #   - AUTH=off + REQUIRE_CONFIRM=on → session-binding defense is
+    #     neutered (no real session_id_hash). Routes refuse to issue
+    #     tokens at request time (fail-closed); this warn surfaces it
+    #     pre-request.
+    #   - WEB_CONCURRENCY > 1 + REQUIRE_CONFIRM=on → cluster-mode
+    #     worker hop between step 1 and step 2 silently drops
+    #     legitimate confirmations. Same posture as RateLimiter; will
+    #     graduate to a shared store when r2-§1.1 lands.
+    # Both warns are informational; neither blocks boot.
+    def warn_misalignments!(env, require_confirm:)
+      return unless require_confirm
+
+      if env['CGMINER_MANAGER_ADMIN_AUTH'] == 'off'
+        warn '[cgminer_manager] CGMINER_MANAGER_ADMIN_AUTH=off + ' \
+             'CGMINER_MANAGER_REQUIRE_CONFIRM=on (default): destructive ' \
+             'admin POSTs will return 503 (fail-closed). Set ' \
+             'CGMINER_MANAGER_REQUIRE_CONFIRM=off if you accept the dev-mode risk.'
+      end
+
+      web_concurrency = env['WEB_CONCURRENCY'].to_i
+      return unless web_concurrency > 1
+
+      warn "[cgminer_manager] WEB_CONCURRENCY=#{web_concurrency} (Puma cluster mode) + " \
+           'CGMINER_MANAGER_REQUIRE_CONFIRM=on: confirmation tokens are process-local; ' \
+           'cross-worker confirms will be dropped. Single-worker until shared-store support lands.'
     end
 
     def parse_int(env, key, default)

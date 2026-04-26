@@ -35,7 +35,8 @@ RSpec.describe CgminerManager::Server do
       trusted_proxies: [],
       restart_schedules_file: schedules_file,
       restart_scheduler_enabled: true,
-      shutdown_timeout: 10
+      shutdown_timeout: 10,
+      require_confirm: true
     )
   end
 

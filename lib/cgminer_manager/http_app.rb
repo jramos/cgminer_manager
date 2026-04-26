@@ -46,6 +46,15 @@ module CgminerManager
     # otherwise concurrent UI POSTs and scheduler ticks would each hold
     # their own mutex and racing writes would tear.
     set :restart_store,           nil
+    # Singleton in-process ConfirmationStore for the v1.7.0 two-step
+    # destructive-command flow. Process-local; cluster mode would
+    # silently drop tokens on worker hop (boot warn fires from Config
+    # in that posture).
+    set :confirmation_store,      ConfirmationStore.new
+    # Default-on per the locked plan; opt out via
+    # CGMINER_MANAGER_REQUIRE_CONFIRM=off. Server#configure_http_app
+    # plumbs the parsed Config value here.
+    set :confirmation_required,   true
 
     # Parses miners.yml into the frozen `[host, port, label]` tuple list
     # consumed by routes. Server#configure_http_app and
@@ -108,10 +117,21 @@ module CgminerManager
       set :rate_limit_window_seconds, rate_limit_window_seconds
       set :trusted_proxies,           trusted_proxies
       set :restart_store,             restart_store
+      set :confirmation_store,        ConfirmationStore.new
+      set :confirmation_required,     false # specs opt in per-example via configure_confirmation_for_test!
       install_middleware!
     end
 
+    # Spec helper to flip require_confirm without rebuilding the whole
+    # test config. Used by integration specs that exercise the two-step
+    # flow.
+    def self.configure_confirmation_for_test!(required:)
+      set :confirmation_required, required
+      set :confirmation_store, ConfirmationStore.new
+    end
+
     helpers Sinatra::ContentFor
+    helpers ConfirmationHelpers
 
     GRAPH_METRIC_PROJECTIONS = {
       'hashrate' => %w[ts ghs_5s ghs_av device_hardware_pct device_rejected_pct pool_rejected_pct pool_stale_pct],
@@ -497,6 +517,63 @@ module CgminerManager
         end
       end
 
+      # Dispatches a typed-allowlist admin command (read-only or
+      # destructive write) for the given scope. Extracted from the
+      # POST /manager/admin/:command and POST /miner/:id/admin/:command
+      # routes so the gate-eligible fleet-wide variant can wrap it in
+      # start_or_dispatch_destructive without duplicating logic.
+      def dispatch_typed_admin(command, scope)
+        log_admin_command('admin.command', command: command, scope: scope)
+        started   = Time.now
+        commander = scope == 'all' ? build_commander_for_all : build_commander_for([scope])
+        result =
+          if ALLOWED_ADMIN_QUERIES.include?(command)
+            commander.public_send(command)
+          else
+            commander.public_send("#{command}!")
+          end
+        log_admin_result(command, scope, result, started)
+        render_admin_result(result)
+      end
+
+      # Mirror for raw /run dispatch — same extraction reasoning.
+      def dispatch_raw_admin(command, scope, args)
+        log_admin_command('admin.raw_command', command: command, args: args, scope: scope)
+        started = Time.now
+        commander = scope == 'all' ? build_commander_for_all : build_commander_for([scope])
+        result = commander.raw!(command: command, args: args)
+        log_admin_result("raw:#{command}", scope, result, started)
+        render_admin_result(result)
+      end
+
+      # Replays a confirmed pending Entry by route_kind. Called from
+      # POST /manager/admin/confirm/:token after consume_confirmation_or_halt
+      # returns the Entry. Pin the dispatch to the originally-stored
+      # command/scope/args verbatim so a re-render of the form between
+      # step 1 and step 2 can't mutate the action.
+      def dispatch_confirmed_entry(entry)
+        case entry.route_kind
+        when :typed_command
+          dispatch_typed_admin(entry.command, entry.scope)
+        when :raw_run
+          dispatch_raw_admin(entry.command, entry.scope, entry.args.to_s)
+        when :manage_pools
+          replay_manage_pools(entry)
+        else
+          halt 500, "unknown route_kind: #{entry.route_kind}"
+        end
+      end
+
+      def replay_manage_pools(entry)
+        a = entry.args || {}
+        params[:url]  = a[:url]
+        params[:user] = a[:user]
+        params[:pass] = a[:pass]
+        pm = build_pool_manager_for_all
+        @result = dispatch_pool_action(pm, a[:action_name], a[:pool_index])
+        render_partial('shared/manage_pools')
+      end
+
       # Load the schedule for one miner, or build a default-disabled
       # schedule when no store is configured (tests that don't pass
       # restart_store: into configure_for_test! still render the show
@@ -564,9 +641,15 @@ module CgminerManager
       action_name = params[:action_name].to_s
       pool_index  = params[:pool_index].to_i
 
-      pm = build_pool_manager_for_all
-      @result = dispatch_pool_action(pm, action_name, pool_index)
-      render_partial('shared/manage_pools')
+      args = { action_name: action_name, pool_index: pool_index,
+               url: params[:url], user: params[:user], pass: params[:pass] }
+
+      start_or_dispatch_destructive(route_kind: :manage_pools, command: action_name,
+                                    scope: 'all', args: args) do
+        pm = build_pool_manager_for_all
+        @result = dispatch_pool_action(pm, action_name, pool_index)
+        render_partial('shared/manage_pools')
+      end
     end
 
     post '/miner/:miner_id/manage_pools' do
@@ -590,30 +673,77 @@ module CgminerManager
 
       halt 422, "unknown scope: #{scope}" if scope != 'all' && !miner_configured?(scope)
 
-      commander = scope == 'all' ? build_commander_for_all : build_commander_for([scope])
+      args = params[:args].to_s
 
-      log_admin_command('admin.raw_command', command: command, args: params[:args].to_s, scope: scope)
-      started = Time.now
-      result  = commander.raw!(command: command, args: params[:args])
-      log_admin_result("raw:#{command}", scope, result, started)
-      render_admin_result(result)
+      # Per decisions #3 + #4: only fleet-wide raw runs gate; per-miner
+      # scopes skip the dance (single-rig blast radius).
+      if scope == 'all'
+        start_or_dispatch_destructive(route_kind: :raw_run, command: command,
+                                      scope: scope, args: args) do
+          dispatch_raw_admin(command, scope, args)
+        end
+      else
+        dispatch_raw_admin(command, scope, args)
+      end
     end
 
     post '/manager/admin/:command' do
       command = params[:command].to_s
       halt 404 unless ALLOWED_ADMIN_QUERIES.include?(command) || ALLOWED_ADMIN_WRITES.include?(command)
 
-      log_admin_command('admin.command', command: command, scope: 'all')
-      started   = Time.now
-      commander = build_commander_for_all
-      result =
-        if ALLOWED_ADMIN_QUERIES.include?(command)
-          commander.public_send(command)
-        else
-          commander.public_send("#{command}!")
+      # Read-only typed verbs never gate (decision #4); only the four
+      # destructive writes (restart/quit/zero/save) gate at the
+      # fleet-wide route.
+      if ALLOWED_ADMIN_WRITES.include?(command)
+        start_or_dispatch_destructive(route_kind: :typed_command, command: command,
+                                      scope: 'all') do
+          dispatch_typed_admin(command, 'all')
         end
-      log_admin_result(command, 'all', result, started)
-      render_admin_result(result)
+      else
+        dispatch_typed_admin(command, 'all')
+      end
+    end
+
+    # ----- Two-step confirmation flow endpoints (v1.7.0+) -----
+    # No GET /manager/admin/confirm/:token — token must never appear
+    # in a URL bar (decision #8). The JS-off fallback page is rendered
+    # IN the 202 response body of the original destructive POST.
+
+    post '/manager/admin/confirm/:token' do
+      entry = consume_confirmation_or_halt(params[:token])
+      started_age_ms = ((Time.now.utc - entry.created_at) * 1000).round
+      Logger.info(**AdminLogging.action_confirmed_log_entry(
+        token: entry.token, command: entry.command, scope: entry.scope,
+        request_id: confirmation_request_id,
+        session_id_hash: confirmation_session_id_hash,
+        remote_ip: request.ip, user_agent: request.user_agent,
+        user: confirmation_user,
+        started_age_ms: started_age_ms,
+        route_kind: entry.route_kind, args: entry.args
+      ))
+      dispatch_confirmed_entry(entry)
+    end
+
+    delete '/manager/admin/confirm/:token' do
+      result = settings.confirmation_store.cancel(params[:token],
+                                                  confirmation_session_id_hash)
+      if result.is_a?(ConfirmationStore::Entry)
+        Logger.info(**AdminLogging.action_cancelled_log_entry(
+          token: result.token, command: result.command, scope: result.scope,
+          request_id: confirmation_request_id,
+          session_id_hash: confirmation_session_id_hash,
+          user: confirmation_user
+        ))
+        status 204
+      else
+        Logger.warn(**AdminLogging.action_rejected_log_entry(
+          reason: result, token: params[:token],
+          request_id: confirmation_request_id,
+          session_id_hash: confirmation_session_id_hash,
+          user: confirmation_user
+        ))
+        halt(result == :session_mismatch ? 403 : 404)
+      end
     end
 
     post '/miner/:miner_id/admin/run' do

@@ -47,6 +47,20 @@ RSpec.describe 'admin surface', type: :integration do
     )
   end
 
+  def capture_admin_log_events
+    events = []
+    allow(CgminerManager::Logger).to receive(:info).and_wrap_original do |m, **payload|
+      events << payload if payload[:event]&.start_with?('admin.')
+      m.call(**payload)
+    end
+    allow(CgminerManager::Logger).to receive(:warn).and_wrap_original do |m, **payload|
+      events << payload if payload[:event]&.start_with?('admin.')
+      m.call(**payload)
+    end
+    yield
+    events
+  end
+
   def fetch_csrf_token
     stub_monitor_miners
     %w[summary devices pools stats].each do |endpoint|
@@ -282,15 +296,138 @@ RSpec.describe 'admin surface', type: :integration do
       expect(raw_event[:args]).to eq('foo,bar')
       expect(raw_event[:scope]).to eq('all')
     end
+  end
 
-    def capture_admin_log_events
-      events = []
-      allow(CgminerManager::Logger).to receive(:info).and_wrap_original do |m, **payload|
-        events << payload if payload[:event]&.start_with?('admin.')
-        m.call(**payload)
-      end
-      yield
-      events
+  describe 'two-step confirmation flow (REQUIRE_CONFIRM=on)' do
+    let(:basic_auth) { "Basic #{Base64.strict_encode64('operator:s3cret-value')}" }
+
+    before do
+      # AUTH=off + REQUIRE_CONFIRM=on is fail-closed (decision #16).
+      # The flow tests opt INTO real Basic Auth so the destructive POSTs
+      # actually exercise the gate path. One dedicated test below
+      # asserts the fail-closed 503 still fires under the misalignment.
+      ENV['CGMINER_MANAGER_ADMIN_USER']     = 'operator'
+      ENV['CGMINER_MANAGER_ADMIN_PASSWORD'] = 's3cret-value'
+      ENV['CGMINER_MANAGER_ADMIN_AUTH']     = 'on'
+      CgminerManager::HttpApp.configure_confirmation_for_test!(required: true)
     end
+
+    after { CgminerManager::HttpApp.configure_confirmation_for_test!(required: false) }
+
+    def post_destructive(path, body = {}, headers = {})
+      # Basic Auth bypasses CSRF (ConditionalAuthenticityToken), so no
+      # token roundtrip needed. Hit the monitor stubs once to populate
+      # configured_miners then send the POST with the auth header.
+      stub_monitor_miners
+      %w[summary devices pools stats].each do |endpoint|
+        public_send("stub_monitor_#{endpoint}", miner_id: '127.0.0.1:4028')
+        public_send("stub_monitor_#{endpoint}", miner_id: "127.0.0.1:#{fake.port}")
+      end
+      post path, body,
+           { 'HTTP_AUTHORIZATION' => basic_auth, 'HTTP_ACCEPT' => 'application/json' }.merge(headers)
+    end
+
+    def post_confirm(token)
+      post "/manager/admin/confirm/#{token}", {},
+           'HTTP_AUTHORIZATION' => basic_auth, 'HTTP_ACCEPT' => 'application/json'
+    end
+
+    it 'returns 503 under AUTH=off + REQUIRE_CONFIRM=on (fail-closed misalignment)' do
+      ENV.delete('CGMINER_MANAGER_ADMIN_USER')
+      ENV.delete('CGMINER_MANAGER_ADMIN_PASSWORD')
+      ENV['CGMINER_MANAGER_ADMIN_AUTH'] = 'off'
+
+      stub_monitor_miners
+      %w[summary devices pools stats].each do |endpoint|
+        public_send("stub_monitor_#{endpoint}", miner_id: '127.0.0.1:4028')
+        public_send("stub_monitor_#{endpoint}", miner_id: "127.0.0.1:#{fake.port}")
+      end
+      get '/'
+      csrf = Rack::Protection::AuthenticityToken.token(last_request.env['rack.session'])
+      post '/manager/admin/restart',
+           { authenticity_token: csrf },
+           'HTTP_X_CSRF_TOKEN' => csrf
+      expect(last_response.status).to eq(503)
+      expect(last_response.body).to include('admin confirmation requires admin auth')
+    end
+
+    it 'returns 202 + JSON pending body on a fleet-wide destructive POST without auto_confirm' do # rubocop:disable RSpec/MultipleExpectations
+      events = capture_admin_log_events { post_destructive('/manager/admin/restart') }
+      expect(last_response.status).to eq(202)
+
+      body = JSON.parse(last_response.body)
+      expect(body).to include(
+        'status' => 'pending_confirmation',
+        'command' => 'restart', 'scope' => 'all'
+      )
+      expect(body['confirmation_token']).to match(/\A[0-9a-f-]{36}\z/)
+      expect(body['confirm_url']).to eq("/manager/admin/confirm/#{body['confirmation_token']}")
+
+      started = events.find { |e| e[:event] == 'admin.action_started' }
+      expect(started).not_to be_nil
+      expect(started[:command]).to eq('restart')
+      expect(started[:confirmation_token]).to eq(body['confirmation_token'])
+    end
+
+    it 'auto_confirm=1 skips the dance and dispatches in one step (admin.action_auto_confirmed emitted)' do
+      events = capture_admin_log_events do
+        post_destructive('/manager/admin/restart?auto_confirm=1')
+      end
+      expect(last_response.status).to eq(200)
+      expect(events.map { |e| e[:event] }).to include('admin.action_auto_confirmed', 'admin.command')
+    end
+
+    it 'never gates read-only typed verbs even with REQUIRE_CONFIRM=on' do
+      post_destructive('/manager/admin/version')
+      expect(last_response.status).to eq(200)
+    end
+
+    it 'never gates per-miner destructive routes (single-rig blast radius carve-out)' do
+      port = fake.port
+      post_destructive("/miner/127.0.0.1%3A#{port}/admin/restart")
+      expect(last_response.status).to eq(200)
+    end
+
+    it 'consume confirmation: same session dispatches the originally-pinned command' do
+      events = capture_admin_log_events do
+        post_destructive('/manager/admin/restart')
+        token = JSON.parse(last_response.body)['confirmation_token']
+        post_confirm(token)
+      end
+      expect(last_response.status).to eq(200)
+      ev_names = events.map { |e| e[:event] }
+      expect(ev_names).to include('admin.action_started', 'admin.action_confirmed', 'admin.command', 'admin.result')
+    end
+
+    it 'rejects already-consumed token with 410 + admin.action_rejected reason: :not_found' do
+      events = capture_admin_log_events do
+        post_destructive('/manager/admin/restart')
+        token = JSON.parse(last_response.body)['confirmation_token']
+        post_confirm(token)
+        post_confirm(token) # second consume
+      end
+      expect(last_response.status).to eq(410)
+      rejected = events.select { |e| e[:event] == 'admin.action_rejected' }
+      expect(rejected).not_to be_empty
+      expect(rejected.last[:reason]).to eq(:not_found)
+    end
+
+    it 'cancel via DELETE returns 204 + admin.action_cancelled' do
+      events = capture_admin_log_events do
+        post_destructive('/manager/admin/restart')
+        token = JSON.parse(last_response.body)['confirmation_token']
+        delete "/manager/admin/confirm/#{token}", {}, 'HTTP_AUTHORIZATION' => basic_auth
+      end
+      expect(last_response.status).to eq(204)
+      expect(events.map { |e| e[:event] }).to include('admin.action_cancelled')
+    end
+
+    # Pool-management redaction at the helper level is covered by
+    # admin_logging_spec's redact_args examples and action_started_log_entry's
+    # manage_pools/add case. The route-level integration is omitted from this
+    # block because /manager/manage_pools doesn't fall under AdminAuth's
+    # ADMIN_PATH regex (admin_auth.rb:27), so Basic Auth doesn't bypass CSRF
+    # on that path; pinning the integration would require a session-cookie +
+    # CSRF roundtrip that the unit-level redaction spec already covers.
   end
 end

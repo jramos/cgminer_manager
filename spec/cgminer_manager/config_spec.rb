@@ -216,6 +216,55 @@ RSpec.describe CgminerManager::Config do
     end
   end
 
+  describe '.from_env REQUIRE_CONFIRM (default-on)' do
+    it 'defaults require_confirm to true when the env var is unset' do
+      config = described_class.from_env(env_base)
+      expect(config.require_confirm).to be(true)
+    end
+
+    it 'is true when CGMINER_MANAGER_REQUIRE_CONFIRM=on (explicit)' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_REQUIRE_CONFIRM' => 'on'))
+      expect(config.require_confirm).to be(true)
+    end
+
+    it 'is false when CGMINER_MANAGER_REQUIRE_CONFIRM=off' do
+      config = described_class.from_env(env_base.merge('CGMINER_MANAGER_REQUIRE_CONFIRM' => 'off'))
+      expect(config.require_confirm).to be(false)
+    end
+  end
+
+  describe '.from_env boot-time misalignment warns' do
+    it 'warns about AUTH=off + REQUIRE_CONFIRM=on (default)' do
+      # env_base sets CGMINER_MANAGER_ADMIN_AUTH=off; default require_confirm=on triggers the warn.
+      expect { described_class.from_env(env_base) }
+        .to output(/CGMINER_MANAGER_ADMIN_AUTH=off.*REQUIRE_CONFIRM=on.*fail-closed/).to_stderr
+    end
+
+    it 'does not warn when REQUIRE_CONFIRM=off (alignment achieved)' do
+      env = env_base.merge('CGMINER_MANAGER_REQUIRE_CONFIRM' => 'off')
+      expect { described_class.from_env(env) }
+        .not_to output(/REQUIRE_CONFIRM/).to_stderr
+    end
+
+    it 'warns about WEB_CONCURRENCY > 1 + REQUIRE_CONFIRM=on' do
+      env = env_base.merge('WEB_CONCURRENCY' => '4')
+      expect { described_class.from_env(env) }
+        .to output(/WEB_CONCURRENCY=4.*cluster mode.*tokens are process-local/).to_stderr
+    end
+
+    it 'does not warn about WEB_CONCURRENCY when set to 1' do
+      env = env_base.merge('WEB_CONCURRENCY' => '1')
+      expect { described_class.from_env(env) }
+        .not_to output(/WEB_CONCURRENCY/).to_stderr
+    end
+
+    it 'does not warn about WEB_CONCURRENCY when REQUIRE_CONFIRM=off' do
+      env = env_base.merge('WEB_CONCURRENCY' => '4', 'CGMINER_MANAGER_REQUIRE_CONFIRM' => 'off')
+      expect { described_class.from_env(env) }
+        .not_to output(/WEB_CONCURRENCY/).to_stderr
+    end
+  end
+
   describe '#load_miners' do
     it 'yields [host, port] pairs' do
       config = described_class.from_env(env_base)

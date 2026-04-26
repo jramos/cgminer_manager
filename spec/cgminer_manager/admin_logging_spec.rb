@@ -73,6 +73,154 @@ RSpec.describe CgminerManager::AdminLogging do
     end
   end
 
+  describe '.action_started_log_entry (v1.7.0+)' do
+    let(:expires_at) { Time.utc(2026, 4, 26, 12, 5, 30, 123_000) }
+
+    it 'carries the fixed keys including the ISO8601 expires_at' do
+      entry = described_class.action_started_log_entry(
+        token: 'tok-1', expires_at: expires_at,
+        command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1',
+        remote_ip: '127.0.0.1', user_agent: 'curl/8', user: 'op'
+      )
+      expect(entry).to include(
+        event: 'admin.action_started',
+        confirmation_token: 'tok-1',
+        expires_at: '2026-04-26T12:05:30.123Z',
+        command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1',
+        user: 'op'
+      )
+    end
+
+    it 'redacts manage_pools/add credentials in the args field' do
+      entry = described_class.action_started_log_entry(
+        token: 'tok-2', expires_at: expires_at,
+        command: 'add', scope: 'all',
+        request_id: 'req-2', session_id_hash: 'sess-2',
+        remote_ip: '127.0.0.1', user_agent: 'curl/8',
+        route_kind: :manage_pools,
+        args: { url: 'stratum+tcp://pool.example:3333', user: 'worker', pass: 'sekrit' }
+      )
+      expect(entry[:args]).to eq('[REDACTED: pool credentials]')
+    end
+
+    it 'passes raw_run args through unredacted (operator on the hook for what they typed)' do
+      entry = described_class.action_started_log_entry(
+        token: 'tok-3', expires_at: expires_at,
+        command: 'pgaset', scope: 'all',
+        request_id: 'req-3', session_id_hash: 'sess-3',
+        remote_ip: '127.0.0.1', user_agent: 'curl/8',
+        route_kind: :raw_run, args: '0,clock,500'
+      )
+      expect(entry[:args]).to eq('0,clock,500')
+    end
+
+    it 'leaves args nil when not provided (typed_command writes have no args)' do
+      entry = described_class.action_started_log_entry(
+        token: 'tok-4', expires_at: expires_at,
+        command: 'restart', scope: 'all',
+        request_id: 'req-4', session_id_hash: 'sess-4',
+        remote_ip: '127.0.0.1', user_agent: 'curl/8',
+        route_kind: :typed_command
+      )
+      expect(entry[:args]).to be_nil
+    end
+  end
+
+  describe '.action_confirmed_log_entry (v1.7.0+)' do
+    it 'carries started_age_ms + the same redaction rule as _started' do
+      entry = described_class.action_confirmed_log_entry(
+        token: 'tok-1', command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1',
+        remote_ip: '127.0.0.1', user_agent: 'browser', user: 'op',
+        started_age_ms: 28_500
+      )
+      expect(entry).to include(
+        event: 'admin.action_confirmed',
+        confirmation_token: 'tok-1',
+        started_age_ms: 28_500,
+        request_id: 'req-1', user: 'op'
+      )
+    end
+  end
+
+  describe '.action_auto_confirmed_log_entry (v1.7.0+)' do
+    it 'omits confirmation_token (no token was issued for the auto-confirm path)' do
+      entry = described_class.action_auto_confirmed_log_entry(
+        command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1',
+        remote_ip: '127.0.0.1', user_agent: 'curl/8'
+      )
+      expect(entry).to include(event: 'admin.action_auto_confirmed', command: 'restart')
+      expect(entry).not_to have_key(:confirmation_token)
+    end
+  end
+
+  describe '.action_cancelled_log_entry (v1.7.0+)' do
+    it 'carries the token + command/scope captured from the cancelled entry' do
+      entry = described_class.action_cancelled_log_entry(
+        token: 'tok-1', command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1', user: 'op'
+      )
+      expect(entry).to include(
+        event: 'admin.action_cancelled',
+        confirmation_token: 'tok-1',
+        command: 'restart', scope: 'all'
+      )
+    end
+  end
+
+  describe '.action_rejected_log_entry (v1.7.0+) — single event with reason: discriminator' do
+    it 'carries reason: :expired with the token + command + scope' do
+      entry = described_class.action_rejected_log_entry(
+        reason: :expired, token: 'tok-1',
+        command: 'restart', scope: 'all',
+        request_id: 'req-1', session_id_hash: 'sess-1', user: 'op'
+      )
+      expect(entry).to include(
+        event: 'admin.action_rejected',
+        reason: :expired,
+        confirmation_token: 'tok-1',
+        command: 'restart'
+      )
+    end
+
+    it 'tolerates missing command/scope (reason: :not_found has no recoverable context)' do
+      entry = described_class.action_rejected_log_entry(
+        reason: :not_found, token: 'tok-x',
+        request_id: 'req-1', session_id_hash: 'sess-1'
+      )
+      expect(entry).to include(
+        event: 'admin.action_rejected',
+        reason: :not_found,
+        command: nil, scope: nil
+      )
+    end
+  end
+
+  describe '.redact_args' do
+    it 'returns "[REDACTED: pool credentials]" for manage_pools/add' do
+      out = described_class.redact_args(route_kind: :manage_pools, command: 'add', args: { url: 'x' })
+      expect(out).to eq('[REDACTED: pool credentials]')
+    end
+
+    it 'passes through manage_pools/disable args (no credentials in args)' do
+      out = described_class.redact_args(route_kind: :manage_pools, command: 'disable', args: '0')
+      expect(out).to eq('0')
+    end
+
+    it 'passes through raw_run args' do
+      out = described_class.redact_args(route_kind: :raw_run, command: 'pgaset', args: '0,clock,500')
+      expect(out).to eq('0,clock,500')
+    end
+
+    it 'passes through typed_command args' do
+      out = described_class.redact_args(route_kind: :typed_command, command: 'restart', args: nil)
+      expect(out).to be_nil
+    end
+  end
+
   # Pins the count-map shape on both Fleet*Result types so the
   # `admin.result.failed_codes` field is consistent across query and
   # write commands. AdminLogging.result_log_entry duck-types over
