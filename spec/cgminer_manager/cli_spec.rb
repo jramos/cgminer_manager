@@ -234,7 +234,7 @@ RSpec.describe CgminerManager::CLI do
           rate_limit_config(trusted_proxies: [IPAddr.new('127.0.0.1/32'), IPAddr.new('10.0.0.0/8')])
           code, stdout, = capture_run(['doctor'])
           expect(code).to eq(0)
-          expect(stdout).to match(%r{trusted-proxies: 127\.0\.0\.1/32, 10\.0\.0\.0/8})
+          expect(stdout).to include('trusted-proxies: 127.0.0.1/32, 10.0.0.0/8')
         end
       end
 

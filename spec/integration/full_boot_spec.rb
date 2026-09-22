@@ -116,8 +116,8 @@ RSpec.describe 'full boot', type: :integration do
       Process.wait(pid)
       logged = log_r.read
       log_r.close
-      expect(logged).to match(/reload\.signal_received/)
-      expect(logged).to match(/reload\.ok/)
+      expect(logged).to include('reload.signal_received')
+      expect(logged).to include('reload.ok')
       FileUtils.rm_rf(dir)
     end
   end

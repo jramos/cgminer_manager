@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'tmpdir'
 
-# rubocop:disable RSpec/MultipleMemoizedHelpers
+# rubocop:disable-next RSpec/MultipleMemoizedHelpers
 RSpec.describe CgminerManager::RestartScheduler do
   let(:tmpdir) { Dir.mktmpdir }
   let(:store) { CgminerManager::RestartStore.new(File.join(tmpdir, 'restart_schedules.json')) }
@@ -462,4 +462,3 @@ RSpec.describe CgminerManager::RestartScheduler do
     scheduler.instance_variable_set(:@clock, original_clock)
   end
 end
-# rubocop:enable RSpec/MultipleMemoizedHelpers
