@@ -84,7 +84,7 @@ RSpec.describe 'maintenance routes', type: :integration do
       get "/miner/#{miner_id}/maintenance"
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('Scheduled Restart')
-      expect(last_response.body).not_to match(/checked/)
+      expect(last_response.body).not_to include('checked')
     end
 
     it 'returns 404 for an unconfigured miner' do
@@ -131,7 +131,7 @@ RSpec.describe 'maintenance routes', type: :integration do
 
       expect(last_response.status).to eq(422)
       expect(last_response.body).to include('Scheduled Restart')
-      expect(last_response.body).to match(/time_utc/)
+      expect(last_response.body).to include('time_utc')
     end
 
     it 'accepts disabled with no time_utc' do

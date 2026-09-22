@@ -37,7 +37,7 @@ RSpec.describe 'GET /healthz', type: :integration do
       expect(last_response.status).to eq(503)
       body = JSON.parse(last_response.body, symbolize_names: true)
       expect(body[:ok]).to be false
-      expect(body[:reasons]).to include(match(/monitor/))
+      expect(body[:reasons]).to include(include('monitor'))
     end
   end
 
