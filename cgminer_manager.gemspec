@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'cgminer_api_client', '~> 0.4'
   spec.add_dependency 'haml', '~> 6.3'
   spec.add_dependency 'http', '~> 5.2'
-  spec.add_dependency 'puma', '~> 6.4'
+  spec.add_dependency 'puma', '~> 8.0', '>= 8.0.2'
   spec.add_dependency 'rack-protection', '~> 4.0'
   spec.add_dependency 'sinatra', '~> 4.0'
   spec.add_dependency 'sinatra-contrib', '~> 4.0' # content_for, namespace, etc.

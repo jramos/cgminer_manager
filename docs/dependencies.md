@@ -11,7 +11,7 @@ From the gemspec:
 | `sinatra-contrib` | `~> 4.0` | Provides `Sinatra::ContentFor` helper used by the layout for block content. |
 | `haml` | `~> 6.3` | Template engine. All views under `views/**/*.haml`. |
 | `http` | `~> 5.2` | HTTP client gem for calling `cgminer_monitor`. Used via `MonitorClient`. (Not Faraday; not Net::HTTP.) |
-| `puma` | `~> 6.4` | HTTP server. Embedded via `Puma::Configuration` + `Puma::Launcher`. |
+| `puma` | `~> 8.0, >= 8.0.2` | HTTP server. Embedded via `Puma::Configuration` + `Puma::Launcher`. |
 | `rack-protection` | `~> 4.0` | CSRF + other Rack-level protections. `ConditionalAuthenticityToken` subclasses `Rack::Protection::AuthenticityToken`. |
 
 Plus the Ruby stdlib pieces: `json`, `yaml`, `securerandom`, `digest`, `cgi`, `time`, plus `rack`, `rack/auth/basic`, `rack/session/cookie` (pulled in through the above).

@@ -176,7 +176,7 @@ module CgminerManager
       end
       launcher = Puma::Launcher.new(puma_config, log_writer: Puma::LogWriter.null)
       booted = @booted
-      launcher.events.on_booted { booted << true }
+      launcher.events.after_booted { booted << true }
       launcher
     end
   end

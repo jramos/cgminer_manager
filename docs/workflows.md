@@ -29,7 +29,7 @@ sequenceDiagram
 
     Server->>Server: @booted = Queue.new
     Server->>Puma: build launcher with raise_exception_on_sigterm false
-    Server->>Puma: launcher.events.on_booted { @booted << true }
+    Server->>Puma: launcher.events.after_booted { @booted << true }
     Server->>PumaT: Thread.new { launcher.run }
     PumaT->>PumaT: setup_signals (overwrites our INT/TERM!)
     PumaT->>PumaT: bind listener on BIND:PORT

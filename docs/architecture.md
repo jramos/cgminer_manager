@@ -28,7 +28,7 @@ sequenceDiagram
     Main->>Puma: Thread.new { launcher.run }
     Puma->>Puma: setup_signals (overwrites our SIGTERM handler!)
     Puma->>Puma: bind listener, setup workers
-    Puma->>Main: @booted << true (launcher.events.on_booted)
+    Puma->>Main: @booted << true (launcher.events.after_booted)
 
     Main->>Main: @booted.pop (block until Puma boot)
     Main->>Main: install_signal_handlers again (reclaim SIGTERM)
@@ -54,7 +54,7 @@ sequenceDiagram
 
 1. Main thread installs handlers (so a SIGTERM before Puma boot doesn't leave us in an inconsistent state).
 2. Puma thread runs `setup_signals` (overwrites with Puma's).
-3. `launcher.events.on_booted { booted << true }` fires when the listener is bound.
+3. `launcher.events.after_booted { booted << true }` fires when the listener is bound.
 4. Main thread waits on `@booted.pop`.
 5. Main thread re-installs handlers (Puma's are now replaced with ours).
 
