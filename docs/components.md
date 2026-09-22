@@ -152,7 +152,7 @@ Key moves in `#run`:
 2. `configure_http_app` — set class-level attrs on `HttpApp`.
 3. Log `server.start`.
 4. Set up `@booted = Queue.new`, build Puma launcher with `raise_exception_on_sigterm(false)`, spawn Puma thread that calls `launcher.run` (and pushes `'puma_crash'` to `@stop` on exception).
-5. Wait for `@booted.pop` (set by `launcher.events.on_booted`).
+5. Wait for `@booted.pop` (set by `launcher.events.after_booted`).
 6. `install_signal_handlers` again (Puma's `setup_signals` has overwritten ours).
 7. `@stop.pop` — block until signal or crash.
 8. `launcher.stop`, `puma_thread.join(shutdown_timeout)`, log `server.stopped`, return 0.

@@ -29,7 +29,7 @@ A **Sinatra + Puma web UI** for operating cgminer mining rigs. Sits at the top o
 - `cgminer_monitor` (daemon + MongoDB-backed HTTP API) — used for read-path data (dashboard, graphs, per-miner snapshots).
 - `cgminer_manager` (this repo) — orchestrates the UI on top of both.
 
-**Stack:** Ruby 3.2+, Sinatra 4.0, sinatra-contrib, Puma 6.4, HAML 6, `http` gem 5.2, `rack-protection` 4.0. No MongoDB, no Rails, no asset pipeline. ~1.5K SLOC in `lib/`, ~2.2K in `spec/`.
+**Stack:** Ruby 3.2+, Sinatra 4.0, sinatra-contrib, Puma 8, HAML 6, `http` gem 5.2, `rack-protection` 4.0. No MongoDB, no Rails, no asset pipeline. ~1.5K SLOC in `lib/`, ~2.2K in `spec/`.
 
 **Execution model:** `cgminer_manager run` starts a single foreground process with Puma embedded. SIGTERM/SIGINT → graceful shutdown, exit 0. Config errors → exit 2. Unknown CLI verb → exit 64. No background workers, no daemonize, no PID file.
 
@@ -270,7 +270,7 @@ No code change needed. Users can POST `command=<verb>` to `/manager/admin/run`. 
 
 <!-- metadata: caveats, surprises -->
 
-1. **Signal handlers must be installed before Puma boots, then reinstalled after.** Puma's `Launcher#run` calls `setup_signals` synchronously inside the Puma thread, overwriting any process-global SIGTERM/SIGINT traps. `Server#run` works around this by installing early, waiting on `@booted.pop` (signaled by `launcher.events.on_booted`), then reinstalling. Plus `raise_exception_on_sigterm false` to prevent Puma from raising SignalException inside its thread. If you change how Puma starts, re-verify SIGTERM routes through `@stop`.
+1. **Signal handlers must be installed before Puma boots, then reinstalled after.** Puma's `Launcher#run` calls `setup_signals` synchronously inside the Puma thread, overwriting any process-global SIGTERM/SIGINT traps. `Server#run` works around this by installing early, waiting on `@booted.pop` (signaled by `launcher.events.after_booted`), then reinstalling. Plus `raise_exception_on_sigterm false` to prevent Puma from raising SignalException inside its thread. If you change how Puma starts, re-verify SIGTERM routes through `@stop`.
 
 2. **`CgminerApiClient::Miner#to_s` is monkey-patched at the top of `http_app.rb`** to return `"host:port"`. Upstream doesn't define it. If you see `Miner.to_s` returning something like `"#<CgminerApiClient::Miner:0x00007f...>"`, the monkey patch isn't loaded.
 

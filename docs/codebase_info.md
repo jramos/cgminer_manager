@@ -19,12 +19,12 @@ The 1.0 rewrite (April 2026) moved this from a Rails 4.2 engine to a standalone 
 - **Language:** Ruby 3.2+ (gemspec floor). `.ruby-version` pins to 4.0.2 for local dev.
 - **CI matrix:** Ruby 3.2 / 3.3 / 3.4 required. Nightly best-effort job (see `.github/workflows/nightly.yml`) tests Ruby 4.0 / head.
 - **Web framework:** Sinatra 4.0 + `sinatra-contrib` (for `content_for`).
-- **HTTP server:** Puma 6.4, single-process, 1–8 threads, embedded via `Puma::Launcher`.
+- **HTTP server:** Puma 8, single-process, 1–8 threads, embedded via `Puma::Launcher`.
 - **Template engine:** HAML 6.
 - **HTTP client (upstream):** `http` gem 5.2 (not Faraday, not Net::HTTP).
 - **Security middleware:** `rack-protection` 4.0 (CSRF), with a subclassed `ConditionalAuthenticityToken` that skips for Basic-Auth-authenticated admin requests.
 - **Session:** `Rack::Session::Cookie`, signed with `SESSION_SECRET`.
-- **Runtime gem deps:** `cgminer_api_client ~> 0.3`, `sinatra ~> 4.0`, `sinatra-contrib ~> 4.0`, `puma ~> 6.4`, `haml ~> 6.3`, `http ~> 5.2`, `rack-protection ~> 4.0`. No MongoDB, no database.
+- **Runtime gem deps:** `cgminer_api_client ~> 0.3`, `sinatra ~> 4.0`, `sinatra-contrib ~> 4.0`, `puma ~> 8.0, >= 8.0.2`, `haml ~> 6.3`, `http ~> 5.2`, `rack-protection ~> 4.0`. No MongoDB, no database.
 - **Dev deps:** `rspec`, `webmock`, `rack-test`, `rubocop` (+ `-rake`, `-rspec`), `rake`, `simplecov`. Plus a pinned `parallel < 2.0` so Ruby 3.2 can still bundle (transitive dep of rubocop).
 - **Test framework:** RSpec. Unit specs at `spec/cgminer_manager/**`, integration specs at `spec/integration/**` (tagged `:integration`). WebMock + a real TCP FakeCgminer for end-to-end.
 - **Lint:** RuboCop with `TargetRubyVersion: 3.2`. `Metrics/ClassLength` raised to 550 to accommodate `HttpApp`. Default rake task runs `[rubocop, spec]`.

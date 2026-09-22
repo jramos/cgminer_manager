@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+- **Puma 8.** The gemspec now requires `puma ~> 8.0, >= 8.0.2` (was
+  `~> 6.4`). Puma 6.x has no fix for CVE-2026-47736 / CVE-2026-47737
+  (PROXY protocol v1 memory exhaustion and repeated headers). `Server`
+  registers its boot hook with `after_booted`, the Puma 7+ name for
+  `on_booted`. `run` always passes an explicit `BIND`, so Puma 8's
+  IPv6-by-default bind doesn't change where the manager listens.
+
+### Security
+- Bumped concurrent-ruby to 1.3.8 (CVE-2026-54904, CVE-2026-54905,
+  CVE-2026-54906), json to 2.19.9 (CVE-2026-54696), and mongo to
+  2.26.0 (CVE-2026-88030) in `Gemfile.lock`.
+
 ## [1.8.0] — 2026-04-26
 
 ### Added
