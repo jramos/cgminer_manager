@@ -21,7 +21,7 @@ PATH
   remote: .
   specs:
     cgminer_manager (1.8.0)
-      cgminer_api_client (~> 0.4)
+      cgminer_api_client (~> 0.4, >= 0.4.1)
       haml (~> 6.3)
       http (~> 5.2)
       puma (~> 8.0, >= 8.0.2)
@@ -58,7 +58,7 @@ GEM
     bundler-audit (0.9.3)
       bundler (>= 1.2.0)
       thor (~> 1.0)
-    cgminer_api_client (0.4.0)
+    cgminer_api_client (0.4.1)
     concurrent-ruby (1.3.8)
     connection_pool (3.0.2)
     crack (1.0.1)
@@ -253,7 +253,7 @@ CHECKSUMS
   brakeman (8.0.4) sha256=7bf921fa9638544835df9aa7b3e720a9a72c0267f34f92135955edd80d4dcf6f
   bson (5.2.0) sha256=c468c1e8a3cfa1e80531cc519a890f85586986721d8e305f83465cc36bb82608
   bundler-audit (0.9.3) sha256=81c8766c71e47d0d28a0f98c7eed028539f21a6ea3cd8f685eb6f42333c9b4e9
-  cgminer_api_client (0.4.0) sha256=adc32cb114439ae2808dee28f5b1757fa528e293abe131c85382a12cd98b1a71
+  cgminer_api_client (0.4.1) sha256=904ef8d2b8260e06b98c3b8d15a454c8da1a867761839af6dff7673ec23efc0c
   cgminer_manager (1.8.0)
   cgminer_monitor (1.5.0)
   cgminer_test_support (0.1.0)

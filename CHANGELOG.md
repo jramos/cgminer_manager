@@ -10,6 +10,11 @@
   `on_booted`. `run` always passes an explicit `BIND`, so Puma 8's
   IPv6-by-default bind doesn't change where the manager listens.
 
+- **cgminer_api_client >= 0.4.1.** 0.4.1 keeps parsing cgminer
+  responses that repeat a key under json 3.0, which rejects duplicate
+  keys by default. With json 3 in the bundle, 0.4.0 would raise
+  `JSON::ParserError` mid-poll on such a response.
+
 ### Security
 - Bumped concurrent-ruby to 1.3.8 (CVE-2026-54904, CVE-2026-54905,
   CVE-2026-54906), json to 2.19.9 (CVE-2026-54696), and mongo to
